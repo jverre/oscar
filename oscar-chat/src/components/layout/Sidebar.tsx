@@ -1,0 +1,142 @@
+"use client";
+
+import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { ConversationList } from "../chat/ConversationList";
+import { SidebarTimeline } from "../timeline/SidebarTimeline";
+import { cn } from "@/lib/utils";
+
+export function Sidebar() {
+  const [isChatsExpanded, setIsChatsExpanded] = useState(true);
+  const [isTimelineExpanded, setIsTimelineExpanded] = useState(false);
+  const [isCapabilitiesExpanded, setIsCapabilitiesExpanded] = useState(false);
+  const [shouldCreateChat, setShouldCreateChat] = useState(false);
+
+  const conversations = useQuery(api.conversations.list);
+  
+  const handleCreateChat = async () => {
+    setShouldCreateChat(true);
+  };
+
+  const handleSidebarClick = (e: React.MouseEvent) => {
+    // Only clear selection if clicking on the sidebar background itself (not on conversation items)
+    if (e.target === e.currentTarget) {
+      // Force any ConversationList components to clear their selections
+      document.dispatchEvent(new CustomEvent('clearConversationSelection'));
+    }
+  };
+
+  return (
+    <aside 
+      className="w-64 bg-sidebar border-r flex flex-col h-full flex-shrink-0" 
+      style={{ borderRightColor: 'var(--border-subtle)', borderRightWidth: '1px' }}
+      onClick={handleSidebarClick}
+    >
+      {/* Chats Section - Takes remaining space when expanded */}
+      <div className={cn(
+        "flex flex-col",
+        isChatsExpanded ? "flex-1 min-h-0" : "flex-none"
+      )}>
+        <div className="flex !h-[32px] items-center justify-between px-3 border-b group flex-shrink-0" style={{ borderBottomColor: 'var(--border-subtle)', borderBottomWidth: '1px' }}>
+          <button
+            onClick={() => setIsChatsExpanded(!isChatsExpanded)}
+            className="flex items-center gap-2 text-xs font-bold uppercase text-sidebar-foreground hover:text-foreground transition-colors focus:outline-none"
+          >
+            {isChatsExpanded ? (
+              <ChevronDown className="h-3 w-3" />
+            ) : (
+              <ChevronRight className="h-3 w-3" />
+            )}
+            Chats
+          </button>
+          {isChatsExpanded && (
+            <div className="flex gap-1">
+              <button
+                onClick={handleCreateChat}
+                className="p-1 opacity-0 group-hover:opacity-100 transition-all focus:outline-none"
+                style={{ backgroundColor: 'transparent' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--surface-muted)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                title="New Chat"
+              >
+                <Plus className="h-3 w-3 text-sidebar-foreground" />
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {isChatsExpanded && (
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="flex-1 overflow-y-auto">
+              <ConversationList
+                conversations={conversations}
+                shouldCreateChat={shouldCreateChat}
+                onChatCreated={() => setShouldCreateChat(false)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Timeline Section - Fixed at bottom */}
+      <div className="flex-shrink-0 border-t" style={{ borderTopColor: 'var(--border-subtle)', borderTopWidth: '1px' }}>
+        <button
+          onClick={() => setIsTimelineExpanded(!isTimelineExpanded)}
+          className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold uppercase text-sidebar-foreground hover:text-foreground transition-colors focus:outline-none"
+          style={{ backgroundColor: 'transparent' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--surface-muted)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          {isTimelineExpanded ? (
+            <ChevronDown className="h-3 w-3" />
+          ) : (
+            <ChevronRight className="h-3 w-3" />
+          )}
+          Timeline
+        </button>
+        
+        {isTimelineExpanded && (
+          <SidebarTimeline />
+        )}
+      </div>
+
+      {/* Capabilities Section - Fixed at bottom */}
+      <div className="flex-shrink-0 border-t" style={{ borderTopColor: 'var(--border-subtle)', borderTopWidth: '1px' }}>
+        <button
+          onClick={() => setIsCapabilitiesExpanded(!isCapabilitiesExpanded)}
+          className="flex items-center gap-2 w-full px-3 py-2 text-xs font-bold uppercase text-sidebar-foreground hover:text-foreground transition-colors focus:outline-none"
+          style={{ backgroundColor: 'transparent' }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--surface-muted)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          {isCapabilitiesExpanded ? (
+            <ChevronDown className="h-3 w-3" />
+          ) : (
+            <ChevronRight className="h-3 w-3" />
+          )}
+          Capabilities
+        </button>
+        
+        {isCapabilitiesExpanded && (
+          <div className="px-3 py-2 text-sm text-muted-foreground max-h-32 overflow-y-auto">
+            Coming soon
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
