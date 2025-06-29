@@ -55,8 +55,8 @@ export function TabBar() {
 
   return (
     <div 
-      className="tab-bar h-[32px] bg-sidebar flex-shrink-0 min-w-0"
-      style={{ borderBottom: '1px solid var(--border-subtle)' }}
+      className="tab-bar h-[32px] flex-shrink-0 min-w-0"
+      style={{ backgroundColor: 'var(--surface-primary)', borderBottom: '1px solid var(--border-subtle)' }}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

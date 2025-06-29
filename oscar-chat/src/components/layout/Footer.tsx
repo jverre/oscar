@@ -112,7 +112,7 @@ export function Footer() {
         </div>
       )}
       
-      <div className="h-[22px] bg-sidebar border-t flex items-center justify-end px-4" style={{ borderTopColor: 'var(--border-subtle)', borderTopWidth: '1px' }}>
+      <div className="h-[22px] border-t flex items-center justify-end px-4" style={{ backgroundColor: 'var(--surface-primary)', borderTopColor: 'var(--border-subtle)', borderTopWidth: '1px' }}>
         {!isHydrated ? (
           <div className="text-xs text-muted-foreground">Loading...</div>
         ) : user === undefined ? (
