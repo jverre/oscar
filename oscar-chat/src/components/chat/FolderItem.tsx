@@ -21,7 +21,7 @@ export function FolderItem({
     onFolderContextMenu,
     isSelected
 }: FolderItemProps) {
-    const hasChildren = folder.children.size > 0 || folder.conversations.length > 0;
+    const hasChildren = folder.children.size > 0 || folder.files.length > 0 || folder.isGitRepo;
     const indentLevel = level * 8; // Condensed indentation like VS Code
 
     const handleToggleClick = (e: React.MouseEvent) => {

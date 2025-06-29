@@ -1,0 +1,99 @@
+{
+    "name": "oscar",
+    "displayName": "Oscar",
+    "description": "Sync your AI chat conversations with Oscar",
+    "version": "0.0.1",
+    "publisher": "oscar",
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "categories": ["Other"],
+    "activationEvents": ["onStartupFinished"],
+    "main": "./out/extension.js",
+    "contributes": {
+        "authentication": [
+            {
+                "id": "oscar",
+                "label": "Oscar"
+            }
+        ],
+        "commands": [
+            {
+                "command": "oscar.signIn",
+                "title": "Sign in to Oscar",
+                "category": "Oscar"
+            },
+            {
+                "command": "oscar.signOut",
+                "title": "Sign out of Oscar",
+                "category": "Oscar"
+            },
+            {
+                "command": "oscar.syncNow",
+                "title": "Sync Claude Code chats now",
+                "category": "Oscar"
+            },
+            {
+                "command": "oscar.showMenu",
+                "title": "Show Oscar menu",
+                "category": "Oscar"
+            }
+        ],
+        "configuration": {
+            "title": "Oscar",
+            "properties": {
+                "oscar.serverUrl": {
+                    "type": "string",
+                    "default": "http://localhost:3000",
+                    "description": "Oscar server URL"
+                },
+                "oscar.autoSync": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Automatically sync Claude Code chats to Oscar"
+                },
+                "oscar.fileWatcher.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable Claude Code file watching for automatic sync"
+                },
+                "oscar.fileWatcher.claudePath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Custom path to Claude Code projects directory (leave empty for auto-detection)"
+                },
+                "oscar.sync.includePaths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [],
+                    "description": "Only sync sessions from these project paths (leave empty to sync all)"
+                },
+                "oscar.sync.excludePaths": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [],
+                    "description": "Exclude sessions from these project paths from syncing"
+                },
+                "oscar.sync.minMessages": {
+                    "type": "number",
+                    "default": 1,
+                    "description": "Minimum number of messages required to sync a session"
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./"
+    },
+    "devDependencies": {
+        "@types/node": "20.x",
+        "@types/vscode": "^1.90.0",
+        "typescript": "^5.4.5"
+    }
+}

@@ -3,20 +3,25 @@
 import { useState, useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 import { CommandPalette } from "@/components/ui/command-palette";
-import { useChatCreation } from "@/hooks/useChatCreation";
+import { useFileCreation } from "@/hooks/useFileCreation";
+import { useGitCreation } from "@/hooks/useGitCreation";
 
 export function TopNav() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [inputMode, setInputMode] = useState<{ placeholder: string; onSubmit: (value: string) => void; error?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { createChat } = useChatCreation();
+  const { createFile } = useFileCreation();
+  const { createGitFolder, error: gitError } = useGitCreation();
 
   // Mock commands for filtering
   const mockCommands = [
     { id: "create-chat", title: "Create Chat", keywords: ["create", "new", "chat", "conversation", "start"] },
+    { id: "create-blog", title: "Create Blog", keywords: ["create", "new", "blog", "post", "write"] },
+    { id: "clone-repository", title: "Clone Repository", keywords: ["clone", "git", "repository", "github", "repo"] },
     { id: "search-chat", title: "Search Chat", keywords: ["search", "find", "chat", "conversation", "browse"] }
   ];
 
@@ -78,11 +83,30 @@ export function TopNav() {
   const handleClose = () => {
     setIsCommandPaletteOpen(false);
     setSearchValue("");
+    setInputMode(null);
     inputRef.current?.blur();
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!isCommandPaletteOpen || filteredCommands.length === 0) return;
+    if (!isCommandPaletteOpen) return;
+
+    // Handle input mode separately
+    if (inputMode) {
+      switch (e.key) {
+        case 'Enter':
+          e.preventDefault();
+          inputMode.onSubmit(searchValue);
+          break;
+        case 'Escape':
+          e.preventDefault();
+          handleClose();
+          break;
+      }
+      return;
+    }
+
+    // Normal command navigation
+    if (filteredCommands.length === 0) return;
 
     switch (e.key) {
       case 'ArrowDown':
@@ -111,15 +135,40 @@ export function TopNav() {
   const executeCommand = async (commandId: string) => {
     switch (commandId) {
       case 'create-chat':
-        await createChat({ navigate: true });
+        await createFile({ navigate: true, fileType: 'chat' });
+        handleClose();
+        break;
+      case 'create-blog':
+        await createFile({ navigate: true, fileType: 'blog' });
+        handleClose();
+        break;
+      case 'clone-repository':
+        // Switch to input mode instead of closing
+        setSearchValue("");
+        setInputMode({
+          placeholder: "Enter GitHub repository (e.g., user/repo or https://github.com/user/repo)",
+          onSubmit: async (repoUrl: string) => {
+            if (repoUrl.trim()) {
+              const result = await createGitFolder(repoUrl.trim());
+              if (result) {
+                // Success - close the input
+                handleClose();
+              } else {
+                // Error - update input mode to show error and keep it open
+                setInputMode(prev => prev ? { ...prev, error: gitError } : null);
+              }
+            }
+          }
+        });
         break;
       case 'search-chat':
         console.log("Search chat functionality coming soon");
+        handleClose();
         break;
       default:
         console.log("Unknown command:", commandId);
+        handleClose();
     }
-    handleClose();
   };
 
 
@@ -131,7 +180,7 @@ export function TopNav() {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search"
+            placeholder={inputMode ? inputMode.placeholder : "Search"}
             value={searchValue}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
@@ -156,6 +205,7 @@ export function TopNav() {
           selectedIndex={selectedIndex}
           onSelectedIndexChange={setSelectedIndex}
           onExecuteCommand={executeCommand}
+          inputMode={inputMode}
         />
       </div>
     </div>

@@ -7,16 +7,14 @@ export const create = mutation({
     args: {
         eventType: v.union(
             v.literal("send_message"),
-            v.literal("create_conversation"),
-            v.literal("rename_conversation"),
-            v.literal("delete_conversation")
+            v.literal("create_file"),
+            v.literal("rename_file"),
+            v.literal("delete_file")
         ),
         description: v.string(),
-        conversationId: v.optional(v.id("conversations")),
+        fileId: v.optional(v.id("files")),
         messageId: v.optional(v.id("messages")),
         metadata: v.optional(v.object({
-            oldTitle: v.optional(v.string()),
-            newTitle: v.optional(v.string()),
             messagePreview: v.optional(v.string()),
         })),
     },
@@ -31,7 +29,7 @@ export const create = mutation({
             eventType: args.eventType,
             description: args.description,
             timestamp: Date.now(),
-            conversationId: args.conversationId,
+            fileId: args.fileId,
             messageId: args.messageId,
             metadata: args.metadata,
         });
@@ -69,18 +67,18 @@ export const list = query({
 export const createSendMessageEvent = internalMutation({
     args: {
         userId: v.id("users"),
-        conversationId: v.id("conversations"),
+        fileId: v.id("files"),
         messageId: v.id("messages"),
         messagePreview: v.string(),
-        conversationTitle: v.string(),
+        fileName: v.string(),
     },
     handler: async (ctx, args) => {
         return await ctx.db.insert("timeline_events", {
             userId: args.userId,
             eventType: "send_message",
-            description: `Sent message in "${args.conversationTitle}"`,
+            description: `Sent message in "${args.fileName}"`,
             timestamp: Date.now(),
-            conversationId: args.conversationId,
+            fileId: args.fileId,
             messageId: args.messageId,
             metadata: {
                 messagePreview: args.messagePreview,
@@ -89,36 +87,30 @@ export const createSendMessageEvent = internalMutation({
     },
 });
 
-// Internal helper function to create a conversation event
-export const createConversationEvent = internalMutation({
+// Internal helper function to create a file event
+export const createFileEvent = internalMutation({
     args: {
         userId: v.id("users"),
         eventType: v.union(
-            v.literal("create_conversation"),
-            v.literal("rename_conversation"),
-            v.literal("delete_conversation")
+            v.literal("create_file"),
+            v.literal("rename_file"),
+            v.literal("delete_file")
         ),
-        conversationId: v.optional(v.id("conversations")),
-        conversationTitle: v.string(),
-        oldTitle: v.optional(v.string()),
+        fileId: v.optional(v.id("files")),
+        fileName: v.string(),
     },
     handler: async (ctx, args) => {
         let description = "";
-        let metadata = {};
 
         switch (args.eventType) {
-            case "create_conversation":
-                description = `Created conversation "${args.conversationTitle}"`;
+            case "create_file":
+                description = `Created file "${args.fileName}"`;
                 break;
-            case "rename_conversation":
-                description = `Renamed conversation from "${args.oldTitle}" to "${args.conversationTitle}"`;
-                metadata = {
-                    oldTitle: args.oldTitle,
-                    newTitle: args.conversationTitle,
-                };
+            case "rename_file":
+                description = `Renamed file to "${args.fileName}"`;
                 break;
-            case "delete_conversation":
-                description = `Deleted conversation "${args.conversationTitle}"`;
+            case "delete_file":
+                description = `Deleted file "${args.fileName}"`;
                 break;
         }
 
@@ -127,8 +119,8 @@ export const createConversationEvent = internalMutation({
             eventType: args.eventType,
             description,
             timestamp: Date.now(),
-            conversationId: args.conversationId,
-            metadata,
+            fileId: args.fileId,
+            metadata: {},
         });
     },
 });

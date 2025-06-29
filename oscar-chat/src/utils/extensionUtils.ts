@@ -1,5 +1,6 @@
 export const CHAT_EXTENSION = '.chat';
-export const SUPPORTED_EXTENSIONS = ['.chat'] as const;
+export const BLOG_EXTENSION = '.blog';
+export const SUPPORTED_EXTENSIONS = ['.chat', '.blog'] as const;
 
 export type SupportedExtension = typeof SUPPORTED_EXTENSIONS[number];
 
@@ -81,6 +82,13 @@ export function ensureChatExtension(title: string): string {
 }
 
 /**
+ * Ensures a blog title has the .blog extension
+ */
+export function ensureBlogExtension(title: string): string {
+    return ensureExtension(title, BLOG_EXTENSION);
+}
+
+/**
  * Validates and normalizes a conversation title for creation/editing
  */
 export function normalizeConversationTitle(title: string): string {
@@ -90,4 +98,16 @@ export function normalizeConversationTitle(title: string): string {
     
     const trimmed = title.trim();
     return ensureChatExtension(trimmed);
+}
+
+/**
+ * Validates and normalizes a blog title for creation/editing
+ */
+export function normalizeBlogTitle(title: string): string {
+    if (!title || !title.trim()) {
+        return 'New Blog' + BLOG_EXTENSION;
+    }
+    
+    const trimmed = title.trim();
+    return ensureBlogExtension(trimmed);
 }

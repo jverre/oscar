@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { ConversationList } from "../chat/ConversationList";
+import { FileList } from "../chat/FileList";
 import { SidebarTimeline } from "../timeline/SidebarTimeline";
 import { cn } from "@/lib/utils";
 
@@ -12,19 +12,20 @@ export function Sidebar() {
   const [isChatsExpanded, setIsChatsExpanded] = useState(true);
   const [isTimelineExpanded, setIsTimelineExpanded] = useState(false);
   const [isCapabilitiesExpanded, setIsCapabilitiesExpanded] = useState(false);
-  const [shouldCreateChat, setShouldCreateChat] = useState(false);
-
-  const conversations = useQuery(api.conversations.list);
+  const [shouldCreateFile, setShouldCreateFile] = useState(false);
   
-  const handleCreateChat = async () => {
-    setShouldCreateChat(true);
+
+  const files = useQuery(api.files.list);
+  
+  const handleCreateFile = async () => {
+    setShouldCreateFile(true);
   };
 
   const handleSidebarClick = (e: React.MouseEvent) => {
-    // Only clear selection if clicking on the sidebar background itself (not on conversation items)
+    // Only clear selection if clicking on the sidebar background itself (not on file items)
     if (e.target === e.currentTarget) {
-      // Force any ConversationList components to clear their selections
-      document.dispatchEvent(new CustomEvent('clearConversationSelection'));
+      // Force any FileList components to clear their selections
+      document.dispatchEvent(new CustomEvent('clearFileSelection'));
     }
   };
 
@@ -49,12 +50,12 @@ export function Sidebar() {
             ) : (
               <ChevronRight className="h-3 w-3" />
             )}
-            Chats
+            Files
           </button>
           {isChatsExpanded && (
             <div className="flex gap-1">
               <button
-                onClick={handleCreateChat}
+                onClick={handleCreateFile}
                 className="p-1 opacity-0 group-hover:opacity-100 transition-all focus:outline-none"
                 style={{ backgroundColor: 'transparent' }}
                 onMouseEnter={(e) => {
@@ -63,7 +64,7 @@ export function Sidebar() {
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
                 }}
-                title="New Chat"
+                title="New File"
               >
                 <Plus className="h-3 w-3 text-sidebar-foreground" />
               </button>
@@ -74,10 +75,10 @@ export function Sidebar() {
         {isChatsExpanded && (
           <div className="flex-1 overflow-y-auto min-h-0">
             <div className="flex-1 overflow-y-auto">
-              <ConversationList
-                conversations={conversations}
-                shouldCreateChat={shouldCreateChat}
-                onChatCreated={() => setShouldCreateChat(false)}
+              <FileList
+                files={files}
+                shouldCreateFile={shouldCreateFile}
+                onFileCreated={() => setShouldCreateFile(false)}
               />
             </div>
           </div>

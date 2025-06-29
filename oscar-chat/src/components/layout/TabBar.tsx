@@ -2,12 +2,13 @@
 
 import { useTabContext } from "@/contexts/TabContext";
 import { TabItem } from "./TabItem";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 
 export function TabBar() {
   const { openTabs, activeTabId } = useTabContext();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLDivElement>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
 
   // Scroll to active tab when it changes
   useEffect(() => {
@@ -35,13 +36,36 @@ export function TabBar() {
     return null;
   }
 
+  const handleDragEnter = () => {
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear drag state if we're leaving the tab bar entirely
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right || 
+        e.clientY < rect.top || e.clientY > rect.bottom) {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleDrop = () => {
+    setIsDragActive(false);
+  };
+
   return (
-    <div className="h-[32px] bg-sidebar flex-shrink-0 min-w-0" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+    <div 
+      className="tab-bar h-[32px] bg-sidebar flex-shrink-0 min-w-0"
+      style={{ borderBottom: '1px solid var(--border-subtle)' }}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div 
         ref={scrollContainerRef}
         className="flex items-center h-full overflow-x-auto overflow-y-hidden scrollbar-hide min-w-0"
       >
-        {openTabs.map((tab) => (
+        {openTabs.map((tab, index) => (
           <TabItem
             key={tab.id}
             tabId={tab.id}
@@ -49,6 +73,7 @@ export function TabBar() {
             title={tab.title}
             isActive={activeTabId === tab.id}
             tabCount={openTabs.length}
+            index={index}
             ref={activeTabId === tab.id ? activeTabRef : undefined}
           />
         ))}

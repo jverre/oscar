@@ -2,30 +2,48 @@
 
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { useChatCreation } from "@/hooks/useChatCreation";
+import { useFileCreation } from "@/hooks/useFileCreation";
 import { useRouter } from "next/navigation";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, FileText } from "lucide-react";
 
 interface WelcomeScreenProps {
     // No props needed - using useChatCreation hook directly
 }
 
 export function WelcomeScreen({}: WelcomeScreenProps) {
-    const { createChat, isCreating } = useChatCreation();
+    const { createFile, isCreating } = useFileCreation();
     const router = useRouter();
-    const conversations = useQuery(api.conversations.list);
+    const files = useQuery(api.files.list);
+    
+    // Get user's organization and team for URL generation
+    const userOrg = useQuery(api.organizations.getCurrentUserOrg);
+    const userTeam = useQuery(api.teams.getCurrentUserTeam);
 
-    const recentConversations = conversations?.slice(0, 5) || [];
+    const recentFiles = files?.slice(0, 5) || [];
 
-    const handleCreateChat = async () => {
-        await createChat({
-            title: "New Chat",
-            navigate: true
+    const handleCreateFile = async () => {
+        await createFile({
+            name: "New File.chat",
+            navigate: true,
+            fileType: 'chat'
         });
     };
 
-    const handleConversationClick = (conversationId: string) => {
-        router.push(`/chat?conversation=${conversationId}`);
+    const handleCreateBlog = async () => {
+        await createFile({
+            name: "New Blog.blog",
+            navigate: true,
+            fileType: 'blog'
+        });
+    };
+
+    const handleFileClick = (fileId: string) => {
+        const file = files?.find(f => f._id === fileId);
+        if (file && userOrg && userTeam) {
+            router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/${encodeURIComponent(file.name)}`);
+        } else {
+            router.push(`/chat?file=${fileId}`);
+        }
     };
 
     return (
@@ -117,7 +135,7 @@ export function WelcomeScreen({}: WelcomeScreenProps) {
                 }}
             >
                 <button
-                    onClick={handleCreateChat}
+                    onClick={handleCreateFile}
                     disabled={isCreating}
                     className="transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-start hover:bg-[var(--interactive-hover)]"
                     style={{
@@ -144,13 +162,40 @@ export function WelcomeScreen({}: WelcomeScreenProps) {
                         {isCreating ? "Creating..." : "New chat"}
                     </div>
                 </button>
+                <button
+                    onClick={handleCreateBlog}
+                    disabled={isCreating}
+                    className="transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-start hover:bg-[var(--interactive-hover)]"
+                    style={{
+                        backgroundColor: 'var(--surface-secondary)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '6px',
+                        padding: '10px 12px',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        boxShadow: '0 0 1px var(--border-subtle)',
+                        justifyContent: 'center',
+                        alignItems: 'flex-start'
+                    }}
+                >
+                    <FileText size={16} style={{ color: 'var(--text-primary)' }} />
+                    <div style={{
+                        fontSize: '12px',
+                        color: 'var(--text-primary)',
+                        fontWeight: '400',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                    }}>
+                        {isCreating ? "Creating..." : "New blog"}
+                    </div>
+                </button>
                 {/* Placeholder for future buttons */}
-                <div></div>
                 <div></div>
             </div>
 
-            {/* Recent Chats Section */}
-            {recentConversations.length > 0 && (
+            {/* Recent Files Section */}
+            {recentFiles.length > 0 && (
                 <div className="w-full" style={{ maxWidth: '420px' }}>
                     <div 
                         className="flex items-center justify-between"
@@ -170,7 +215,7 @@ export function WelcomeScreen({}: WelcomeScreenProps) {
                                 opacity: 0.6,
                                 color: 'var(--text-primary)'
                             }}>
-                                Recent chats
+                                Recent files
                             </span>
                         </div>
                         <div 
@@ -180,14 +225,14 @@ export function WelcomeScreen({}: WelcomeScreenProps) {
                                 color: 'var(--text-primary)'
                             }}
                         >
-                            View all ({recentConversations.length})
+                            View all ({recentFiles.length})
                         </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                        {recentConversations.map((conversation) => (
+                        {recentFiles.map((file) => (
                             <div
-                                key={conversation._id}
-                                onClick={() => handleConversationClick(conversation._id)}
+                                key={file._id}
+                                onClick={() => handleFileClick(file._id)}
                                 className="flex items-center hover:bg-[var(--surface-secondary)]"
                                 style={{
                                     padding: '0.2rem 0.4rem',
@@ -211,7 +256,7 @@ export function WelcomeScreen({}: WelcomeScreenProps) {
                                         textOverflow: 'ellipsis'
                                     }}
                                 >
-                                    {conversation.title}
+                                    {file.name}
                                 </div>
                                 <div 
                                     style={{ 
@@ -226,7 +271,7 @@ export function WelcomeScreen({}: WelcomeScreenProps) {
                                         maxWidth: '50%'
                                     }}
                                 >
-                                    ~/Documents/Chats
+                                    ~/Documents/Files
                                 </div>
                             </div>
                         ))}

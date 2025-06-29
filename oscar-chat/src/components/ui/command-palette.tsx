@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, GitBranch, FileText } from "lucide-react";
 
 interface Command {
     id: string;
@@ -19,6 +19,11 @@ interface CommandPaletteProps {
     selectedIndex: number;
     onSelectedIndexChange: (index: number) => void;
     onExecuteCommand: (commandId: string) => void;
+    inputMode?: {
+        placeholder: string;
+        onSubmit: (value: string) => void;
+        error?: string;
+    };
 }
 
 const mockCommands: Command[] = [
@@ -28,6 +33,20 @@ const mockCommands: Command[] = [
         description: "Start a new conversation",
         icon: <Plus className="w-4 h-4" />,
         keywords: ["create", "new", "chat", "conversation", "start"]
+    },
+    {
+        id: "create-blog",
+        title: "Create Blog",
+        description: "Write a new blog post",
+        icon: <FileText className="w-4 h-4" />,
+        keywords: ["create", "new", "blog", "post", "write"]
+    },
+    {
+        id: "clone-repository",
+        title: "Clone Repository",
+        description: "Clone a GitHub repository",
+        icon: <GitBranch className="w-4 h-4" />,
+        keywords: ["clone", "git", "repository", "github", "repo"]
     },
     {
         id: "search-chat",
@@ -45,7 +64,8 @@ export function CommandPalette({
     onSearchChange, 
     selectedIndex, 
     onSelectedIndexChange, 
-    onExecuteCommand 
+    onExecuteCommand,
+    inputMode
 }: CommandPaletteProps) {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +85,7 @@ export function CommandPalette({
         onExecuteCommand(command.id);
     };
 
-    if (!isOpen || filteredCommands.length === 0) return null;
+    if (!isOpen || (!inputMode && filteredCommands.length === 0)) return null;
 
     return (
         <div 
@@ -77,29 +97,52 @@ export function CommandPalette({
                 fontSize: '11px'
             }}
         >
-            {/* Commands List */}
-            <div className="max-h-32 overflow-y-auto">
-                {filteredCommands.map((command, index) => (
-                    <div
-                        key={command.id}
-                        className="flex items-center gap-2 px-2 py-1 cursor-pointer transition-colors font-mono"
-                        style={{
-                            backgroundColor: index === selectedIndex ? 'var(--interactive-hover)' : 'transparent',
-                            color: 'var(--text-primary)',
-                            lineHeight: '1.2'
-                        }}
-                        onClick={() => executeCommand(command)}
-                        onMouseEnter={() => onSelectedIndexChange(index)}
+            {inputMode ? (
+                /* Input Mode */
+                <div className="px-2 py-1 font-mono">
+                    <div 
+                        className="text-xs mb-1"
+                        style={{ color: 'var(--text-secondary)' }}
                     >
-                        <div style={{ color: 'var(--text-secondary)' }} className="flex-shrink-0">
-                            {command.icon}
-                        </div>
-                        <div className="flex-1 min-w-0 truncate">
-                            {command.title}
-                        </div>
+                        {inputMode.placeholder}
                     </div>
-                ))}
-            </div>
+                    {inputMode.error && (
+                        <div 
+                            className="text-xs mb-1"
+                            style={{ color: 'var(--status-error)' }}
+                        >
+                            {inputMode.error}
+                        </div>
+                    )}
+                    <div className="text-xs">
+                        Press Enter to confirm, Escape to cancel
+                    </div>
+                </div>
+            ) : (
+                /* Commands List */
+                <div className="max-h-32 overflow-y-auto">
+                    {filteredCommands.map((command, index) => (
+                        <div
+                            key={command.id}
+                            className="flex items-center gap-2 px-2 py-1 cursor-pointer transition-colors font-mono"
+                            style={{
+                                backgroundColor: index === selectedIndex ? 'var(--interactive-hover)' : 'transparent',
+                                color: 'var(--text-primary)',
+                                lineHeight: '1.2'
+                            }}
+                            onClick={() => executeCommand(command)}
+                            onMouseEnter={() => onSelectedIndexChange(index)}
+                        >
+                            <div style={{ color: 'var(--text-secondary)' }} className="flex-shrink-0">
+                                {command.icon}
+                            </div>
+                            <div className="flex-1 min-w-0 truncate">
+                                {command.title}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

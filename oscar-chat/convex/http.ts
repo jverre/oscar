@@ -1,7 +1,7 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import OpenAI from "openai";
 import { Id } from "./_generated/dataModel";
 
@@ -16,10 +16,10 @@ export const chatStream = httpAction(async (ctx, request) => {
   }
 
   // Parse request body
-  const { conversationId, messages } = await request.json();
+  const { fileId, messages } = await request.json();
   
-  if (!conversationId || !messages) {
-    return new Response("Missing conversationId or messages", { status: 400 });
+  if (!fileId || !messages) {
+    return new Response("Missing fileId or messages", { status: 400 });
   }
 
   // Set up streaming response
@@ -34,7 +34,7 @@ export const chatStream = httpAction(async (ctx, request) => {
     try {
       // Create assistant message for streaming
       messageId = await ctx.runMutation(internal.messages.createAssistantMessage, {
-        conversationId,
+        fileId: fileId,
       });
 
       // Initialize OpenAI client for OpenRouter
@@ -136,5 +136,165 @@ http.route({
   method: "POST",
   handler: chatStream,
 });
+
+// Claude Code batch logging endpoint
+export const claudeCodeBatchLog = httpAction(async (ctx, request) => {
+  console.log("POST /api/claude-code/batch-log endpoint hit");
+  
+  // Get API key from Authorization header
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return new Response("Missing or invalid Authorization header", { status: 401 });
+  }
+  
+  const apiKey = authHeader.substring(7); // Remove "Bearer " prefix
+  console.log("API key received:", `${apiKey.substring(0, 8)}...`);
+  
+  // Get user by API key
+  const user = await ctx.runMutation(api.apiKeys.getUserByApiKey, { apiKey });
+  if (!user) {
+    return new Response("Invalid API key", { status: 401 });
+  }
+  
+  console.log("Authenticated user:", user.email);
+
+  // Parse request body
+  const { sessionId, entries } = await request.json();
+  
+  if (!sessionId || !entries || !Array.isArray(entries)) {
+    return new Response("Missing sessionId or entries", { status: 400 });
+  }
+
+  console.log(`Processing batch log for session ${sessionId} with ${entries.length} entries`);
+
+  try {
+    // Check if file already exists for this session
+    let fileId: Id<"files"> | null = null;
+    
+    // Search for existing file with this sessionId in metadata
+    const existingFiles = await ctx.runQuery(api.files.list);
+    const existingFile = existingFiles.find((f: any) => 
+      f.metadata?.claudeCodeSessionId === sessionId
+    );
+
+    if (existingFile) {
+      fileId = existingFile._id;
+      console.log(`Found existing file ${fileId} for session ${sessionId}`);
+    } else {
+      // Create new file for this Claude Code session
+      fileId = await ctx.runMutation(internal.files.internalCreate, {
+        userId: user._id,
+        name: `/claude/${sessionId.substring(0, 8)}.chat`,
+        metadata: {
+          claudeCodeSessionId: sessionId,
+          importedAt: Date.now(),
+          source: 'vscode-extension'
+        }
+      });
+      console.log(`Created new file ${fileId} for session ${sessionId}`);
+    }
+
+    // Create messages from entries
+    let messagesCreated = 0;
+    let lastMessageTime = Date.now();
+    
+    for (const entry of entries) {
+      try {
+        // Build enhanced metadata for the message
+        const messageMetadata: any = {
+          tokenCount: entry.metadata?.claudeOriginal?.tokenCount,
+          latency: entry.metadata?.latency,
+          error: entry.metadata?.error,
+        };
+
+        // Add tool call information if present
+        if (entry.metadata?.toolCallId || entry.metadata?.isToolUse) {
+          messageMetadata.toolCalls = [{
+            id: entry.metadata?.toolCallId || entry.metadata?.toolUseId,
+            name: entry.metadata?.toolName,
+            input: entry.metadata?.claudeOriginal?.toolUses?.[0]?.input
+          }].filter(call => call.id); // Only include if we have an ID
+        }
+
+        // Add tool result information if present
+        if (entry.metadata?.toolResultId) {
+          messageMetadata.toolResults = [{
+            toolCallId: entry.metadata.toolResultId,
+            toolName: entry.metadata?.toolName || 'unknown',
+            result: entry.content, // The content contains the result
+            isError: false
+          }];
+        }
+
+        // Create message using internal mutation
+        await ctx.runMutation(internal.messages.internalCreateMessage, {
+          userId: user._id,
+          fileId,
+          role: entry.role || 'user',
+          content: entry.content || '',
+          model: entry.metadata?.claudeOriginal?.model,
+          metadata: messageMetadata
+        });
+        
+        messagesCreated++;
+        lastMessageTime = Date.now();
+        
+      } catch (error) {
+        console.error(`Failed to create message:`, error);
+        // Continue with other messages
+      }
+    }
+
+    // Note: lastMessageAt is automatically updated by createUserMessage
+    // No need to update it separately
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      fileId,
+      messagesCreated 
+    }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    console.error("Claude Code batch log error:", error);
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  }
+});
+
+// CORS preflight handler for Claude Code endpoint
+http.route({
+  path: "/api/claude-code/batch-log",
+  method: "OPTIONS",
+  handler: httpAction(async (_, request) => {
+    return new Response(null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Max-Age": "86400",
+      },
+    });
+  }),
+});
+
+http.route({
+  path: "/api/claude-code/batch-log",
+  method: "POST",
+  handler: claudeCodeBatchLog,
+});
+
+
+
+
 
 export default http;

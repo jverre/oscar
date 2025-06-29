@@ -3,63 +3,93 @@ import { Doc } from "../../convex/_generated/dataModel";
 export interface FolderNode {
     name: string;
     path: string;
-    conversations: Doc<"conversations">[];
+    files: Doc<"files">[];
     children: Map<string, FolderNode>;
     isExpanded: boolean;
+    isGitRepo?: boolean;
+    gitRepoFile?: Doc<"files">;
 }
 
-export const buildFolderStructure = (conversations: Doc<"conversations">[]): FolderNode => {
+export const buildFolderStructure = (files: Doc<"files">[]): FolderNode => {
     const root: FolderNode = {
         name: "",
         path: "",
-        conversations: [],
+        files: [],
         children: new Map(),
         isExpanded: true
     };
 
-    conversations.forEach(conversation => {
-        const title = conversation.title;
-        const parts = title.split("/");
+    files.forEach(file => {
+        const name = file.name;
         
-        if (parts.length === 1) {
-            root.conversations.push(conversation);
+        // Special handling for Git repos - create them as folders
+        if (isGitRepo(name)) {
+            const displayName = getGitRepoDisplayName(name);
+            if (!root.children.has(displayName)) {
+                root.children.set(displayName, {
+                    name: displayName,
+                    path: displayName,
+                    files: [],
+                    children: new Map(),
+                    isExpanded: false,
+                    isGitRepo: true,
+                    gitRepoFile: file
+                });
+            }
         } else {
-            let currentNode = root;
-            const folderParts = parts.slice(0, -1);
+            const parts = name.split("/");
             
-            folderParts.forEach((folderName, index) => {
-                const folderPath = folderParts.slice(0, index + 1).join("/");
+            if (parts.length === 1) {
+                root.files.push(file);
+            } else {
+                let currentNode = root;
+                const folderParts = parts.slice(0, -1);
                 
-                if (!currentNode.children.has(folderName)) {
-                    currentNode.children.set(folderName, {
-                        name: folderName,
-                        path: folderPath,
-                        conversations: [],
-                        children: new Map(),
-                        isExpanded: false
-                    });
-                }
-                currentNode = currentNode.children.get(folderName)!;
-            });
-            
-            currentNode.conversations.push(conversation);
+                folderParts.forEach((folderName, index) => {
+                    const folderPath = folderParts.slice(0, index + 1).join("/");
+                    
+                    if (!currentNode.children.has(folderName)) {
+                        currentNode.children.set(folderName, {
+                            name: folderName,
+                            path: folderPath,
+                            files: [],
+                            children: new Map(),
+                            isExpanded: false
+                        });
+                    }
+                    currentNode = currentNode.children.get(folderName)!;
+                });
+                
+                currentNode.files.push(file);
+            }
         }
     });
 
     return root;
 };
 
-export const getAllConversationsInFolder = (folder: FolderNode): Doc<"conversations">[] => {
-    const conversations = [...folder.conversations];
+export const getAllFilesInFolder = (folder: FolderNode): Doc<"files">[] => {
+    const files = [...folder.files];
     
     folder.children.forEach(childFolder => {
-        conversations.push(...getAllConversationsInFolder(childFolder));
+        files.push(...getAllFilesInFolder(childFolder));
     });
     
-    return conversations;
+    return files;
 };
 
-export const getConversationDisplayName = (conversation: Doc<"conversations">): string => {
-    const parts = conversation.title.split("/");
+export const getFileDisplayName = (file: Doc<"files">): string => {
+    const parts = file.name.split("/");
     return parts[parts.length - 1];
+};
+
+export const isGitRepo = (fileName: string): boolean => {
+    return fileName.endsWith('.git');
+};
+
+export const getGitRepoDisplayName = (fileName: string): string => {
+    if (!isGitRepo(fileName)) return fileName;
+    
+    // Remove .git extension and return user/repo format
+    return fileName.replace('.git', '');
 };

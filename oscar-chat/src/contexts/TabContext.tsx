@@ -2,11 +2,13 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 
 export interface Tab {
   id: string;
-  conversationId?: Id<"conversations">;
+  fileId?: Id<"files">;
   title: string;
   pendingMessage?: string;
 }
@@ -17,13 +19,11 @@ interface TabContextType {
   addTab: (tab: Tab) => void;
   closeTab: (tabId: string) => void;
   switchToTab: (tabId: string) => void;
-  updateTabTitle: (tabId: string, title: string) => void;
-  updateTabId: (tabId: string, conversationId: Id<"conversations">) => void;
-  isTabOpenByConversation: (conversationId: Id<"conversations">) => boolean;
-  getTabByConversation: (conversationId: Id<"conversations">) => Tab | undefined;
-  setActiveTabFromUrl: (conversationId: Id<"conversations"> | null) => void;
-  addTabWithMessage: (message: string) => string;
-  clearTabPendingMessage: (tabId: string) => string | undefined;
+  isTabOpenByFile: (fileId: Id<"files">) => boolean;
+  getTabByFile: (fileId: Id<"files">) => Tab | undefined;
+  setActiveTabFromUrl: (fileId: Id<"files"> | null) => void;
+  clearAllTabs: () => void;
+  reorderTabs: (sourceIndex: number, destinationIndex: number) => void;
 }
 
 const TabContext = createContext<TabContextType | undefined>(undefined);
@@ -41,8 +41,10 @@ type TabAction =
   | { type: 'CLOSE_TAB'; payload: string }
   | { type: 'SET_ACTIVE_TAB'; payload: string | null }
   | { type: 'UPDATE_TITLE'; payload: { tabId: string; title: string } }
-  | { type: 'UPDATE_CONVERSATION_ID'; payload: { tabId: string; conversationId: Id<"conversations"> } }
-  | { type: 'CLEAR_PENDING_MESSAGE'; payload: string };
+  | { type: 'UPDATE_FILE_ID'; payload: { tabId: string; fileId: Id<"files"> } }
+  | { type: 'CLEAR_PENDING_MESSAGE'; payload: string }
+  | { type: 'CLEAR_ALL_TABS' }
+  | { type: 'REORDER_TABS'; payload: { sourceIndex: number; destinationIndex: number } };
 
 function tabReducer(state: TabState, action: TabAction): TabState {
   switch (action.type) {
@@ -131,10 +133,10 @@ function tabReducer(state: TabState, action: TabAction): TabState {
         ),
       };
 
-    case 'UPDATE_CONVERSATION_ID': {
+    case 'UPDATE_FILE_ID': {
       const updatedTabs = state.openTabs.map(tab =>
         tab.id === action.payload.tabId
-          ? { ...tab, conversationId: action.payload.conversationId }
+          ? { ...tab, fileId: action.payload.fileId }
           : tab
       );
       
@@ -157,6 +159,35 @@ function tabReducer(state: TabState, action: TabAction): TabState {
       };
     }
 
+    case 'CLEAR_ALL_TABS': {
+      return {
+        ...state,
+        openTabs: [],
+        activeTabId: null,
+      };
+    }
+
+    case 'REORDER_TABS': {
+      const { sourceIndex, destinationIndex } = action.payload;
+      
+      if (sourceIndex === destinationIndex || 
+          sourceIndex < 0 || 
+          destinationIndex < 0 || 
+          sourceIndex >= state.openTabs.length || 
+          destinationIndex >= state.openTabs.length) {
+        return state;
+      }
+      
+      const newTabs = [...state.openTabs];
+      const [movedTab] = newTabs.splice(sourceIndex, 1);
+      newTabs.splice(destinationIndex, 0, movedTab);
+      
+      return {
+        ...state,
+        openTabs: newTabs,
+      };
+    }
+
     default:
       return state;
   }
@@ -164,6 +195,11 @@ function tabReducer(state: TabState, action: TabAction): TabState {
 
 export function TabProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  
+  // Get user's organization and team for URL generation
+  const userOrg = useQuery(api.organizations.getCurrentUserOrg);
+  const userTeam = useQuery(api.teams.getCurrentUserTeam);
+  const files = useQuery(api.files.list);
   
   const [state, dispatch] = useReducer(tabReducer, {
     openTabs: [],
@@ -203,14 +239,14 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
   }, [state.openTabs, state.activeTabId]);
 
   // Set active tab based on current URL
-  const setActiveTabFromUrl = useCallback((conversationId: Id<"conversations"> | null) => {
-    if (!conversationId) {
-      // If no conversation ID, look for a tab without a conversation ID (like from /chat)
-      const tabWithoutConversation = state.openTabs.find(tab => !tab.conversationId);
-      dispatch({ type: 'SET_ACTIVE_TAB', payload: tabWithoutConversation?.id || null });
+  const setActiveTabFromUrl = useCallback((fileId: Id<"files"> | null) => {
+    if (!fileId) {
+      // If no file ID, look for a tab without a file ID (like from team root)
+      const tabWithoutFile = state.openTabs.find(tab => !tab.fileId);
+      dispatch({ type: 'SET_ACTIVE_TAB', payload: tabWithoutFile?.id || null });
     } else {
-      // Find tab with matching conversation ID
-      const tab = state.openTabs.find(tab => tab.conversationId === conversationId);
+      // Find tab with matching file ID
+      const tab = state.openTabs.find(tab => tab.fileId === fileId);
       dispatch({ type: 'SET_ACTIVE_TAB', payload: tab?.id || null });
     }
   }, [state.openTabs]);
@@ -242,17 +278,28 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
         const nextIndex = Math.min(currentIndex, remainingTabs.length - 1);
         const nextTab = remainingTabs[nextIndex];
         
-        // Navigate based on whether the next tab has a conversation ID
-        if (nextTab.conversationId) {
-          router.push(`/chat?conversation=${nextTab.conversationId}`);
+        // Navigate based on whether the next tab has a file ID
+        if (nextTab.fileId && userOrg && userTeam && files) {
+          const file = files.find(f => f._id === nextTab.fileId);
+          if (file) {
+            router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/${encodeURIComponent(file.name)}`);
+          } else {
+            router.push(`/chat?file=${nextTab.fileId}`);
+          }
+        } else if (nextTab.fileId) {
+          router.push(`/chat?file=${nextTab.fileId}`);
+        } else if (userOrg && userTeam) {
+          router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
         } else {
           router.push('/chat');
         }
+      } else if (userOrg && userTeam) {
+        router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
       } else {
-        router.push('/');
+        router.push('/chat');
       }
     }
-  }, [state.activeTabId, state.openTabs, router]);
+  }, [state.activeTabId, state.openTabs, router, userOrg, userTeam, files]);
 
   const switchToTab = useCallback((tabId: string) => {
     console.log("switching to tab", tabId);
@@ -270,79 +317,54 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
     // Set the tab as active in the state
     dispatch({ type: 'SET_ACTIVE_TAB', payload: tabId });
 
-    // Navigate based on whether the tab has a conversation ID
-    if (tab.conversationId) {
-      router.push(`/chat?conversation=${tab.conversationId}`);
+    // Navigate based on whether the tab has a file ID
+    if (tab.fileId && userOrg && userTeam && files) {
+      const file = files.find(f => f._id === tab.fileId);
+      if (file) {
+        router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/${encodeURIComponent(file.name)}`);
+      } else {
+        router.push(`/chat?file=${tab.fileId}`);
+      }
+    } else if (tab.fileId) {
+      router.push(`/chat?file=${tab.fileId}`);
+    } else if (userOrg && userTeam) {
+      router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
     } else {
+      // Navigate to chat root for tabs without file IDs
       router.push('/chat');
     }
-  }, [router, state.openTabs]);
+  }, [router, state.openTabs, userOrg, userTeam, files]);
 
-  const updateTabTitle = useCallback((tabId: string, title: string) => {
-    if (!tabId || !title) {
-      console.error('updateTabTitle: Invalid parameters', { tabId, title });
-      return;
-    }
-    dispatch({ 
-      type: 'UPDATE_TITLE', 
-      payload: { tabId, title } 
-    });
+  const isTabOpenByFile = useCallback((fileId: Id<"files">) => {
+    if (!fileId) return false;
+    return state.openTabs.some(tab => tab.fileId === fileId);
+  }, [state.openTabs]);
+
+  const getTabByFile = useCallback((fileId: Id<"files">) => {
+    if (!fileId) return undefined;
+    return state.openTabs.find(tab => tab.fileId === fileId);
+  }, [state.openTabs]);
+
+  const clearAllTabs = useCallback(() => {
+    dispatch({ type: 'CLEAR_ALL_TABS' });
   }, []);
 
-  const updateTabId = useCallback((tabId: string, conversationId: Id<"conversations">) => {
-    if (!tabId || !conversationId) {
-      console.error('updateTabId: Invalid parameters', { tabId, conversationId });
-      return;
-    }
-    dispatch({ 
-      type: 'UPDATE_CONVERSATION_ID', 
-      payload: { tabId, conversationId } 
-    });
+  const reorderTabs = useCallback((sourceIndex: number, destinationIndex: number) => {
+    dispatch({ type: 'REORDER_TABS', payload: { sourceIndex, destinationIndex } });
   }, []);
 
-  const isTabOpenByConversation = useCallback((conversationId: Id<"conversations">) => {
-    if (!conversationId) return false;
-    return state.openTabs.some(tab => tab.conversationId === conversationId);
-  }, [state.openTabs]);
-
-  const getTabByConversation = useCallback((conversationId: Id<"conversations">) => {
-    if (!conversationId) return undefined;
-    return state.openTabs.find(tab => tab.conversationId === conversationId);
-  }, [state.openTabs]);
-
-  const addTabWithMessage = useCallback((message: string) => {
-    const tabId = `tab_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    addTab({
-      id: tabId,
-      title: "New Chat",
-      pendingMessage: message,
-    });
-    router.push('/chat');
-    return tabId;
-  }, [addTab, router]);
-
-  const clearTabPendingMessage = useCallback((tabId: string) => {
-    const tab = state.openTabs.find(t => t.id === tabId);
-    const pendingMessage = tab?.pendingMessage;
-    if (pendingMessage) {
-      dispatch({ type: 'CLEAR_PENDING_MESSAGE', payload: tabId });
-    }
-    return pendingMessage;
-  }, [state.openTabs]);
-
+  
   const value: TabContextType = {
     openTabs: state.openTabs,
     activeTabId: state.activeTabId,
     addTab,
     closeTab,
     switchToTab,
-    updateTabTitle,
-    updateTabId,
-    isTabOpenByConversation,
-    getTabByConversation,
+    isTabOpenByFile,
+    getTabByFile,
     setActiveTabFromUrl,
-    addTabWithMessage,
-    clearTabPendingMessage,
+    clearAllTabs,
+    reorderTabs,
   };
 
   return (

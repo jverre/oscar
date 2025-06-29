@@ -2,11 +2,13 @@ import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { paginationOptsValidator } from "convex/server";
 
-// List messages in a conversation
+// List messages in a file with pagination
 export const list = query({
   args: {
-    conversationId: v.id("conversations"),
+    fileId: v.id("files"),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -14,26 +16,26 @@ export const list = query({
       throw new Error("Not authenticated");
     }
 
-    // Verify the conversation belongs to the user
-    const conversation = await ctx.db.get(args.conversationId);
-    if (!conversation || conversation.userId !== userId) {
-      return null;
+    // Verify the file exists and user has access
+    const file = await ctx.db.get(args.fileId);
+    if (!file) {
+      return { page: [], isDone: true, continueCursor: "" };
     }
 
-    const messages = await ctx.db
-      .query("messages")
-      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
-      .order("asc")
-      .collect();
+    // TODO: Add proper team/org membership check here
 
-    return messages;
+    return await ctx.db
+      .query("messages")
+      .withIndex("by_file", (q) => q.eq("fileId", args.fileId))
+      .order("asc")
+      .paginate(args.paginationOpts);
   },
 });
 
 // Create a new user message
 export const createUserMessage = mutation({
   args: {
-    conversationId: v.id("conversations"),
+    fileId: v.id("files"),
     content: v.string(),
   },
   handler: async (ctx, args) => {
@@ -42,39 +44,41 @@ export const createUserMessage = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Verify the conversation belongs to the user
-    const conversation = await ctx.db.get(args.conversationId);
-    if (!conversation || conversation.userId !== userId) {
-      throw new Error("Conversation not found");
+    // Verify the file exists and user has access
+    const file = await ctx.db.get(args.fileId);
+    if (!file) {
+      throw new Error("File not found");
     }
+
+    // TODO: Add proper team/org membership check here
 
     const now = Date.now();
 
     // Insert user message
     const messageId = await ctx.db.insert("messages", {
-      conversationId: args.conversationId,
+      fileId: args.fileId,
       userId,
       role: "user",
       content: args.content,
       createdAt: now,
     });
 
-    // Update conversation's lastMessageAt
-    await ctx.db.patch(args.conversationId, {
+    // Update file's lastMessageAt
+    await ctx.db.patch(args.fileId, {
       lastMessageAt: now,
     });
 
     // Record timeline event
-    const messagePreview = args.content.length > 100 
-      ? args.content.substring(0, 100) + "..."
-      : args.content;
+    const messagePreview = typeof args.content === 'string' 
+      ? (args.content.length > 100 ? args.content.substring(0, 100) + "..." : args.content)
+      : "[Structured content with tool calls]";
     
     await ctx.runMutation(internal.timeline.createSendMessageEvent, {
       userId,
-      conversationId: args.conversationId,
+      fileId: args.fileId,
       messageId,
       messagePreview,
-      conversationTitle: conversation.title,
+      fileName: file.name,
     });
 
     return messageId;
@@ -84,7 +88,7 @@ export const createUserMessage = mutation({
 // Create a new assistant message (for streaming)
 export const createAssistantMessage = internalMutation({
   args: {
-    conversationId: v.id("conversations"),
+    fileId: v.id("files"),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -92,17 +96,19 @@ export const createAssistantMessage = internalMutation({
       throw new Error("Not authenticated");
     }
 
-    // Verify the conversation belongs to the user
-    const conversation = await ctx.db.get(args.conversationId);
-    if (!conversation || conversation.userId !== userId) {
-      throw new Error("Conversation not found");
+    // Verify the file exists and user has access
+    const file = await ctx.db.get(args.fileId);
+    if (!file) {
+      throw new Error("File not found");
     }
+
+    // TODO: Add proper team/org membership check here
 
     const now = Date.now();
 
     // Create placeholder assistant message
     const messageId = await ctx.db.insert("messages", {
-      conversationId: args.conversationId,
+      fileId: args.fileId,
       userId,
       role: "assistant",
       content: "",
@@ -111,8 +117,8 @@ export const createAssistantMessage = internalMutation({
       createdAt: now,
     });
 
-    // Update conversation's lastMessageAt and set isStreaming to true
-    await ctx.db.patch(args.conversationId, {
+    // Update file's lastMessageAt and set isStreaming to true
+    await ctx.db.patch(args.fileId, {
       lastMessageAt: now,
       isStreaming: true,
     });
@@ -154,12 +160,68 @@ export const finalizeMessage = internalMutation({
       ...(args.error && { metadata: { error: args.error } }),
     });
 
-    // Set conversation isStreaming to false
-    await ctx.db.patch(message.conversationId, {
+    // Set file isStreaming to false
+    await ctx.db.patch(message.fileId, {
       isStreaming: false,
     });
 
     return args.messageId;
+  },
+});
+
+// Internal create message (for HTTP actions that already have authenticated user)
+export const internalCreateMessage = internalMutation({
+  args: {
+    userId: v.id("users"),
+    fileId: v.id("files"),
+    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
+    content: v.string(),
+    model: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    // Verify the file exists
+    const file = await ctx.db.get(args.fileId);
+    if (!file) {
+      throw new Error("File not found");
+    }
+
+    const now = Date.now();
+
+    // Insert message with only schema-compliant metadata
+    const messageId = await ctx.db.insert("messages", {
+      fileId: args.fileId,
+      userId: args.userId,
+      role: args.role,
+      content: args.content,
+      model: args.model,
+      createdAt: now,
+      metadata: {
+        tokenCount: args.metadata?.claudeOriginal?.tokenCount,
+        latency: args.metadata?.latency,
+        error: args.metadata?.error,
+      },
+    });
+
+    // Update file's lastMessageAt
+    // await ctx.db.patch(args.fileId, {
+    //   lastMessageAt: now,
+    // });
+
+    // Record timeline event
+    const messagePreview = typeof args.content === 'string' 
+      ? (args.content.length > 100 ? args.content.substring(0, 100) + "..." : args.content)
+      : "[Structured content with tool calls]";
+    
+    await ctx.runMutation(internal.timeline.createSendMessageEvent, {
+      userId: args.userId,
+      fileId: args.fileId,
+      messageId,
+      messagePreview,
+      fileName: file.name,
+    });
+
+    return messageId;
   },
 });
 

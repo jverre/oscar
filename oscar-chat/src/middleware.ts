@@ -11,7 +11,9 @@ export default function middleware(request: NextRequest) {
   // Check if user is authenticated by looking for the auth cookie
   const isAuthenticated = request.cookies.has("__convexAuthJWT");
   
-  // Redirect authenticated users from home to chat
+  // Redirect authenticated users from home to their org/team
+  // For now, redirect to /chat until user navigates to proper org/team URL
+  // The user will be redirected to the correct org/team URL on first file access
   if (request.nextUrl.pathname === "/" && isAuthenticated) {
     return NextResponse.redirect(new URL("/chat", request.url));
   }

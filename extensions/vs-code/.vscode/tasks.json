@@ -1,0 +1,36 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "npm: watch with nvm",
+			"type": "shell",
+			"command": "source ~/.nvm/nvm.sh && nvm use --lts && npm run watch",
+			"problemMatcher": "$tsc-watch",
+			"isBackground": true,
+			"presentation": {
+				"reveal": "never"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"options": {
+				"shell": {
+					"executable": "/bin/zsh",
+					"args": [
+						"-l",
+						"-c"
+					]
+				}
+			}
+		},
+		{
+			"type": "npm",
+			"script": "compile",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "npm: compile",
+			"detail": "tsc -p ./"
+		}
+	]
+}

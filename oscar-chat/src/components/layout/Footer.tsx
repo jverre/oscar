@@ -5,9 +5,12 @@ import { api } from "../../../convex/_generated/api";
 import { useState, useEffect, useRef } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { SignInButton } from "@/components/auth/SignInButton";
+import { useTabContext } from "@/contexts/TabContext";
 
 export function Footer() {
   const user = useQuery(api.users.current);
+  const { clearAllTabs } = useTabContext();
+
   const { signIn, signOut } = useAuthActions();
   const [showCallout, setShowCallout] = useState(false);
   const [showSignOutMenu, setShowSignOutMenu] = useState(false);
@@ -83,6 +86,7 @@ export function Footer() {
         >
           <button
             onClick={() => {
+              clearAllTabs();
               signOut();
               setShowSignOutMenu(false);
             }}

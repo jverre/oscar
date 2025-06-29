@@ -9,28 +9,45 @@ export default defineSchema({
     name: v.string(),
     email: v.string(),
     image: v.optional(v.string()),
+    organizationId: v.id("organizations"),
+    teamId: v.id("teams"),
     createdAt: v.number(),
   })
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_organization", ["organizationId"]),
+  
+  organizations: defineTable({
+    name: v.string(),
+    domain: v.string(),
+    type: v.union(v.literal("personal"), v.literal("company")),
+    createdAt: v.number(),
+  })
+    .index("by_domain", ["domain"]),
+  
+  teams: defineTable({
+    name: v.string(),
+    organizationId: v.id("organizations"),
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"]),
 
-  conversations: defineTable({
-    userId: v.id("users"),
-    title: v.string(),
+  files: defineTable({
+    organizationId: v.id("organizations"),
+    teamId: v.id("teams"),
+    name: v.string(),
     lastMessageAt: v.number(),
     createdAt: v.number(),
-    parentPath: v.optional(v.string()), // For file system-like organization
-    isStreaming: v.optional(v.boolean()), // Track if conversation is currently streaming
-    metadata: v.optional(v.object({
-      model: v.optional(v.string()),
-      tokenCount: v.optional(v.number()),
-    })),
+    isStreaming: v.optional(v.boolean()), // Track if file is currently streaming
+    metadata: v.optional(v.any()),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_and_parent", ["userId", "parentPath"])
-    .index("by_last_message", ["userId", "lastMessageAt"]),
+    .index("by_organization", ["organizationId"])
+    .index("by_team", ["teamId"])
+    .index("by_organization_last_message", ["organizationId", "lastMessageAt"])
+    .index("by_team_last_message", ["teamId", "lastMessageAt"])
+    .index("unique_name_in_team", ["organizationId", "teamId", "name"]),
 
   messages: defineTable({
-    conversationId: v.id("conversations"),
+    fileId: v.id("files"),
     userId: v.id("users"),
     role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
     content: v.string(),
@@ -47,37 +64,94 @@ export default defineSchema({
       tokenCount: v.optional(v.number()),
       latency: v.optional(v.number()),
       error: v.optional(v.string()),
+      toolCalls: v.optional(v.array(v.object({
+        id: v.string(),
+        name: v.string(),
+        input: v.any(),
+      }))),
+      toolResults: v.optional(v.array(v.object({
+        toolCallId: v.string(),
+        toolName: v.string(),
+        result: v.any(),
+        isError: v.optional(v.boolean()),
+      }))),
+      hasStructuredContent: v.optional(v.boolean()),
+      structuredContent: v.optional(v.array(v.any())),
     })),
     createdAt: v.number(),
   })
-    .index("by_conversation", ["conversationId"])
-    .index("by_conversation_and_parent", ["conversationId", "parentMessageId"]),
-
-  sessions: defineTable({
-    userId: v.id("users"),
-    sessionId: v.string(),
-  })
-    .index("by_session_id", ["sessionId"])
-    .index("by_user_id", ["userId"]),
+    .index("by_file", ["fileId"])
+    .index("by_file_and_parent", ["fileId", "parentMessageId"]),
 
   timeline_events: defineTable({
     userId: v.id("users"),
     eventType: v.union(
       v.literal("send_message"),
-      v.literal("create_conversation"),
-      v.literal("rename_conversation"),
-      v.literal("delete_conversation")
+      v.literal("create_file"),
+      v.literal("rename_file"),
+      v.literal("delete_file")
     ),
     description: v.string(),
     timestamp: v.number(),
-    conversationId: v.optional(v.id("conversations")),
+    fileId: v.optional(v.id("files")),
     messageId: v.optional(v.id("messages")),
     metadata: v.optional(v.object({
-      oldTitle: v.optional(v.string()),
-      newTitle: v.optional(v.string()),
       messagePreview: v.optional(v.string()),
     })),
   })
     .index("by_user", ["userId"])
     .index("by_user_and_timestamp", ["userId", "timestamp"]),
+
+  flyMachines: defineTable({
+    userId: v.id("users"),
+    organizationId: v.id("organizations"),
+    teamId: v.id("teams"),
+    machineId: v.string(), // Fly.io machine ID
+    appName: v.string(), // Fly.io app name
+    status: v.union(
+      v.literal("creating"),
+      v.literal("running"),
+      v.literal("stopped"),
+      v.literal("error")
+    ),
+    region: v.string(), // e.g., "dfw", "iad"
+    volumeId: v.optional(v.string()), // Fly.io volume ID
+    volumeName: v.optional(v.string()), // Volume name for reference
+    mountPath: v.optional(v.string()), // Where volume is mounted (default: /repos)
+    autoStop: v.optional(v.boolean()), // Auto-stop enabled
+    autoStart: v.optional(v.boolean()), // Auto-start enabled
+    createdAt: v.number(),
+    lastUsedAt: v.number(),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_organization", ["organizationId"])
+    .index("by_team", ["teamId"])
+    .index("by_machine_id", ["machineId"])
+    .index("by_volume_id", ["volumeId"]),
+
+  blogs: defineTable({
+    fileId: v.id("files"), // Link to the .blog file
+    content: v.object({
+      type: v.literal("doc"),
+      content: v.array(v.any()), // ProseMirror JSON content
+    }),
+    version: v.number(), // Document version for consistency
+    lastEditedBy: v.id("users"),
+    lastEditedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_file", ["fileId"])
+    .index("by_file_version", ["fileId", "version"]),
+
+  apiKeys: defineTable({
+    userId: v.id("users"),
+    key: v.string(), // The actual API key
+    name: v.string(), // e.g., "VS Code Extension"
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    isActive: v.boolean(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_key", ["key"]),
 });

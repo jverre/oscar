@@ -232,6 +232,20 @@ button {
   cursor: pointer;
 }
 
+/* Remove focus outlines on buttons */
+button:focus {
+  outline: none;
+}
+
+/* Prevent text selection on tabs for better drag experience */
+.tab-bar,
+.tab-bar * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
 /* Links */
 a {
   color: var(--text-primary);
