@@ -5,8 +5,11 @@ import { Search } from "lucide-react";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { useFileCreation } from "@/hooks/useFileCreation";
 import { useGitCreation } from "@/hooks/useGitCreation";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export function TopNav() {
+  const isMobile = useIsMobile();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -173,8 +176,16 @@ export function TopNav() {
 
 
   return (
-    <div className="h-[35px] bg-sidebar flex items-center justify-center px-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-      <div ref={containerRef} className="relative w-96 max-w-full">
+    <div className="h-[35px] flex items-center px-4" style={{ backgroundColor: 'var(--surface-primary)', borderBottom: '1px solid var(--border-subtle)' }}>
+      {/* Mobile hamburger menu - far left */}
+      {isMobile && (
+        <div className="mr-4">
+          <SidebarTrigger />
+        </div>
+      )}
+      
+      {/* Search bar - centered or left-aligned based on mobile */}
+      <div className={`relative w-96 max-w-full ${isMobile ? 'flex-1' : 'mx-auto'}`} ref={containerRef}>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3" style={{ color: 'var(--text-secondary)' }} />
           <input

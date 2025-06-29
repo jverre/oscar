@@ -1,39 +1,45 @@
 "use client";
 
-import { Sidebar } from "./Sidebar";
+import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
+import { OscarSidebar } from "./OscarSidebar";
 import { TopNav } from "./TopNav";
 import { Footer } from "./Footer";
 import { TabBar } from "./TabBar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const isMobile = useIsMobile();
+
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
-      {/* Header - spans full width */}
-      <TopNav />
-      
-      {/* Content area - contains sidebar and main content */}
-      <div className="flex flex-1 min-h-0">
-        {/* Sidebar - fixed width, full height of remaining space */}
-        <Sidebar />
-        
-        {/* Main Content Area - takes remaining width, includes tabs and content */}
-        <div className="flex flex-1 flex-col min-h-0 min-w-0">
-          {/* Tab Bar */}
-          <TabBar />
-          
-          {/* Main Content */}
-          <main className="flex-1 min-h-0">
-            {children}
-          </main>
+    <SidebarProvider>
+      <OscarSidebar />
+      <SidebarInset className="flex flex-col min-h-screen">
+        {/* Header - fixed at top */}
+        <div className="sticky top-0 z-50">
+          <TopNav />
         </div>
-      </div>
-      
-      {/* Footer - spans full width */}
-      <Footer />
-    </div>
+        
+        {/* Tab Bar - hidden on mobile, sticky below header */}
+        {!isMobile && (
+          <div className="sticky top-[35px] z-40">
+            <TabBar />
+          </div>
+        )}
+        
+        {/* Main Content */}
+        <main className="flex-1">
+          {children}
+        </main>
+        
+        {/* Footer - sticky at bottom */}
+        <div className="sticky bottom-0 z-40">
+          <Footer />
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
