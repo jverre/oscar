@@ -122,7 +122,7 @@ export default function ChatPage() {
       // Create user message (with optimistic update)
       await createUserMessage({
         fileId: currentFileId,
-        content,
+        content: [{ type: "text", text: content }],
       });
       
       // Prepare messages for API call
@@ -130,7 +130,12 @@ export default function ChatPage() {
       const chatMessages = [
         ...allMessages.map(msg => ({
           role: msg.role as 'user' | 'assistant' | 'system',
-          content: msg.content,
+          content: Array.isArray(msg.content) 
+            ? msg.content
+                .filter(part => part.type === 'text')
+                .map(part => part.text)
+                .join('')
+            : msg.content,
         })),
         {
           role: 'user' as const,
