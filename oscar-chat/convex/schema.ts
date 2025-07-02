@@ -38,19 +38,53 @@ export default defineSchema({
     lastMessageAt: v.number(),
     createdAt: v.number(),
     isStreaming: v.optional(v.boolean()), // Track if file is currently streaming
+    isRegeneratingTitle: v.optional(v.boolean()), // Track if title is being regenerated
+    visibility: v.union(v.literal("public"), v.literal("private")), // File visibility for unauthenticated access
     metadata: v.optional(v.any()),
   })
     .index("by_organization", ["organizationId"])
     .index("by_team", ["teamId"])
     .index("by_organization_last_message", ["organizationId", "lastMessageAt"])
     .index("by_team_last_message", ["teamId", "lastMessageAt"])
-    .index("unique_name_in_team", ["organizationId", "teamId", "name"]),
+    .index("unique_name_in_team", ["organizationId", "teamId", "name"])
+    .index("by_visibility", ["visibility"])
+    .index("by_team_and_visibility", ["teamId", "visibility"])
+    .searchIndex("search_name", {
+      searchField: "name",
+      filterFields: ["teamId", "organizationId"]
+    }),
 
   messages: defineTable({
     fileId: v.id("files"),
     userId: v.id("users"),
-    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
-    content: v.string(),
+    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system"), v.literal("tool")),
+    
+    // AI SDK Core Message format - structured content
+    content: v.array(v.union(
+      // Text content part
+      v.object({
+        type: v.literal("text"),
+        text: v.string()
+      }),
+      // Tool call content part  
+      v.object({
+        type: v.literal("tool-call"),
+        toolCallId: v.string(),
+        toolName: v.string(),
+        args: v.any()
+      }),
+      // Tool result content part
+      v.object({
+        type: v.literal("tool-result"), 
+        toolCallId: v.string(),
+        result: v.any(),
+        isError: v.optional(v.boolean())
+      })
+    )),
+    
+    // Flattened text content for search (automatically populated from content array)
+    searchableText: v.optional(v.string()),
+    
     model: v.optional(v.string()),
     provider: v.optional(v.union(
       v.literal("openai"),
@@ -60,28 +94,22 @@ export default defineSchema({
     )),
     parentMessageId: v.optional(v.id("messages")), // For branching
     isStreaming: v.optional(v.boolean()), // Track if this message is currently streaming
+    
+    // Clean metadata - no tool-specific fields since they're in structured content
     metadata: v.optional(v.object({
       tokenCount: v.optional(v.number()),
       latency: v.optional(v.number()),
       error: v.optional(v.string()),
-      toolCalls: v.optional(v.array(v.object({
-        id: v.string(),
-        name: v.string(),
-        input: v.any(),
-      }))),
-      toolResults: v.optional(v.array(v.object({
-        toolCallId: v.string(),
-        toolName: v.string(),
-        result: v.any(),
-        isError: v.optional(v.boolean()),
-      }))),
-      hasStructuredContent: v.optional(v.boolean()),
-      structuredContent: v.optional(v.array(v.any())),
+      finishReason: v.optional(v.string()),
     })),
     createdAt: v.number(),
   })
     .index("by_file", ["fileId"])
-    .index("by_file_and_parent", ["fileId", "parentMessageId"]),
+    .index("by_file_and_parent", ["fileId", "parentMessageId"])
+    .searchIndex("search_content", {
+      searchField: "searchableText",
+      filterFields: ["fileId", "userId"]
+    }),
 
   timeline_events: defineTable({
     userId: v.id("users"),

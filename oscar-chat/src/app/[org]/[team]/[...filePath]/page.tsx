@@ -29,10 +29,13 @@ export default function OrgTeamFilePage() {
   // Get tab context
   const { activeTabId, openTabs, addTab } = useTabContext();
   
-  // Get org and team by name
-  const organization = useQuery(api.organizations.getByName, { name: orgName });
+  // Get org and team by name (use public queries for unauthenticated users)
+  const organization = useQuery(
+    user ? api.organizations.getByName : api.organizations.getByNamePublic,
+    { name: orgName }
+  );
   const team = useQuery(
-    api.teams.getByOrgAndName,
+    user ? api.teams.getByOrgAndName : api.teams.getByOrgAndNamePublic,
     organization ? { organizationId: organization._id, name: teamName } : "skip"
   );
   
@@ -63,25 +66,50 @@ export default function OrgTeamFilePage() {
   const createUserMessage = useMutation(api.messages.createUserMessage);
   
   // Only run messages query if we have a valid file and it's a chat file
-  const { results: messages } = usePaginatedQuery(
-    api.messages.list,
+  // Use public query for unauthenticated users, authenticated query for logged-in users
+  const { results: messages, status, loadMore } = usePaginatedQuery(
+    user ? api.messages.list : api.messages.listPublic,
     file && isChatFile ? { fileId: file._id } : "skip",
-    { initialNumItems: 50 }
+    { initialNumItems: 25 } // Load first 25 messages (will be scrollable)
   );
 
   // Auto-scroll refs and logic
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const bottomElementRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const prevFileIdRef = useRef<string | undefined>(undefined);
 
   // Optimized scroll to bottom function
-  const scrollToBottom = useCallback(() => {
-    if (messagesContainerRef.current && shouldAutoScroll) {
-      const container = messagesContainerRef.current;
-      requestAnimationFrame(() => {
-        container.scrollTop = container.scrollHeight;
-      });
+  const scrollToBottom = useCallback((force = false) => {
+    if (!shouldAutoScroll && !force) return;
+    
+    // Primary method: use bottom element ref
+    if (bottomElementRef.current) {
+      bottomElementRef.current.scrollIntoView({ behavior: 'instant', block: 'end' });
+      return;
+    }
+    
+    // Fallback: manual scroll
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
     }
   }, [shouldAutoScroll]);
+
+  // Load older messages when user scrolls near top
+  const loadOlderMessages = useCallback(async () => {
+    if (isLoadingOlder || status !== "CanLoadMore") return;
+    
+    setIsLoadingOlder(true);
+    try {
+      await loadMore(50); // Load 50 more messages
+    } catch (error) {
+      console.error('Failed to load older messages:', error);
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  }, [isLoadingOlder, status, loadMore]);
 
   // Handle scroll events
   const handleScroll = useCallback(() => {
@@ -89,13 +117,42 @@ export default function OrgTeamFilePage() {
     
     const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
     const isAtBottom = Math.abs((scrollTop + clientHeight) - scrollHeight) <= 2;
+    const isNearTop = scrollTop < 300; // Within 300px of top
+    
     setShouldAutoScroll(isAtBottom);
-  }, []);
+    
+    // Load older messages when scrolling near top
+    if (isNearTop && !isLoadingOlder && status === "CanLoadMore") {
+      console.log('🔄 Loading older messages...');
+      loadOlderMessages();
+    }
+  }, [isLoadingOlder, status, loadOlderMessages]);
 
-  // Auto-scroll when messages change
+  // Handle new chat file - force scroll to bottom
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    if (file?._id && file._id !== prevFileIdRef.current && isChatFile) {
+      prevFileIdRef.current = file._id;
+      setShouldAutoScroll(true);
+      
+      // Force scroll to bottom when switching to a new chat
+      // Use multiple RAF to ensure DOM is fully updated
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            scrollToBottom(true); // Force scroll regardless of shouldAutoScroll
+          });
+        });
+      });
+    }
+  }, [file?._id, isChatFile, scrollToBottom]);
+
+  // Auto-scroll when messages change (for existing chat)
+  useEffect(() => {
+    if (file?._id === prevFileIdRef.current) {
+      // Only auto-scroll if we're in the same chat (not switching chats)
+      scrollToBottom();
+    }
+  }, [messages, scrollToBottom, file?._id]);
 
   const handleSubmit = async (content: string) => {
     if (!activeTabId || isSubmitting || !file) return;
@@ -107,15 +164,20 @@ export default function OrgTeamFilePage() {
       // Create user message (with optimistic update)
       await createUserMessage({
         fileId: file._id,
-        content,
+        content: [{ type: "text", text: content }],
       });
       
-      // Prepare messages for API call
-      const allMessages = messages || [];
+      // Prepare messages for API call (reverse to chronological order)
+      const allMessages = [...(messages || [])].reverse();
       const chatMessages = [
         ...allMessages.map(msg => ({
           role: msg.role as 'user' | 'assistant' | 'system',
-          content: msg.content,
+          content: Array.isArray(msg.content) 
+            ? msg.content
+                .filter(part => part.type === 'text')
+                .map(part => part.text)
+                .join('')
+            : msg.content,
         })),
         {
           role: 'user' as const,
@@ -227,30 +289,40 @@ export default function OrgTeamFilePage() {
 
   // Show chat interface for .chat files
   return (
-    <div className="flex-1 flex flex-col h-full">
-      <div className="flex-1 flex flex-col h-full px-6">
+    <div className="flex flex-col h-full w-full">
+      {/* Messages scrollable area - takes remaining space */}
+      <div className="flex-1 overflow-hidden">
         <div 
           ref={messagesContainerRef}
-          className="flex-1 min-h-0 overflow-y-auto"
+          className="h-full overflow-y-auto px-6"
           data-scroll-container
           onScroll={handleScroll}
         >
           <div className="w-full max-w-4xl mx-auto py-2">
+            {/* Loading indicator for older messages */}
+            {isLoadingOlder && (
+              <div className="flex justify-center py-2">
+                <div className="text-xs text-muted-foreground">Loading more chats...</div>
+              </div>
+            )}
             <MessageList
-              messages={messages || []}
+              messages={[...(messages || [])].reverse()}
               isSubmitting={isSubmitting}
             />
+            {/* Invisible element at bottom for scrolling */}
+            <div ref={bottomElementRef} style={{ height: '1px' }} />
           </div>
         </div>
-        
-        <div className="flex-shrink-0 border-border/40 py-6 bg-background">
-          <div className="w-full max-w-4xl mx-auto my-4">
-            <TerminalInput 
-              onSubmit={handleSubmit}
-              placeholder={isSubmitting ? "Sending..." : "Type a message..."}
-              disabled={isSubmitting}
-            />
-          </div>
+      </div>
+      
+      {/* Fixed input area at bottom - never scrolls */}
+      <div className="flex-shrink-0 bg-background px-6 py-6">
+        <div className="w-full max-w-4xl mx-auto">
+          <TerminalInput 
+            onSubmit={handleSubmit}
+            placeholder={isSubmitting ? "Sending..." : "Type a message..."}
+            disabled={isSubmitting}
+          />
         </div>
       </div>
     </div>

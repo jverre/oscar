@@ -7,14 +7,14 @@ import { forwardRef, useState } from "react";
 
 interface TabItemProps {
   tabId: string;
-  conversationId?: Id<"conversations">;
+  conversationId?: Id<"files">;
   title: string;
   isActive: boolean;
   tabCount: number;
   index: number;
 }
 
-export const TabItem = forwardRef<HTMLDivElement, TabItemProps>(({ tabId, title, isActive, tabCount, index }, ref) => {
+export const TabItem = forwardRef<HTMLDivElement, TabItemProps>(({ tabId, conversationId, title, isActive, tabCount, index }, ref) => {
   const { switchToTab, closeTab, reorderTabs } = useTabContext();
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -130,7 +130,7 @@ export const TabItem = forwardRef<HTMLDivElement, TabItemProps>(({ tabId, title,
       ref={ref}
       draggable="true"
       className={`
-        flex items-center group cursor-pointer relative flex-shrink-0 h-full
+        flex items-center group cursor-pointer relative flex-shrink-0 h-full px-2
         transition-all duration-150 ease-in-out select-none
         ${isActive 
           ? '' 

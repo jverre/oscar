@@ -5,5 +5,5 @@ export default function OrgTeamLayout({
 }: {
     children: React.ReactNode;
 }) {
-    return <AuthGuard>{children}</AuthGuard>;
+    return <AuthGuard allowPublicFiles={true}>{children}</AuthGuard>;
 }

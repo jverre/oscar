@@ -23,7 +23,7 @@ interface CommandPaletteProps {
         placeholder: string;
         onSubmit: (value: string) => void;
         error?: string;
-    };
+    } | null;
 }
 
 const mockCommands: Command[] = [
@@ -41,13 +41,13 @@ const mockCommands: Command[] = [
         icon: <FileText className="w-4 h-4" />,
         keywords: ["create", "new", "blog", "post", "write"]
     },
-    {
-        id: "clone-repository",
-        title: "Clone Repository",
-        description: "Clone a GitHub repository",
-        icon: <GitBranch className="w-4 h-4" />,
-        keywords: ["clone", "git", "repository", "github", "repo"]
-    },
+    // {
+    //     id: "clone-repository",
+    //     title: "Clone Repository",
+    //     description: "Clone a GitHub repository",
+    //     icon: <GitBranch className="w-4 h-4" />,
+    //     keywords: ["clone", "git", "repository", "github", "repo"]
+    // },
     {
         id: "search-chat",
         title: "Search Chat",

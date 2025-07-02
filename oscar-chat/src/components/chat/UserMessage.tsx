@@ -1,7 +1,8 @@
 import React from 'react';
+import { extractTextContent, type StructuredContent } from '@/utils/contentUtils';
 
 interface UserMessageProps {
-  content: string;
+  content: StructuredContent;
   showStatus?: boolean;
   status?: 'pending' | 'streaming' | 'done' | 'error' | 'timeout';
 }
@@ -28,7 +29,7 @@ export function UserMessage({ content, showStatus, status }: UserMessageProps) {
           }}
         >
           <div className="whitespace-pre-wrap break-words">
-            {content}
+            {extractTextContent(content)}
           </div>
         </div>
       </div>

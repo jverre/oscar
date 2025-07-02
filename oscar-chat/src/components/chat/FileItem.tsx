@@ -7,6 +7,7 @@ import { getFileDisplayName } from "@/utils/folderUtils";
 import { validateFileName, areFileNamesDuplicate } from "@/utils/fileNameUtils";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { Info, Globe, RotateCw } from "lucide-react";
 
 interface FileItemProps {
     file: Doc<"files">;
@@ -44,6 +45,20 @@ export function FileItem({
     const updateName = useMutation(api.files.updateName);
     const displayName = getFileDisplayName(file);
     const indentLevel = level * 16;
+    const [showTooltip, setShowTooltip] = useState(false);
+    const [showDescriptionTooltip, setShowDescriptionTooltip] = useState(false);
+    
+    // Split the display name into main part and extension
+    const lastDotIndex = displayName.lastIndexOf('.');
+    const hasExtension = lastDotIndex > 0 && lastDotIndex < displayName.length - 1;
+    const mainName = hasExtension ? displayName.substring(0, lastDotIndex) : displayName;
+    const extension = hasExtension ? displayName.substring(lastDotIndex) : '';
+    
+    // Simple truncation - if main name is too long, truncate it
+    const maxMainNameLength = 15;
+    const truncatedMainName = mainName.length > maxMainNameLength 
+        ? mainName.substring(0, maxMainNameLength) + '[...]'
+        : mainName;
 
     const handleRenameSubmit = async () => {
         const trimmedName = renameValue.trim();
@@ -159,11 +174,12 @@ export function FileItem({
             onClick={(e) => onFileClick(file._id, e)}
             onContextMenu={(e) => onContextMenu(e, file._id)}
             className={cn(
-                "h-[22px] flex items-center text-[13px] cursor-pointer text-sidebar-foreground truncate select-none",
+                "h-[22px] flex items-center text-[13px] cursor-pointer text-sidebar-foreground select-none",
                 (isActive || isSelected) && "bg-sidebar-accent"
             )}
             style={{ 
-                paddingLeft: `${20 + indentLevel}px`,
+                paddingLeft: `${12 + indentLevel}px`,
+                paddingRight: '8px', // Add right padding so extension isn't stuck to sidebar
                 backgroundColor: isSelected 
                     ? 'var(--interactive-hover)'
                     : isActive 
@@ -181,10 +197,94 @@ export function FileItem({
                 }
             }}
         >
-            <span style={{ 
-                opacity: 0.8,
-                color: (isActive || isSelected) ? 'white' : 'inherit'
-            }}>{displayName}</span>
+            <div 
+                className="flex items-center min-w-0 w-full relative"
+                style={{ 
+                    opacity: 1,
+                    color: (isActive || isSelected) ? 'white' : 'inherit'
+                }}
+            >
+                <span 
+                    className="whitespace-nowrap flex-1 min-w-0"
+                    onMouseEnter={() => setShowTooltip(true)}
+                    onMouseLeave={() => setShowTooltip(false)}
+                >
+                    {truncatedMainName}
+                    {extension}
+                </span>
+                
+                {/* Title regeneration indicator */}
+                {file.isRegeneratingTitle && (
+                    <div title="Regenerating title...">
+                        <RotateCw 
+                            className="h-3 w-3 flex-shrink-0 ml-1 opacity-70 animate-spin"
+                            style={{ color: 'var(--text-secondary)' }}
+                        />
+                    </div>
+                )}
+                
+                {/* Visibility indicator */}
+                {file.visibility === "public" && (
+                    <div title="Public file">
+                        <Globe 
+                            className="h-3 w-3 flex-shrink-0 ml-1 opacity-50"
+                            style={{ color: 'var(--text-secondary)' }}
+                        />
+                    </div>
+                )}
+                
+                {/* Description info icon */}
+                {file.metadata?.sessionSummary && (
+                    <Info 
+                        className="h-3 w-3 flex-shrink-0 ml-1 opacity-50 hover:opacity-100 transition-opacity"
+                        onMouseEnter={() => setShowDescriptionTooltip(true)}
+                        onMouseLeave={() => setShowDescriptionTooltip(false)}
+                        style={{ color: 'inherit' }}
+                    />
+                )}
+                
+                {/* Custom filename tooltip */}
+                {showTooltip && truncatedMainName.includes('[...]') && (
+                    <div
+                        className="absolute bottom-full mb-2 right-0 z-50 pointer-events-none"
+                        style={{
+                            background: 'var(--surface-secondary)',
+                            color: 'var(--text-primary)',
+                            padding: '6px 10px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            border: '1px solid var(--border-subtle)',
+                            maxWidth: '300px',
+                            wordBreak: 'break-word',
+                            whiteSpace: 'pre-wrap',
+                            animation: 'fadeIn 0.1s ease-out'
+                        }}
+                    >
+                        {mainName}
+                    </div>
+                )}
+                
+                {/* Description tooltip */}
+                {showDescriptionTooltip && file.metadata?.sessionSummary && (
+                    <div
+                        className="absolute bottom-full mb-2 right-0 z-50 pointer-events-none"
+                        style={{
+                            background: 'var(--surface-secondary)',
+                            color: 'var(--text-primary)',
+                            padding: '8px 12px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            border: '1px solid var(--border-subtle)',
+                            maxWidth: '350px',
+                            wordBreak: 'break-word',
+                            whiteSpace: 'pre-wrap',
+                            animation: 'fadeIn 0.1s ease-out'
+                        }}
+                    >
+                        {file.metadata.sessionSummary}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

@@ -69,7 +69,7 @@ export function TabBar() {
           <TabItem
             key={tab.id}
             tabId={tab.id}
-            conversationId={tab.conversationId}
+            conversationId={undefined}
             title={tab.title}
             isActive={activeTabId === tab.id}
             tabCount={openTabs.length}

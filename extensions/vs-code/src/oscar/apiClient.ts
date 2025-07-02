@@ -41,7 +41,7 @@ export interface OscarMessage {
 
 export interface ClaudeCodeLogEntry {
     role: 'user' | 'assistant' | 'system';
-    content: string;
+    content: string | any[]; // Allow both string and structured content
     metadata: {
         claudeType?: string;
         claudeUuid: string;
@@ -58,6 +58,8 @@ export interface ClaudeCodeLogEntry {
 export interface ClaudeCodeBatchLogRequest {
     sessionId: string;
     entries: ClaudeCodeLogEntry[];
+    fileName?: string;
+    sessionSummary?: string;
 }
 
 export class OscarApiClient {

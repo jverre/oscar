@@ -91,8 +91,29 @@ export class OscarSyncService {
 
             console.log(`   🧵 Built message threads: ${messageThreads.length} threads, ${sortedMessages.length} total messages`);
 
-            // Create Claude Code log entries
-            const entries = this.buildClaudeCodeEntries(sortedMessages);
+            // Filter to only new messages since last sync
+            const syncState = this.syncStateManager.getSessionSyncState(sessionId);
+            const lastSyncedTimestamp = syncState?.lastSyncedMessageTimestamp || 0;
+            const newMessages = sortedMessages.filter(msg => msg.timestamp.getTime() > lastSyncedTimestamp);
+            
+            console.log(`   🆕 New messages to sync: ${newMessages.length} (since ${new Date(lastSyncedTimestamp).toISOString()})`);
+            
+            if (newMessages.length === 0) {
+                console.log(`   ✅ No new messages to sync for session ${sessionId}`);
+                return {
+                    success: true,
+                    sessionId,
+                    fileId: syncState?.oscarFileId,
+                    messagesSynced: 0
+                };
+            }
+
+            // Use simple session ID-based name for easier verification
+            const friendlyName = `/claude/${sessionId}.chat`;
+            const sessionSummary = this.generateSessionSummary(parsedSession, sortedMessages);
+
+            // Create Claude Code log entries for new messages only
+            const entries = this.buildClaudeCodeEntries(newMessages);
 
             // Log entry statistics
             const userMessages = entries.filter(e => e.role === 'user').length;
@@ -102,18 +123,12 @@ export class OscarSyncService {
             const toolResultMessages = entries.filter(e => e.metadata.toolResultId).length;
             const modelsUsed = [...new Set(entries.map(e => e.metadata.claudeOriginal?.model).filter(Boolean))];
 
-            console.log(`   📋 Log entries prepared:`);
-            console.log(`      👤 User messages: ${userMessages}`);
-            console.log(`      🤖 Assistant messages: ${assistantMessages}`);
-            console.log(`      🔧 Tool use messages: ${toolUseMessages}`);
-            console.log(`      📞 Tool call messages: ${toolCallMessages}`);
-            console.log(`      📤 Tool result messages: ${toolResultMessages}`);
-            console.log(`      🧠 Models used: ${modelsUsed.join(', ') || 'Unknown'}`);
-
             // Create batch log request
             const batchRequest: ClaudeCodeBatchLogRequest = {
                 sessionId: parsedSession.sessionId,
-                entries
+                entries,
+                fileName: friendlyName,
+                sessionSummary: sessionSummary
             };
 
             // Upload everything in one batch
@@ -126,17 +141,23 @@ export class OscarSyncService {
             console.log(`      📁 File ID: ${result.fileId}`);
             console.log(`      📝 Messages created: ${result.messagesCreated}`);
 
-            // Update sync state
+            // Get the latest message timestamp from the synced messages
+            const latestMessageTimestamp = newMessages.length > 0 
+                ? Math.max(...newMessages.map(m => m.timestamp.getTime()))
+                : lastSyncedTimestamp;
+
+            // Update sync state with the latest message timestamp
             await this.syncStateManager.markSessionSynced(
                 sessionId,
                 parsedSession.messages.length,
                 claudeSession.filePath,
                 claudeSession.lastModified,
+                latestMessageTimestamp,
                 result.fileId
             );
 
             const totalDuration = Date.now() - startTime;
-            console.log(`✅ Sync completed for ${sessionId} in ${totalDuration}ms (${result.messagesCreated} messages)`);
+            console.log(`✅ Incremental sync completed for ${sessionId} in ${totalDuration}ms (${result.messagesCreated} new messages)`);
 
             return {
                 success: true,
@@ -171,13 +192,12 @@ export class OscarSyncService {
         const entries: ClaudeCodeLogEntry[] = [];
 
         for (const message of messages) {
-            // Extract tool IDs from content if present
-            const toolCallId = this.extractToolCallId(message.content);
-            const toolResultId = this.extractToolResultId(message.content);
+            // Preserve structured content instead of converting to string
+            const structuredContent = this.normalizeToStructuredContent(message.content);
             
             const entry: ClaudeCodeLogEntry = {
                 role: message.role,
-                content: message.content,
+                content: structuredContent, // Keep as structured content
                 metadata: {
                     claudeUuid: message.uuid,
                     claudeTimestamp: message.timestamp.toISOString(),
@@ -185,9 +205,6 @@ export class OscarSyncService {
                     isToolUse: message.toolUses && message.toolUses.length > 0,
                     toolName: message.toolUses?.[0]?.name,
                     toolUseId: message.toolUses?.[0]?.id,
-                    // Add extracted tool IDs to metadata
-                    toolCallId: toolCallId,
-                    toolResultId: toolResultId,
                     claudeOriginal: {
                         uuid: message.uuid,
                         parentUuid: message.parentUuid,
@@ -207,17 +224,64 @@ export class OscarSyncService {
         return entries;
     }
 
-    private extractToolCallId(content: string): string | undefined {
-        // Extract ID from tool-call pattern: :::tool-call{name="..." id="..."}
-        const toolCallMatch = content.match(/:::tool-call\{[^}]*id="([^"]+)"/);
-        return toolCallMatch?.[1];
+    private normalizeToStructuredContent(content: any): any[] {
+        if (typeof content === 'string') {
+            return [{ type: 'text', text: content }];
+        }
+        
+        if (Array.isArray(content)) {
+            // Already structured content, just validate and normalize
+            return content.map(part => {
+                if (!part || typeof part !== 'object') {
+                    return { type: 'text', text: String(part || '') };
+                }
+                
+                switch (part.type) {
+                    case 'text':
+                        return {
+                            type: 'text',
+                            text: part.text || ''
+                        };
+                    case 'tool-call':
+                        return {
+                            type: 'tool-call',
+                            toolCallId: part.toolCallId || part.id || `call_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+                            toolName: part.toolName || part.name || 'unknown',
+                            args: part.args || part.input || {}
+                        };
+                    case 'tool-result':
+                        return {
+                            type: 'tool-result',
+                            toolCallId: part.toolCallId || part.id || 'unknown',
+                            result: part.result,
+                            isError: part.isError || false
+                        };
+                    default:
+                        // Unknown part type, convert to text
+                        return { type: 'text', text: JSON.stringify(part) };
+                }
+            });
+        }
+        
+        // Fallback for unknown content types
+        return [{ type: 'text', text: JSON.stringify(content) }];
+    }
+    
+    private extractTextFromStructuredContent(content: any): string {
+        if (typeof content === 'string') {
+            return content;
+        }
+        
+        if (Array.isArray(content)) {
+            return content
+                .filter(part => part?.type === 'text')
+                .map(part => part.text || '')
+                .join('\n');
+        }
+        
+        return JSON.stringify(content);
     }
 
-    private extractToolResultId(content: string): string | undefined {
-        // Extract ID from tool-result pattern: :::tool-result{id="..."}
-        const toolResultMatch = content.match(/:::tool-result\{id="([^"]+)"/);
-        return toolResultMatch?.[1];
-    }
 
     private mapProvider(model?: string): string | undefined {
         if (!model) return undefined;
@@ -233,6 +297,80 @@ export class OscarSyncService {
         return undefined;
     }
 
+    private generateUserFriendlyName(parsedSession: ParsedClaudeSession, sortedMessages: ParsedClaudeMessage[]): string {
+        // Try to extract meaningful name from first user message
+        const firstUserMessage = sortedMessages.find(m => m.role === 'user');
+        if (firstUserMessage && firstUserMessage.content) {
+            // Extract text content from structured content
+            let content = this.extractTextFromStructuredContent(firstUserMessage.content)
+                .replace(/:::tool-\w+\{[^}]*\}[\s\S]*?:::/g, '') // Remove tool blocks
+                .replace(/\n+/g, ' ') // Replace newlines with spaces
+                .trim();
+            
+            // Take first sentence or first 50 characters
+            const firstSentence = content.split(/[.!?]/)[0].trim();
+            if (firstSentence.length > 0 && firstSentence.length <= 60) {
+                return `/claude/${this.sanitizeFileName(firstSentence)}.chat`;
+            }
+            
+            // Fallback to first 50 characters
+            if (content.length > 50) {
+                content = content.substring(0, 47) + '...';
+            }
+            
+            if (content.length > 0) {
+                return `/claude/${this.sanitizeFileName(content)}.chat`;
+            }
+        }
+        
+        // Fallback to project-based naming
+        const projectName = parsedSession.projectPath || 'Unknown Project';
+        const timestamp = parsedSession.metadata.startTime.toISOString().substring(0, 16).replace('T', ' ');
+        
+        return `/claude/${this.sanitizeFileName(projectName)} - ${timestamp}.chat`;
+    }
+
+    private sanitizeFileName(name: string): string {
+        // Remove or replace invalid file name characters
+        return name
+            .replace(/[<>:"/\\|?*]/g, '') // Remove invalid characters
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim();
+    }
+
+    private generateSessionSummary(parsedSession: ParsedClaudeSession, sortedMessages: ParsedClaudeMessage[]): string {
+        // Try to extract a meaningful description from the first user message
+        const firstUserMessage = sortedMessages.find(m => m.role === 'user');
+        if (firstUserMessage && firstUserMessage.content) {
+            let description = this.extractTextFromStructuredContent(firstUserMessage.content)
+                .replace(/:::tool-\w+\{[^}]*\}[\s\S]*?:::/g, '') // Remove tool blocks
+                .replace(/\n+/g, ' ') // Replace newlines with spaces
+                .trim();
+            
+            // Take first sentence or first 150 characters
+            const firstSentence = description.split(/[.!?]/)[0].trim();
+            if (firstSentence.length > 0 && firstSentence.length <= 150) {
+                return firstSentence;
+            }
+            
+            // Fallback to first 150 characters
+            if (description.length > 150) {
+                description = description.substring(0, 147) + '...';
+            }
+            
+            if (description.length > 0) {
+                return description;
+            }
+        }
+        
+        // Fallback description based on metadata
+        const { metadata } = parsedSession;
+        const projectName = parsedSession.projectPath || 'Unknown project';
+        const messageCount = metadata.totalMessages;
+        const duration = Math.round((metadata.endTime.getTime() - metadata.startTime.getTime()) / (1000 * 60));
+        
+        return `Chat session in ${projectName} with ${messageCount} messages over ${duration} minutes`;
+    }
 
     public async syncPendingSessions(): Promise<SyncResult[]> {
         const startTime = Date.now();

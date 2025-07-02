@@ -37,6 +37,11 @@
                 "command": "oscar.showMenu",
                 "title": "Show Oscar menu",
                 "category": "Oscar"
+            },
+            {
+                "command": "oscar.resetSyncState",
+                "title": "Reset sync state",
+                "category": "Oscar"
             }
         ],
         "configuration": {

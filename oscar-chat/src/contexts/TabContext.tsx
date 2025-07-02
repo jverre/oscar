@@ -4,6 +4,7 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback } 
 import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { buildFileUrl } from '@/utils/fileUrlUtils';
 import type { Id } from '../../convex/_generated/dataModel';
 
 export interface Tab {
@@ -18,9 +19,11 @@ interface TabContextType {
   activeTabId: string | null;
   addTab: (tab: Tab) => void;
   closeTab: (tabId: string) => void;
+  closeTabs: (tabIds: string[]) => void;
   switchToTab: (tabId: string) => void;
   isTabOpenByFile: (fileId: Id<"files">) => boolean;
   getTabByFile: (fileId: Id<"files">) => Tab | undefined;
+  updateTabTitle: (fileId: Id<"files">, newTitle: string) => void;
   setActiveTabFromUrl: (fileId: Id<"files"> | null) => void;
   clearAllTabs: () => void;
   reorderTabs: (sourceIndex: number, destinationIndex: number) => void;
@@ -39,8 +42,10 @@ type TabAction =
   | { type: 'LOAD_STATE'; payload: { openTabs: Tab[]; activeTabId: string | null } }
   | { type: 'ADD_TAB'; payload: Tab }
   | { type: 'CLOSE_TAB'; payload: string }
+  | { type: 'CLOSE_TABS'; payload: string[] }
   | { type: 'SET_ACTIVE_TAB'; payload: string | null }
   | { type: 'UPDATE_TITLE'; payload: { tabId: string; title: string } }
+  | { type: 'UPDATE_TITLE_BY_FILE'; payload: { fileId: Id<"files">; title: string } }
   | { type: 'UPDATE_FILE_ID'; payload: { tabId: string; fileId: Id<"files"> } }
   | { type: 'CLEAR_PENDING_MESSAGE'; payload: string }
   | { type: 'CLEAR_ALL_TABS' }
@@ -117,6 +122,62 @@ function tabReducer(state: TabState, action: TabAction): TabState {
       };
     }
 
+    case 'CLOSE_TABS': {
+      const tabIdsToClose = new Set(action.payload);
+      const filtered = state.openTabs.filter(tab => !tabIdsToClose.has(tab.id));
+      
+      // Check if active tab is being closed
+      const activeTabClosed = state.activeTabId && tabIdsToClose.has(state.activeTabId);
+      
+      if (activeTabClosed) {
+        // Need to find new active tab
+        if (filtered.length > 0) {
+          // Find the first tab that wasn't closed
+          const currentActiveIndex = state.openTabs.findIndex(tab => tab.id === state.activeTabId);
+          let newActiveTab = null;
+          
+          // Try to find a tab to the right of the current active tab
+          for (let i = currentActiveIndex + 1; i < state.openTabs.length; i++) {
+            const tab = state.openTabs[i];
+            if (!tabIdsToClose.has(tab.id)) {
+              newActiveTab = tab;
+              break;
+            }
+          }
+          
+          // If no tab to the right, try to the left
+          if (!newActiveTab) {
+            for (let i = currentActiveIndex - 1; i >= 0; i--) {
+              const tab = state.openTabs[i];
+              if (!tabIdsToClose.has(tab.id)) {
+                newActiveTab = tab;
+                break;
+              }
+            }
+          }
+          
+          return {
+            ...state,
+            openTabs: filtered,
+            activeTabId: newActiveTab?.id || null,
+          };
+        } else {
+          // No tabs left
+          return {
+            ...state,
+            openTabs: filtered,
+            activeTabId: null,
+          };
+        }
+      }
+      
+      // Active tab not being closed
+      return {
+        ...state,
+        openTabs: filtered,
+      };
+    }
+
     case 'SET_ACTIVE_TAB':
       return {
         ...state,
@@ -128,6 +189,16 @@ function tabReducer(state: TabState, action: TabAction): TabState {
         ...state,
         openTabs: state.openTabs.map(tab =>
           tab.id === action.payload.tabId
+            ? { ...tab, title: action.payload.title }
+            : tab
+        ),
+      };
+
+    case 'UPDATE_TITLE_BY_FILE':
+      return {
+        ...state,
+        openTabs: state.openTabs.map(tab =>
+          tab.fileId === action.payload.fileId
             ? { ...tab, title: action.payload.title }
             : tab
         ),
@@ -279,24 +350,74 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
         const nextTab = remainingTabs[nextIndex];
         
         // Navigate based on whether the next tab has a file ID
-        if (nextTab.fileId && userOrg && userTeam && files) {
+        if (nextTab.fileId && files) {
           const file = files.find(f => f._id === nextTab.fileId);
-          if (file) {
-            router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/${encodeURIComponent(file.name)}`);
+          if (file && userOrg && userTeam) {
+            const url = buildFileUrl(file, userOrg, userTeam);
+            if (url) {
+              router.push(url);
+            } else {
+              console.error('Failed to build file URL for closeTab', file, userOrg, userTeam);
+              router.push('/');
+            }
           } else {
-            router.push(`/chat?file=${nextTab.fileId}`);
+            // If file exists but org/team not loaded, or file not found, go to home
+            router.push('/');
           }
-        } else if (nextTab.fileId) {
-          router.push(`/chat?file=${nextTab.fileId}`);
         } else if (userOrg && userTeam) {
           router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
         } else {
-          router.push('/chat');
+          router.push('/');
         }
       } else if (userOrg && userTeam) {
         router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
       } else {
-        router.push('/chat');
+        router.push('/');
+      }
+    }
+  }, [state.activeTabId, state.openTabs, router, userOrg, userTeam, files]);
+
+  const closeTabs = useCallback((tabIds: string[]) => {
+    if (!tabIds || tabIds.length === 0) {
+      console.error('closeTabs: Invalid tabIds', tabIds);
+      return;
+    }
+    
+    const tabIdsSet = new Set(tabIds);
+    const isClosingActiveTab = state.activeTabId && tabIdsSet.has(state.activeTabId);
+    const remainingTabs = state.openTabs.filter(tab => !tabIdsSet.has(tab.id));
+    
+    dispatch({ type: 'CLOSE_TABS', payload: tabIds });
+    
+    // Navigate immediately if closing active tab
+    if (isClosingActiveTab) {
+      if (remainingTabs.length > 0) {
+        const nextTab = remainingTabs[0];
+        
+        // Navigate based on whether the next tab has a file ID
+        if (nextTab.fileId && files) {
+          const file = files.find(f => f._id === nextTab.fileId);
+          if (file && userOrg && userTeam) {
+            const url = buildFileUrl(file, userOrg, userTeam);
+            if (url) {
+              router.push(url);
+            } else {
+              console.error('Failed to build file URL for closeTab', file, userOrg, userTeam);
+              router.push('/');
+            }
+          } else {
+            // If file exists but org/team not loaded, or file not found, go to home
+            router.push('/');
+          }
+        } else if (userOrg && userTeam) {
+          router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
+        } else {
+          router.push('/');
+        }
+      } else if (userOrg && userTeam) {
+        router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
+      } else {
+        router.push('/');
       }
     }
   }, [state.activeTabId, state.openTabs, router, userOrg, userTeam, files]);
@@ -318,20 +439,25 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_ACTIVE_TAB', payload: tabId });
 
     // Navigate based on whether the tab has a file ID
-    if (tab.fileId && userOrg && userTeam && files) {
+    if (tab.fileId && files) {
       const file = files.find(f => f._id === tab.fileId);
-      if (file) {
-        router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/${encodeURIComponent(file.name)}`);
+      if (file && userOrg && userTeam) {
+        const url = buildFileUrl(file, userOrg, userTeam);
+        if (url) {
+          router.push(url);
+        } else {
+          console.error('Failed to build file URL', file, userOrg, userTeam);
+          router.push('/');
+        }
       } else {
-        router.push(`/chat?file=${tab.fileId}`);
+        // If file not found or org/team not loaded, go to home
+        router.push('/');
       }
-    } else if (tab.fileId) {
-      router.push(`/chat?file=${tab.fileId}`);
     } else if (userOrg && userTeam) {
       router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
     } else {
-      // Navigate to chat root for tabs without file IDs
-      router.push('/chat');
+      // Navigate to home for tabs without file IDs
+      router.push('/');
     }
   }, [router, state.openTabs, userOrg, userTeam, files]);
 
@@ -349,6 +475,10 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'CLEAR_ALL_TABS' });
   }, []);
 
+  const updateTabTitle = useCallback((fileId: Id<"files">, newTitle: string) => {
+    dispatch({ type: 'UPDATE_TITLE_BY_FILE', payload: { fileId, title: newTitle } });
+  }, []);
+
   const reorderTabs = useCallback((sourceIndex: number, destinationIndex: number) => {
     dispatch({ type: 'REORDER_TABS', payload: { sourceIndex, destinationIndex } });
   }, []);
@@ -359,9 +489,11 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
     activeTabId: state.activeTabId,
     addTab,
     closeTab,
+    closeTabs,
     switchToTab,
     isTabOpenByFile,
     getTabByFile,
+    updateTabTitle,
     setActiveTabFromUrl,
     clearAllTabs,
     reorderTabs,

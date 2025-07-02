@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "../../../../convex/_generated/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SignInButton } from "@/components/auth/SignInButton";
 
@@ -22,8 +22,8 @@ export default function SignInPage() {
                 // Redirect to extension success page
                 router.push('/auth/extension-success');
             } else {
-                // Redirect to main app
-                router.push('/chat');
+                // Redirect to home - it will handle the org/team redirect
+                router.push('/');
             }
         }
     }, [user, router, isExtension]);
@@ -82,7 +82,7 @@ export default function SignInPage() {
                     {/* Sign In Button */}
                     <div className="mb-6">
                         <SignInButton 
-                            afterSignInUrl={isExtension ? '/auth/extension-success' : '/chat'}
+                            afterSignInUrl={isExtension ? '/auth/extension-success' : '/'}
                             variant="default"
                         />
                     </div>

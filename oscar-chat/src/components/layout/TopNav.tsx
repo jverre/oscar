@@ -3,10 +3,16 @@
 import { useState, useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 import { CommandPalette } from "@/components/ui/command-palette";
+import { SearchResults } from "@/components/ui/search-results";
 import { useFileCreation } from "@/hooks/useFileCreation";
 import { useGitCreation } from "@/hooks/useGitCreation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { useTabContext } from "@/contexts/TabContext";
+import { useRouter } from "next/navigation";
+import { Id } from "../../../convex/_generated/dataModel";
 
 export function TopNav() {
   const isMobile = useIsMobile();
@@ -15,16 +21,32 @@ export function TopNav() {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [inputMode, setInputMode] = useState<{ placeholder: string; onSubmit: (value: string) => void; error?: string } | null>(null);
+  const [searchMode, setSearchMode] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { createFile } = useFileCreation();
   const { createGitFolder, error: gitError } = useGitCreation();
+  const { addTab, isTabOpenByFile, getTabByFile, switchToTab } = useTabContext();
+  const router = useRouter();
+  
+  // Get user's organization and team for URL generation
+  const userOrg = useQuery(api.organizations.getCurrentUserOrg);
+  const userTeam = useQuery(api.teams.getCurrentUserTeam);
+  
+  // Search query
+  const searchQueryResults = useQuery(
+    api.search.searchCombined,
+    searchMode && searchValue.trim().length > 2 
+      ? { searchText: searchValue.trim(), limit: 20 }
+      : "skip"
+  );
 
   // Mock commands for filtering
   const mockCommands = [
     { id: "create-chat", title: "Create Chat", keywords: ["create", "new", "chat", "conversation", "start"] },
     { id: "create-blog", title: "Create Blog", keywords: ["create", "new", "blog", "post", "write"] },
-    { id: "clone-repository", title: "Clone Repository", keywords: ["clone", "git", "repository", "github", "repo"] },
+    //{ id: "clone-repository", title: "Clone Repository", keywords: ["clone", "git", "repository", "github", "repo"] },
     { id: "search-chat", title: "Search Chat", keywords: ["search", "find", "chat", "conversation", "browse"] }
   ];
 
@@ -57,12 +79,60 @@ export function TopNav() {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsCommandPaletteOpen(false);
         setIsInputFocused(false);
+        setSearchMode(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Process search results
+  useEffect(() => {
+    if (searchQueryResults) {
+      const processedResults: any[] = [];
+
+      // Add file results
+      searchQueryResults.files.forEach((file) => {
+        processedResults.push({
+          type: "file",
+          id: file._id,
+          title: file.name,
+          subtitle: `File • Last updated ${new Date(file.lastMessageAt).toLocaleDateString()}`,
+          timestamp: file.lastMessageAt,
+          fileId: file._id
+        });
+      });
+
+      // Add message results
+      searchQueryResults.messages.forEach((message) => {
+        if (message.file) {
+          // Extract preview text from message content
+          const preview = message.searchableText
+            ? message.searchableText.substring(0, 100) + (message.searchableText.length > 100 ? "..." : "")
+            : "Message content";
+
+          processedResults.push({
+            type: "message",
+            id: message._id,
+            title: preview,
+            subtitle: `Message from ${new Date(message.createdAt).toLocaleDateString()}`,
+            timestamp: message.createdAt,
+            fileId: message.fileId,
+            fileName: message.file.name
+          });
+        }
+      });
+
+      // Sort by timestamp (most recent first)
+      processedResults.sort((a, b) => b.timestamp - a.timestamp);
+      
+      setSearchResults(processedResults);
+      setSelectedIndex(0);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchQueryResults]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -87,7 +157,38 @@ export function TopNav() {
     setIsCommandPaletteOpen(false);
     setSearchValue("");
     setInputMode(null);
+    setSearchMode(false);
+    setSearchResults([]);
     inputRef.current?.blur();
+  };
+
+  const handleSearchResultSelect = (result: any) => {
+    const fileIdTyped = result.fileId as Id<"files">;
+    
+    // Check if tab already exists for this file
+    if (isTabOpenByFile(fileIdTyped)) {
+      // Switch to existing tab
+      const existingTab = getTabByFile(fileIdTyped);
+      if (existingTab) {
+        switchToTab(existingTab.id);
+      }
+    } else {
+      // Create new tab
+      const newTabId = `tab_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      addTab({
+        id: newTabId,
+        fileId: fileIdTyped,
+        title: result.fileName || result.title
+      });
+
+      // Navigate to the file
+      if (userOrg && userTeam && result.fileName) {
+        const encodedFileName = encodeURIComponent(result.fileName);
+        router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/${encodedFileName}`);
+      }
+    }
+    
+    handleClose();
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -99,6 +200,41 @@ export function TopNav() {
         case 'Enter':
           e.preventDefault();
           inputMode.onSubmit(searchValue);
+          break;
+        case 'Escape':
+          e.preventDefault();
+          handleClose();
+          break;
+      }
+      return;
+    }
+
+    // Handle search mode separately
+    if (searchMode) {
+      if (searchResults.length === 0) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          handleClose();
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex(prev => 
+            prev < searchResults.length - 1 ? prev + 1 : prev
+          );
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex(prev => prev > 0 ? prev - 1 : prev);
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (searchResults[selectedIndex]) {
+            handleSearchResultSelect(searchResults[selectedIndex]);
+          }
           break;
         case 'Escape':
           e.preventDefault();
@@ -158,15 +294,18 @@ export function TopNav() {
                 handleClose();
               } else {
                 // Error - update input mode to show error and keep it open
-                setInputMode(prev => prev ? { ...prev, error: gitError } : null);
+                setInputMode(prev => prev ? { ...prev, error: gitError || undefined } : null);
               }
             }
           }
         });
         break;
       case 'search-chat':
-        console.log("Search chat functionality coming soon");
-        handleClose();
+        // Enter search mode
+        setSearchValue("");
+        setSearchMode(true);
+        setSelectedIndex(0);
+        setSearchResults([]);
         break;
       default:
         console.log("Unknown command:", commandId);
@@ -191,7 +330,7 @@ export function TopNav() {
           <input
             ref={inputRef}
             type="text"
-            placeholder={inputMode ? inputMode.placeholder : "Search"}
+            placeholder={inputMode ? inputMode.placeholder : searchMode ? "Search files and messages..." : "Search"}
             value={searchValue}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
@@ -208,16 +347,29 @@ export function TopNav() {
           </div>
         </div>
         
-        <CommandPalette
-          isOpen={isCommandPaletteOpen}
-          onClose={handleClose}
-          searchValue={searchValue}
-          onSearchChange={setSearchValue}
-          selectedIndex={selectedIndex}
-          onSelectedIndexChange={setSelectedIndex}
-          onExecuteCommand={executeCommand}
-          inputMode={inputMode}
-        />
+        {searchMode ? (
+          <SearchResults
+            isOpen={isCommandPaletteOpen}
+            onClose={handleClose}
+            searchValue={searchValue}
+            results={searchResults}
+            selectedIndex={selectedIndex}
+            onSelectedIndexChange={setSelectedIndex}
+            onSelectResult={handleSearchResultSelect}
+            isLoading={searchValue.trim().length > 2 && !searchQueryResults}
+          />
+        ) : (
+          <CommandPalette
+            isOpen={isCommandPaletteOpen}
+            onClose={handleClose}
+            searchValue={searchValue}
+            onSearchChange={setSearchValue}
+            selectedIndex={selectedIndex}
+            onSelectedIndexChange={setSelectedIndex}
+            onExecuteCommand={executeCommand}
+            inputMode={inputMode}
+          />
+        )}
       </div>
     </div>
   );

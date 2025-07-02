@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, ChevronRight, Plus, MessageSquare, FileText } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { FileList } from "../chat/FileList";
@@ -24,11 +24,25 @@ export function OscarSidebar() {
   const [isChatsExpanded, setIsChatsExpanded] = useState(true);
   const [isCapabilitiesExpanded, setIsCapabilitiesExpanded] = useState(false);
   const [shouldCreateFile, setShouldCreateFile] = useState(false);
+  const [shouldCreateBlog, setShouldCreateBlog] = useState(false);
+  const [isHoveringFiles, setIsHoveringFiles] = useState(false);
   
-  const files = useQuery(api.files.list);
+  // Check if user is authenticated
+  const currentUser = useQuery(api.users.current);
+  
+  // Fetch files based on authentication status
+  const authenticatedFiles = useQuery(api.files.list, currentUser ? {} : "skip");
+  const publicFiles = useQuery(api.files.listPublic, currentUser ? "skip" : {});
+  
+  // Use appropriate files based on authentication
+  const files = currentUser ? authenticatedFiles : publicFiles;
   
   const handleCreateFile = async () => {
     setShouldCreateFile(true);
+  };
+
+  const handleCreateBlog = async () => {
+    setShouldCreateBlog(true);
   };
 
   const handleSidebarClick = (e: React.MouseEvent) => {
@@ -52,74 +66,100 @@ export function OscarSidebar() {
       }}
     >
       <SidebarContent 
-        className="h-full w-full"
+        className="h-full w-full flex flex-col"
         style={{ backgroundColor: 'var(--surface-primary)' }}
       >
         {/* Mobile background wrapper */}
         <div 
-          className="h-full w-full"
+          className="h-full w-full flex flex-col"
           style={{ 
             backgroundColor: isMobile ? 'var(--surface-primary)' : 'transparent'
           }}
         >
-        {/* Files Section */}
-        <SidebarGroup className="bg-sidebar">
-          <SidebarGroupLabel asChild>
-            <div className="flex h-[32px] items-center justify-between px-3 border-b group rounded-none" style={{ borderBottomColor: 'var(--border-subtle)', borderBottomWidth: '1px' }}>
-              <button
-                onClick={() => setIsChatsExpanded(!isChatsExpanded)}
-                className="flex items-center gap-2 text-xs font-bold uppercase text-sidebar-foreground hover:text-foreground transition-colors focus:outline-none"
+        {/* Files Section - Takes up available space */}
+        <div 
+          className="flex-1 overflow-hidden"
+          onMouseEnter={() => setIsHoveringFiles(true)}
+          onMouseLeave={() => setIsHoveringFiles(false)}
+        >
+          <SidebarGroup className="bg-sidebar h-full flex flex-col">
+            <SidebarGroupLabel asChild>
+              <div 
+                className="flex h-[32px] items-center justify-between px-3 border-b group rounded-none" 
+                style={{ borderBottomColor: 'var(--border-subtle)', borderBottomWidth: '1px' }}
               >
-                {isChatsExpanded ? (
-                  <ChevronDown className="h-3 w-3" />
-                ) : (
-                  <ChevronRight className="h-3 w-3" />
-                )}
-                Files
-              </button>
-              {isChatsExpanded && (
                 <button
-                  onClick={handleCreateFile}
-                  className="p-1 opacity-0 group-hover:opacity-100 transition-all focus:outline-none"
-                  style={{ backgroundColor: 'transparent' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--surface-muted)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                  title="New File"
+                  onClick={() => setIsChatsExpanded(!isChatsExpanded)}
+                  className="flex items-center text-xs font-bold uppercase text-sidebar-foreground hover:text-foreground transition-colors focus:outline-none"
                 >
-                  <Plus className="h-3 w-3 text-sidebar-foreground" />
+                  {isChatsExpanded ? (
+                    <ChevronDown className="h-4 w-4 mr-1" style={{ opacity: 0.6 }} />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 mr-1" style={{ opacity: 0.6 }} />
+                  )}
+                  Files
                 </button>
-              )}
-            </div>
-          </SidebarGroupLabel>
-          
-          {isChatsExpanded && (
-            <SidebarGroupContent className="border-b" style={{ borderBottomColor: 'var(--border-subtle)', borderBottomWidth: '1px' }}>
-              <FileList
-                files={files}
-                shouldCreateFile={shouldCreateFile}
-                onFileCreated={() => setShouldCreateFile(false)}
-              />
-            </SidebarGroupContent>
-          )}
-        </SidebarGroup>
+                {isChatsExpanded && currentUser && isHoveringFiles && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={handleCreateFile}
+                      className="p-1 transition-all focus:outline-none"
+                      style={{ backgroundColor: 'transparent' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--interactive-hover)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                      title="New Chat"
+                    >
+                      <MessageSquare className="h-3 w-3" style={{ color: 'var(--text-secondary)' }} />
+                    </button>
+                    <button
+                      onClick={handleCreateBlog}
+                      className="p-1 transition-all focus:outline-none"
+                      style={{ backgroundColor: 'transparent' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--interactive-hover)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                      title="New Blog"
+                    >
+                      <FileText className="h-3 w-3" style={{ color: 'var(--text-secondary)' }} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </SidebarGroupLabel>
+            
+            {isChatsExpanded && (
+              <SidebarGroupContent className="flex-1 overflow-y-auto">
+                <FileList
+                  files={files}
+                  shouldCreateFile={currentUser ? shouldCreateFile : false}
+                  onFileCreated={() => setShouldCreateFile(false)}
+                  shouldCreateBlog={currentUser ? shouldCreateBlog : false}
+                  onBlogCreated={() => setShouldCreateBlog(false)}
+                />
+              </SidebarGroupContent>
+            )}
+          </SidebarGroup>
+        </div>
 
-
-        {/* Capabilities Section */}
-        <SidebarGroup className="bg-sidebar">
+        {/* Capabilities Section - Stays at bottom */}
+        <SidebarGroup className="bg-sidebar mt-auto">
           <SidebarGroupLabel asChild>
-            <div className="flex h-[32px] items-center px-3 border-b rounded-none" style={{ borderBottomColor: 'var(--border-subtle)', borderBottomWidth: '1px' }}>
+            <div className="flex h-[32px] items-center px-3 border-t border-b rounded-none" style={{ borderTopColor: 'var(--border-subtle)', borderBottomColor: 'var(--border-subtle)', borderTopWidth: '1px', borderBottomWidth: '1px' }}>
               <button
                 onClick={() => setIsCapabilitiesExpanded(!isCapabilitiesExpanded)}
-                className="flex items-center gap-2 text-xs font-bold uppercase text-sidebar-foreground hover:text-foreground transition-colors focus:outline-none"
+                className="flex items-center text-xs font-bold uppercase text-sidebar-foreground hover:text-foreground transition-colors focus:outline-none"
               >
                 {isCapabilitiesExpanded ? (
-                  <ChevronDown className="h-3 w-3" />
+                  <ChevronDown className="h-4 w-4 mr-1" style={{ opacity: 0.6 }} />
                 ) : (
-                  <ChevronRight className="h-3 w-3" />
+                  <ChevronRight className="h-4 w-4 mr-1" style={{ opacity: 0.6 }} />
                 )}
                 Capabilities
               </button>

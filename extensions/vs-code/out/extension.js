@@ -69,23 +69,9 @@ async function activate(context) {
     // Initialize sync service
     syncService = new syncService_1.OscarSyncService(context, syncStateManager, fileWatcher);
     // Set up event handlers for file watcher
-    fileWatcher.onNewSessionEvent(async (session) => {
-        console.log(`🆕 New Claude session detected: ${session.sessionId} (${session.messageCount} messages)`);
-        if (isAuthenticated && syncService.isReady()) {
-            await syncStateManager.markSessionPending(session.sessionId, session.filePath);
-            // Auto-sync if enabled
-            const config = vscode.workspace.getConfiguration('oscar');
-            const autoSync = config.get('autoSync', true);
-            if (autoSync) {
-                setTimeout(async () => {
-                    console.log(`🔄 Auto-syncing new session: ${session.sessionId}`);
-                    await syncService.syncSession(session.sessionId);
-                }, 1000); // Small delay to avoid overwhelming
-            }
-        }
-    });
-    fileWatcher.onSessionUpdatedEvent(async (session) => {
-        console.log(`📝 Claude session updated: ${session.sessionId} (${session.messageCount} messages)`);
+    // Simplified: Single handler for all session changes (new or updated)
+    const handleSessionChange = async (session, eventType) => {
+        console.log(`${eventType} Claude session: ${session.sessionId} (${session.messageCount} messages)`);
         if (isAuthenticated && syncService.isReady()) {
             if (syncStateManager.needsSync(session.sessionId, session.messageCount, session.lastModified)) {
                 await syncStateManager.markSessionPending(session.sessionId, session.filePath);
@@ -94,18 +80,21 @@ async function activate(context) {
                 const autoSync = config.get('autoSync', true);
                 if (autoSync) {
                     setTimeout(async () => {
-                        console.log(`🔄 Auto-syncing updated session: ${session.sessionId}`);
+                        console.log(`🔄 Auto-syncing session: ${session.sessionId}`);
                         await syncService.syncSession(session.sessionId);
-                    }, 2000); // Slightly longer delay for updates
+                    }, 1500); // Single consistent delay
                 }
             }
         }
-    });
+    };
+    // Wire up both events to the same simplified handler
+    fileWatcher.onNewSessionEvent(async (session) => await handleSessionChange(session, '🆕 New'));
+    fileWatcher.onSessionUpdatedEvent(async (session) => await handleSessionChange(session, '📝 Updated'));
     // Start file watcher
     await fileWatcher.start();
-    // Detect sessions that were updated while the extension was not running
+    // Simplified startup: just mark pending sessions, let auto-sync handle them
     if (isAuthenticated) {
-        console.log('🔄 Checking for stale sessions that need initial sync...');
+        console.log('🔄 Checking for sessions needing sync...');
         const currentSessions = fileWatcher.getSessions().map(s => ({
             sessionId: s.sessionId,
             messageCount: s.messageCount,
@@ -114,38 +103,10 @@ async function activate(context) {
         }));
         const staleSessions = await syncStateManager.detectStaleSessionsOnStartup(currentSessions);
         if (staleSessions.length > 0) {
-            console.log(`📊 Found ${staleSessions.length} stale sessions that need syncing`);
-            // Initialize sync service and trigger background sync
-            setTimeout(async () => {
-                try {
-                    console.log('🔧 Initializing sync service for startup sync...');
-                    // Ensure sync service is initialized
-                    if (!syncService.isReady()) {
-                        const initSuccess = await syncService.initialize();
-                        if (!initSuccess) {
-                            console.log('❌ Failed to initialize sync service for startup sync');
-                            return;
-                        }
-                    }
-                    if (syncService.isReady()) {
-                        console.log('🚀 Starting background sync of stale sessions...');
-                        const results = await syncService.syncPendingSessions();
-                        const successful = results.filter(r => r.success).length;
-                        const failed = results.filter(r => !r.success).length;
-                        const totalMessages = results.reduce((sum, r) => sum + r.messagesSynced, 0);
-                        console.log(`✅ Startup sync completed: ${successful} sessions synced, ${failed} failed (${totalMessages} messages total)`);
-                        if (failed > 0) {
-                            console.log('⚠️ Some sessions failed to sync during startup - they will be retried later');
-                        }
-                    }
-                }
-                catch (error) {
-                    console.error('❌ Error during startup sync:', error);
-                }
-            }, 3000); // Delay to let extension fully initialize
+            console.log(`📊 Marked ${staleSessions.length} sessions as pending sync`);
         }
         else {
-            console.log('✅ All sessions are up to date, no startup sync needed');
+            console.log('✅ All sessions are up to date');
         }
     }
     console.log('🔧 AUTH DEBUG: Extension activation complete, isAuthenticated:', isAuthenticated);
@@ -165,13 +126,7 @@ async function activate(context) {
                 if (!wasAuthenticated && nowAuthenticated) {
                     console.log('🔧 User signed in, initializing sync service...');
                     await syncService.initialize();
-                    // Trigger initial sync if there are pending sessions
-                    setTimeout(async () => {
-                        if (syncService.isReady()) {
-                            console.log('🔄 Starting initial sync after sign-in...');
-                            await syncService.syncPendingSessions();
-                        }
-                    }, 2000);
+                    // Pending sessions will be handled by the unified auto-sync logic
                 }
             }
             catch (error) {
@@ -240,6 +195,15 @@ async function activate(context) {
             vscode.window.showErrorMessage(`Sync failed: ${error}`);
         }
     });
+    const resetSyncStateCommand = vscode.commands.registerCommand('oscar.resetSyncState', async () => {
+        try {
+            await syncStateManager.clearSyncState();
+            vscode.window.showInformationMessage('Oscar sync state has been reset. All sessions will be re-synced on next sync.');
+        }
+        catch (error) {
+            vscode.window.showErrorMessage(`Failed to reset sync state: ${error}`);
+        }
+    });
     const showMenuCommand = vscode.commands.registerCommand('oscar.showMenu', async () => {
         try {
             const session = await vscode.authentication.getSession('oscar', ['read'], { silent: true });
@@ -255,6 +219,11 @@ async function activate(context) {
                     action: 'sync'
                 },
                 {
+                    label: '$(refresh) Reset sync state',
+                    description: 'Reset sync state - all sessions will be re-synced',
+                    action: 'reset'
+                },
+                {
                     label: '$(sign-out) Sign out of Oscar',
                     description: 'Sign out and stop syncing chats',
                     action: 'signout'
@@ -266,6 +235,9 @@ async function activate(context) {
                 if (choice.action === 'sync') {
                     vscode.commands.executeCommand('oscar.syncNow');
                 }
+                else if (choice.action === 'reset') {
+                    vscode.commands.executeCommand('oscar.resetSyncState');
+                }
                 else if (choice.action === 'signout') {
                     vscode.commands.executeCommand('oscar.signOut');
                 }
@@ -276,7 +248,7 @@ async function activate(context) {
         }
     });
     // Add to context subscriptions for proper cleanup
-    context.subscriptions.push(providerDisposable, authChangeListener, signInCommand, signOutCommand, syncNowCommand, showMenuCommand, statusBar);
+    context.subscriptions.push(providerDisposable, authChangeListener, signInCommand, signOutCommand, syncNowCommand, resetSyncStateCommand, showMenuCommand, statusBar);
     // Show welcome message only if not authenticated
     if (!isAuthenticated) {
         vscode.window.showInformationMessage('Oscar extension activated! Click the status bar to sign in and start syncing Claude Code chats.', 'Sign In').then(selection => {

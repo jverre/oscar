@@ -55,3 +55,19 @@ export const getCurrentUserOrg = query({
     return await ctx.db.get(user.organizationId);
   },
 });
+
+// Get organization by name (public access for public files)
+export const getByNamePublic = query({
+  args: {
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find organization by name (no authentication required)
+    const organization = await ctx.db
+      .query("organizations")
+      .filter((q) => q.eq(q.field("name"), args.name))
+      .first();
+
+    return organization;
+  },
+});

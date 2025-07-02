@@ -2,7 +2,8 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
 import { api, internal } from "./_generated/api";
-import OpenAI from "openai";
+import { streamText } from "ai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { Id } from "./_generated/dataModel";
 
 // HTTP streaming endpoint for chat
@@ -37,35 +38,34 @@ export const chatStream = httpAction(async (ctx, request) => {
         fileId: fileId,
       });
 
-      // Initialize OpenAI client for OpenRouter
-      const openai = new OpenAI({
-        baseURL: "https://openrouter.ai/api/v1",
+      // Initialize OpenRouter provider
+      const openrouter = createOpenRouter({
         apiKey: process.env.OPENROUTER_API_KEY,
       });
 
       let accumulatedText = "";
+      let accumulatedContent: any[] = [];
 
-      // Create streaming completion
-      const stream = await openai.chat.completions.create({
-        model: "meta-llama/llama-3.1-8b-instruct:free", // Free model for testing
+      // Create streaming completion with AI SDK
+      const result = await streamText({
+        model: openrouter("meta-llama/llama-3.1-8b-instruct:free"),
         messages: messages,
-        stream: true,
         temperature: 0.7,
+        // Note: Tool calls are not configured here since you mentioned we don't need them in streaming
       });
 
-      for await (const chunk of stream) {
-        const deltaContent = chunk.choices[0]?.delta?.content || "";
-        
-        if (deltaContent) {
-          accumulatedText += deltaContent;
+      // Process the text stream
+      for await (const textPart of result.textStream) {
+        if (textPart) {
+          accumulatedText += textPart;
 
           // Write to response stream
-          await writer.write(textEncoder.encode(deltaContent));
+          await writer.write(textEncoder.encode(textPart));
 
           // Update message content in database
           await ctx.runMutation(internal.messages.updateMessageContent, {
             messageId,
-            content: accumulatedText,
+            content: [{ type: "text" as const, text: accumulatedText }],
             isStreaming: true,
           });
         }
@@ -159,44 +159,68 @@ export const claudeCodeBatchLog = httpAction(async (ctx, request) => {
   console.log("Authenticated user:", user.email);
 
   // Parse request body
-  const { sessionId, entries } = await request.json();
+  const { sessionId, entries, fileName, sessionSummary } = await request.json();
   
   if (!sessionId || !entries || !Array.isArray(entries)) {
     return new Response("Missing sessionId or entries", { status: 400 });
   }
 
   console.log(`Processing batch log for session ${sessionId} with ${entries.length} entries`);
+  if (fileName) {
+    console.log(`Using custom file name: ${fileName}`);
+  }
+  if (sessionSummary) {
+    console.log(`Session summary: ${sessionSummary.substring(0, 100)}${sessionSummary.length > 100 ? '...' : ''}`);
+  }
 
   try {
     // Check if file already exists for this session
     let fileId: Id<"files"> | null = null;
     
     // Search for existing file with this sessionId in metadata
-    const existingFiles = await ctx.runQuery(api.files.list);
-    const existingFile = existingFiles.find((f: any) => 
-      f.metadata?.claudeCodeSessionId === sessionId
-    );
+    const existingFile = await ctx.runQuery(internal.files.findByClaudeCodeSessionId, {
+      sessionId,
+      userId: user._id
+    });
 
     if (existingFile) {
       fileId = existingFile._id;
       console.log(`Found existing file ${fileId} for session ${sessionId}`);
     } else {
+      // Use provided fileName or fallback to session ID
+      const fileNameToUse = fileName || `/claude/${sessionId}.chat`;
+      
+      console.log(`Creating new file with name: ${fileNameToUse}`);
+      
       // Create new file for this Claude Code session
-      fileId = await ctx.runMutation(internal.files.internalCreate, {
-        userId: user._id,
-        name: `/claude/${sessionId.substring(0, 8)}.chat`,
-        metadata: {
-          claudeCodeSessionId: sessionId,
-          importedAt: Date.now(),
-          source: 'vscode-extension'
-        }
-      });
-      console.log(`Created new file ${fileId} for session ${sessionId}`);
+      try {
+        fileId = await ctx.runMutation(internal.files.internalCreate, {
+          userId: user._id,
+          name: fileNameToUse,
+          metadata: {
+            claudeCodeSessionId: sessionId,
+            sessionSummary: sessionSummary,
+            importedAt: Date.now(),
+            source: 'vscode-extension'
+          }
+        });
+        console.log(`Successfully created file ${fileId} for session ${sessionId} with name: ${fileNameToUse}`);
+      } catch (error) {
+        console.error(`Failed to create file for session ${sessionId}:`, error);
+        throw error;
+      }
+    }
+
+    // Validate that we have a fileId
+    if (!fileId) {
+      throw new Error("Failed to create or find file for Claude Code session");
     }
 
     // Create messages from entries
     let messagesCreated = 0;
     let lastMessageTime = Date.now();
+    
+    console.log(`Starting to create ${entries.length} messages for file ${fileId}`);
     
     for (const entry of entries) {
       try {
@@ -226,12 +250,19 @@ export const claudeCodeBatchLog = httpAction(async (ctx, request) => {
           }];
         }
 
+        // Normalize content to structured format
+        const structuredContent = Array.isArray(entry.content) 
+          ? entry.content // Already structured
+          : entry.content 
+            ? [{ type: "text" as const, text: entry.content }] // String to structured
+            : [{ type: "text" as const, text: "" }]; // Empty fallback
+
         // Create message using internal mutation
         await ctx.runMutation(internal.messages.internalCreateMessage, {
           userId: user._id,
           fileId,
           role: entry.role || 'user',
-          content: entry.content || '',
+          content: structuredContent,
           model: entry.metadata?.claudeOriginal?.model,
           metadata: messageMetadata
         });

@@ -29,6 +29,7 @@ interface GitRepoItemProps {
     onToggleExpanded: (folderPath: string) => void;
     onFolderClick: (folderPath: string, event?: React.MouseEvent) => void;
     onFolderContextMenu: (e: React.MouseEvent, folderPath: string) => void;
+    selectedFolders: Set<string>;
 }
 
 // Helper function to format file sizes
@@ -173,6 +174,8 @@ export function GitRepoItem({
 
         const pollInterval = setInterval(async () => {
             try {
+                if (!folder.gitRepoFile?._id) return;
+                
                 const result = await getRepoFiles({
                     fileId: folder.gitRepoFile._id,
                     path: "",
@@ -268,9 +271,9 @@ export function GitRepoItem({
                         >
                             <div className="w-4 h-4 flex items-center justify-center mr-1">
                                 {isExpanded ? (
-                                    <ChevronDown className="w-3 h-3" style={{ opacity: 0.6 }} />
+                                    <ChevronDown className="w-4 h-4" style={{ opacity: 0.6 }} />
                                 ) : (
-                                    <ChevronRight className="w-3 h-3" style={{ opacity: 0.6 }} />
+                                    <ChevronRight className="w-4 h-4" style={{ opacity: 0.6 }} />
                                 )}
                             </div>
                             <Folder className="w-3 h-3 mr-2 flex-shrink-0" style={{ opacity: 0.6 }} />
@@ -382,7 +385,7 @@ export function GitRepoItem({
                         <div 
                             className="h-[22px] flex items-center text-[13px] text-sidebar-foreground"
                             style={{ 
-                                paddingLeft: `${20 + ((level + 1) * 16)}px`,
+                                paddingLeft: `${200 + ((level + 1) * 16)}px`,
                                 opacity: 0.6,
                             }}
                         >
