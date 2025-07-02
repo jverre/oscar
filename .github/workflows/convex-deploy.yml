@@ -1,0 +1,37 @@
+name: Deploy Convex Functions
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-convex:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: |
+          cd oscar-chat
+          npm ci
+        
+      - name: Deploy Convex functions
+        run: |
+          cd oscar-chat
+          npx convex deploy
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+          
+      - name: Notify deployment success
+        run: |
+          echo "✅ Convex functions deployed successfully to production"
+          echo "🚀 Deployment completed at $(date)"
