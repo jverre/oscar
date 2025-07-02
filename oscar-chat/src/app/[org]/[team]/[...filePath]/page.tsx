@@ -4,20 +4,16 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { useAuthToken } from "@convex-dev/auth/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { TerminalInput } from "@/components/chat/TerminalInput";
 import { MessageList } from "@/components/chat/MessageList";
 import { FileNotFound } from "@/components/chat/FileNotFound";
-import { WelcomeScreen } from "@/components/chat/WelcomeScreen";
 import { BlogEditor } from "@/components/blog/BlogEditor";
 import { useTabContext } from "@/contexts/TabContext";
-import { useFileCreation } from "@/hooks/useFileCreation";
-import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export default function OrgTeamFilePage() {
   const user = useQuery(api.users.current);
   const token = useAuthToken();
-  const router = useRouter();
   const params = useParams();
   
   // Extract org, team, and file path from URL
@@ -27,7 +23,7 @@ export default function OrgTeamFilePage() {
   const fileName = filePath ? filePath.map(decodeURIComponent).join('/') : '';
   
   // Get tab context
-  const { activeTabId, openTabs, addTab } = useTabContext();
+  const { activeTabId } = useTabContext();
   
   // Get org and team by name (use public queries for unauthenticated users)
   const organization = useQuery(
@@ -59,8 +55,6 @@ export default function OrgTeamFilePage() {
   // State for submission
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Hook for file creation
-  const { createFile } = useFileCreation();
   
   // Mutations
   const createUserMessage = useMutation(api.messages.createUserMessage);

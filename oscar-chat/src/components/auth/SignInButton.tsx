@@ -7,7 +7,7 @@ interface SignInButtonProps {
   variant?: string;
 }
 
-export function SignInButton({ afterSignInUrl, variant }: SignInButtonProps) {
+export function SignInButton({ afterSignInUrl: _afterSignInUrl, variant: _variant }: SignInButtonProps) {
   const { signIn } = useAuthActions();
     
   const handleSignIn = () => {

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useTabContext } from "@/contexts/TabContext";
-import { normalizeConversationTitle, normalizeBlogTitle, getBaseName, CHAT_EXTENSION, BLOG_EXTENSION } from "@/utils/extensionUtils";
+import { normalizeConversationTitle, normalizeBlogTitle } from "@/utils/extensionUtils";
 import { generateUniqueFileName, validateFileName } from "@/utils/fileNameUtils";
 import type { Id } from "../../convex/_generated/dataModel";
 

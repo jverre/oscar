@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
 import { FileText, MessageSquare, Clock } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
 
@@ -16,7 +16,6 @@ interface SearchResult {
 
 interface SearchResultsProps {
     isOpen: boolean;
-    onClose: () => void;
     searchValue: string;
     results: SearchResult[];
     selectedIndex: number;
@@ -27,7 +26,6 @@ interface SearchResultsProps {
 
 export function SearchResults({ 
     isOpen, 
-    onClose, 
     searchValue, 
     results,
     selectedIndex, 

@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SignInButton } from "@/components/auth/SignInButton";
+import Link from "next/link";
 
 export default function SignInPage() {
     const user = useQuery(api.users.current);
@@ -97,13 +98,13 @@ export default function SignInPage() {
                 <div className="mt-6 text-center">
                     <p style={{ color: 'var(--text-secondary)' }} className="text-xs">
                         Need help?{' '}
-                        <a 
+                        <Link 
                             href="/support" 
                             style={{ color: 'var(--text-accent)' }}
                             className="hover:underline"
                         >
                             Contact Support
-                        </a>
+                        </Link>
                     </p>
                 </div>
             </div>

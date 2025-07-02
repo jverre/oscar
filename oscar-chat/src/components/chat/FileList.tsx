@@ -10,7 +10,7 @@ import { useTabContext } from "@/contexts/TabContext";
 import { useFileCreation } from "@/hooks/useFileCreation";
 import { FileContextMenu } from "./FileContextMenu";
 import { DeleteFileDialog } from "./DeleteFileDialog";
-import { FolderNode, buildFolderStructure, getAllFilesInFolder, getFileDisplayName, isGitRepo, getGitRepoDisplayName } from "@/utils/folderUtils";
+import { FolderNode, buildFolderStructure, isGitRepo } from "@/utils/folderUtils";
 import { FolderItem } from "./FolderItem";
 import { VisibilityFolderItem } from "./VisibilityFolderItem";
 import { GitRepoItem } from "./GitRepoItem";

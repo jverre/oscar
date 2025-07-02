@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Search, Plus, GitBranch, FileText } from "lucide-react";
+import { Search, Plus, FileText } from "lucide-react";
 
 interface Command {
     id: string;
@@ -13,7 +13,6 @@ interface Command {
 
 interface CommandPaletteProps {
     isOpen: boolean;
-    onClose: () => void;
     searchValue: string;
     onSearchChange: (value: string) => void;
     selectedIndex: number;
@@ -59,7 +58,6 @@ const mockCommands: Command[] = [
 
 export function CommandPalette({ 
     isOpen, 
-    onClose, 
     searchValue, 
     onSearchChange, 
     selectedIndex, 

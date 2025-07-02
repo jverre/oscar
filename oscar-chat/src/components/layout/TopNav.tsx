@@ -350,7 +350,6 @@ export function TopNav() {
         {searchMode ? (
           <SearchResults
             isOpen={isCommandPaletteOpen}
-            onClose={handleClose}
             searchValue={searchValue}
             results={searchResults}
             selectedIndex={selectedIndex}
@@ -361,7 +360,6 @@ export function TopNav() {
         ) : (
           <CommandPalette
             isOpen={isCommandPaletteOpen}
-            onClose={handleClose}
             searchValue={searchValue}
             onSearchChange={setSearchValue}
             selectedIndex={selectedIndex}
