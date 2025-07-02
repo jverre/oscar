@@ -134,7 +134,7 @@ export default function OrgTeamFilePage() {
     
     const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
     const isAtBottom = Math.abs((scrollTop + clientHeight) - scrollHeight) <= 2;
-    const isNearTop = scrollTop < 300; // Within 300px of top
+    const isNearTop = scrollTop < 25; // Within 300px of top
     
     setShouldAutoScroll(isAtBottom);
     
