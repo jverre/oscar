@@ -7,7 +7,9 @@ import {
     Plus, 
     Edit3, 
     Trash2,
-    Clock
+    Clock,
+    FileText,
+    FilePenLine
 } from "lucide-react";
 
 const eventIcons = {
@@ -15,6 +17,9 @@ const eventIcons = {
     create_conversation: Plus,
     rename_conversation: Edit3,
     delete_conversation: Trash2,
+    create_file: FileText,
+    rename_file: FilePenLine,
+    delete_file: Trash2,
 };
 
 const eventColors = {
@@ -22,6 +27,9 @@ const eventColors = {
     create_conversation: "text-green-400",
     rename_conversation: "text-yellow-400",
     delete_conversation: "text-red-400",
+    create_file: "text-green-400",
+    rename_file: "text-yellow-400", 
+    delete_file: "text-red-400",
 };
 
 function formatDate(timestamp: number) {

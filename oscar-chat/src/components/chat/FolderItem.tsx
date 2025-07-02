@@ -44,7 +44,7 @@ export function FolderItem({
                 isSelected && "bg-sidebar-accent"
             )}
             style={{ 
-                paddingLeft: `${20 + indentLevel}px`,
+                paddingLeft: `${16 + indentLevel}px`,
                 paddingRight: '8px',
                 backgroundColor: isSelected ? 'var(--interactive-primary)' : 'transparent'
             }}
@@ -65,7 +65,7 @@ export function FolderItem({
                 onClick={handleToggleClick}
                 className="absolute flex items-center justify-center"
                 style={{ 
-                    left: `${4 + indentLevel}px`,
+                    left: `${12 + indentLevel}px`,
                     width: '16px',
                     height: '22px',
                     backgroundColor: 'transparent'
@@ -82,7 +82,7 @@ export function FolderItem({
             
             <span className="truncate" style={{ 
                 opacity: 0.8, 
-                marginLeft: '4px',
+                marginLeft: '12px',
                 color: isSelected ? 'white' : 'inherit'
             }}>{folder.name}</span>
         </div>

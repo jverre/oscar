@@ -5,6 +5,7 @@ export interface SyncedSession {
     lastSyncedMessageCount: number;
     lastSyncedAt: number;
     lastKnownFileModified: number; // File system modification time when last synced
+    lastSyncedMessageTimestamp?: number; // Timestamp of the last synced message
     filePath: string; // Full path to the JSONL file
     oscarFileId?: string;
     status: 'synced' | 'pending' | 'error';
@@ -59,6 +60,7 @@ export class SyncStateManager {
         messageCount: number, 
         filePath: string,
         fileModifiedTime: number,
+        lastMessageTimestamp?: number,
         oscarFileId?: string
     ): Promise<void> {
         console.log(`✅ Marking session ${sessionId} as synced (${messageCount} messages, modified: ${new Date(fileModifiedTime)})`);
@@ -68,6 +70,7 @@ export class SyncStateManager {
             lastSyncedMessageCount: messageCount,
             lastSyncedAt: Date.now(),
             lastKnownFileModified: fileModifiedTime,
+            lastSyncedMessageTimestamp: lastMessageTimestamp,
             filePath,
             oscarFileId,
             status: 'synced'
@@ -86,6 +89,7 @@ export class SyncStateManager {
             lastSyncedMessageCount: existing?.lastSyncedMessageCount || 0,
             lastSyncedAt: existing?.lastSyncedAt || 0,
             lastKnownFileModified: existing?.lastKnownFileModified || 0,
+            lastSyncedMessageTimestamp: existing?.lastSyncedMessageTimestamp,
             filePath: filePath || existing?.filePath || '',
             oscarFileId: existing?.oscarFileId,
             status: 'pending'
@@ -103,6 +107,7 @@ export class SyncStateManager {
             lastSyncedMessageCount: existing?.lastSyncedMessageCount || 0,
             lastSyncedAt: existing?.lastSyncedAt || 0,
             lastKnownFileModified: existing?.lastKnownFileModified || 0,
+            lastSyncedMessageTimestamp: existing?.lastSyncedMessageTimestamp,
             filePath: filePath || existing?.filePath || '',
             oscarFileId: existing?.oscarFileId,
             status: 'error',

@@ -10,8 +10,10 @@ interface FileContextMenuProps {
   onOpen: () => void;
   onRename: () => void;
   onDelete: () => void;
+  onRegenerateTitle?: () => void;
   onOpenAll?: () => void;
   isMultipleSelected?: boolean;
+  isChatFile?: boolean;
 }
 
 export function FileContextMenu({
@@ -21,8 +23,10 @@ export function FileContextMenu({
   onOpen,
   onRename,
   onDelete,
+  onRegenerateTitle,
   onOpenAll,
   isMultipleSelected = false,
+  isChatFile = false,
 }: FileContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -74,6 +78,7 @@ export function FileContextMenu({
     : [
         { label: "Open", action: onOpen },
         { label: "Rename", action: onRename },
+        ...(isChatFile && onRegenerateTitle ? [{ label: "Regenerate Title", action: onRegenerateTitle }] : []),
         { type: "separator" as const },
         { label: "Delete", action: onDelete, className: "hover:text-foreground", style: { color: 'var(--status-error)' } },
       ];

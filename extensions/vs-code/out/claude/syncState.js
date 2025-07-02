@@ -31,13 +31,14 @@ class SyncStateManager {
             console.log('Error saving sync state:', error);
         }
     }
-    async markSessionSynced(sessionId, messageCount, filePath, fileModifiedTime, oscarFileId) {
+    async markSessionSynced(sessionId, messageCount, filePath, fileModifiedTime, lastMessageTimestamp, oscarFileId) {
         console.log(`✅ Marking session ${sessionId} as synced (${messageCount} messages, modified: ${new Date(fileModifiedTime)})`);
         const syncedSession = {
             sessionId,
             lastSyncedMessageCount: messageCount,
             lastSyncedAt: Date.now(),
             lastKnownFileModified: fileModifiedTime,
+            lastSyncedMessageTimestamp: lastMessageTimestamp,
             filePath,
             oscarFileId,
             status: 'synced'
@@ -53,6 +54,7 @@ class SyncStateManager {
             lastSyncedMessageCount: existing?.lastSyncedMessageCount || 0,
             lastSyncedAt: existing?.lastSyncedAt || 0,
             lastKnownFileModified: existing?.lastKnownFileModified || 0,
+            lastSyncedMessageTimestamp: existing?.lastSyncedMessageTimestamp,
             filePath: filePath || existing?.filePath || '',
             oscarFileId: existing?.oscarFileId,
             status: 'pending'
@@ -67,6 +69,7 @@ class SyncStateManager {
             lastSyncedMessageCount: existing?.lastSyncedMessageCount || 0,
             lastSyncedAt: existing?.lastSyncedAt || 0,
             lastKnownFileModified: existing?.lastKnownFileModified || 0,
+            lastSyncedMessageTimestamp: existing?.lastSyncedMessageTimestamp,
             filePath: filePath || existing?.filePath || '',
             oscarFileId: existing?.oscarFileId,
             status: 'error',

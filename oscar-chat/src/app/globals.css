@@ -27,8 +27,8 @@
   --interactive-hover: #2A2A2A;   /* Hover states */
   
   /* Status colors */
-  --status-error: #F48771;
-  --status-error-hover: #E5745D;
+  --status-error: #CC4125;
+  --status-error-hover: #B8341F;
   --status-warning: #E5C07B;  
   --status-success: #98C379;
   
@@ -449,4 +449,9 @@ button.terminal-button:hover {
 .markdown-content img {
   max-width: 100%;
   height: auto;
+}
+
+/* Fast tooltips */
+[title]:hover::after {
+  transition-delay: 0ms !important;
 }

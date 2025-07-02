@@ -5,6 +5,7 @@ import { api } from "../../../convex/_generated/api";
 import { useFileCreation } from "@/hooks/useFileCreation";
 import { useRouter } from "next/navigation";
 import { MessageSquare, FileText } from "lucide-react";
+import { buildFileUrl } from "@/utils/fileUrlUtils";
 
 interface WelcomeScreenProps {
     // No props needed - using useChatCreation hook directly
@@ -40,9 +41,10 @@ export function WelcomeScreen({}: WelcomeScreenProps) {
     const handleFileClick = (fileId: string) => {
         const file = files?.find(f => f._id === fileId);
         if (file && userOrg && userTeam) {
-            router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/${encodeURIComponent(file.name)}`);
+            router.push(buildFileUrl(file, userOrg, userTeam));
         } else {
-            router.push(`/chat?file=${fileId}`);
+            // If file not found or org/team not loaded, go to home
+            router.push('/');
         }
     };
 

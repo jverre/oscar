@@ -4,6 +4,17 @@ import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { paginationOptsValidator } from "convex/server";
 
+// Helper function to extract searchable text from message content
+const extractSearchableText = (content: any[]): string => {
+    if (!Array.isArray(content)) return "";
+    
+    return content
+        .filter((part) => part.type === "text")
+        .map((part) => part.text)
+        .join(" ")
+        .trim();
+};
+
 // List messages in a file with pagination
 export const list = query({
   args: {
@@ -27,7 +38,7 @@ export const list = query({
     return await ctx.db
       .query("messages")
       .withIndex("by_file", (q) => q.eq("fileId", args.fileId))
-      .order("asc")
+      .order("desc")
       .paginate(args.paginationOpts);
   },
 });
@@ -36,7 +47,11 @@ export const list = query({
 export const createUserMessage = mutation({
   args: {
     fileId: v.id("files"),
-    content: v.string(),
+    content: v.array(v.union(
+      v.object({ type: v.literal("text"), text: v.string() }),
+      v.object({ type: v.literal("tool-call"), toolCallId: v.string(), toolName: v.string(), args: v.any() }),
+      v.object({ type: v.literal("tool-result"), toolCallId: v.string(), result: v.any(), isError: v.optional(v.boolean()) })
+    )),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -54,12 +69,16 @@ export const createUserMessage = mutation({
 
     const now = Date.now();
 
+    // Extract searchable text from content
+    const searchableText = extractSearchableText(args.content);
+
     // Insert user message
     const messageId = await ctx.db.insert("messages", {
       fileId: args.fileId,
       userId,
       role: "user",
       content: args.content,
+      searchableText,
       createdAt: now,
     });
 
@@ -68,10 +87,14 @@ export const createUserMessage = mutation({
       lastMessageAt: now,
     });
 
-    // Record timeline event
-    const messagePreview = typeof args.content === 'string' 
-      ? (args.content.length > 100 ? args.content.substring(0, 100) + "..." : args.content)
-      : "[Structured content with tool calls]";
+    // Record timeline event - extract text safely
+    const textContent = args.content
+      .filter(part => part && part.type === 'text')
+      .map(part => (part as { type: 'text'; text: string }).text)
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    const messagePreview = textContent.length > 100 ? textContent.substring(0, 100) + "..." : textContent || "[Message with tool calls]";
     
     await ctx.runMutation(internal.timeline.createSendMessageEvent, {
       userId,
@@ -111,7 +134,8 @@ export const createAssistantMessage = internalMutation({
       fileId: args.fileId,
       userId,
       role: "assistant",
-      content: "",
+      content: [{ type: "text", text: "" }],
+      searchableText: "",
       provider: "openrouter",
       isStreaming: true,
       createdAt: now,
@@ -131,12 +155,20 @@ export const createAssistantMessage = internalMutation({
 export const updateMessageContent = internalMutation({
   args: {
     messageId: v.id("messages"),
-    content: v.string(),
+    content: v.array(v.union(
+      v.object({ type: v.literal("text"), text: v.string() }),
+      v.object({ type: v.literal("tool-call"), toolCallId: v.string(), toolName: v.string(), args: v.any() }),
+      v.object({ type: v.literal("tool-result"), toolCallId: v.string(), result: v.any(), isError: v.optional(v.boolean()) })
+    )),
     isStreaming: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    // Extract searchable text from updated content
+    const searchableText = extractSearchableText(args.content);
+
     await ctx.db.patch(args.messageId, {
       content: args.content,
+      searchableText,
       ...(args.isStreaming !== undefined && { isStreaming: args.isStreaming }),
     });
   },
@@ -175,7 +207,11 @@ export const internalCreateMessage = internalMutation({
     userId: v.id("users"),
     fileId: v.id("files"),
     role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
-    content: v.string(),
+    content: v.array(v.union(
+      v.object({ type: v.literal("text"), text: v.string() }),
+      v.object({ type: v.literal("tool-call"), toolCallId: v.string(), toolName: v.string(), args: v.any() }),
+      v.object({ type: v.literal("tool-result"), toolCallId: v.string(), result: v.any(), isError: v.optional(v.boolean()) })
+    )),
     model: v.optional(v.string()),
     metadata: v.optional(v.any()),
   },
@@ -188,18 +224,23 @@ export const internalCreateMessage = internalMutation({
 
     const now = Date.now();
 
+    // Extract searchable text from content
+    const searchableText = extractSearchableText(args.content);
+
     // Insert message with only schema-compliant metadata
     const messageId = await ctx.db.insert("messages", {
       fileId: args.fileId,
       userId: args.userId,
       role: args.role,
       content: args.content,
+      searchableText,
       model: args.model,
       createdAt: now,
       metadata: {
-        tokenCount: args.metadata?.claudeOriginal?.tokenCount,
+        tokenCount: args.metadata?.claudeOriginal?.tokenCount || args.metadata?.tokenCount,
         latency: args.metadata?.latency,
         error: args.metadata?.error,
+        finishReason: args.metadata?.finishReason,
       },
     });
 
@@ -208,10 +249,14 @@ export const internalCreateMessage = internalMutation({
     //   lastMessageAt: now,
     // });
 
-    // Record timeline event
-    const messagePreview = typeof args.content === 'string' 
-      ? (args.content.length > 100 ? args.content.substring(0, 100) + "..." : args.content)
-      : "[Structured content with tool calls]";
+    // Record timeline event - extract text safely
+    const textContent = args.content
+      .filter(part => part && part.type === 'text')
+      .map(part => (part as { type: 'text'; text: string }).text)
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    const messagePreview = textContent.length > 100 ? textContent.substring(0, 100) + "..." : textContent || "[Message with tool calls]";
     
     await ctx.runMutation(internal.timeline.createSendMessageEvent, {
       userId: args.userId,
@@ -222,6 +267,48 @@ export const internalCreateMessage = internalMutation({
     });
 
     return messageId;
+  },
+});
+
+// List messages in a public file (no authentication required)
+export const listPublic = query({
+  args: {
+    fileId: v.id("files"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    // Verify the file exists and is public
+    const file = await ctx.db.get(args.fileId);
+    if (!file || file.visibility !== "public") {
+      return { page: [], isDone: true, continueCursor: "" };
+    }
+
+    return await ctx.db
+      .query("messages")
+      .withIndex("by_file", (q) => q.eq("fileId", args.fileId))
+      .order("desc")
+      .paginate(args.paginationOpts);
+  },
+});
+
+// Get stream text for a specific stream/message ID
+export const getStreamText = query({
+  args: {
+    streamId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    // For now, return a basic structure since streaming is handled differently
+    // This is a placeholder to satisfy the useStream hook
+    return {
+      text: "",
+      status: "done" as "pending" | "streaming" | "done" | "error" | "timeout",
+      messageId: undefined,
+    };
   },
 });
 

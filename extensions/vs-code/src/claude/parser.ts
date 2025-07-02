@@ -24,7 +24,15 @@ export interface ParsedClaudeMessage {
     timestamp: Date;
     type: 'user' | 'assistant' | 'system';
     role: 'user' | 'assistant' | 'system';
-    content: string;
+    content: Array<{
+        type: string;
+        text?: string;
+        toolCallId?: string;
+        toolName?: string;
+        args?: any;
+        result?: any;
+        isError?: boolean;
+    }>;
     model?: string;
     provider?: string;
     cwd?: string;
@@ -38,8 +46,7 @@ export interface ParsedClaudeMessage {
         tokenCount?: number;
         latency?: number;
         error?: string;
-        hasStructuredContent?: boolean;
-        structuredContent?: any[];
+        finishReason?: string;
     };
 }
 
@@ -129,35 +136,32 @@ export class ClaudeSessionParser {
             }
         };
         
-        console.log(`✅ Parsed session ${sessionId}: ${messages.length} messages, ${models.size} models, ${toolUses} tool uses`);
         return session;
     }
     
     private static parseMessage(rawMessage: ClaudeMessage): ParsedClaudeMessage {
-        // Extract content from message
-        let content: string | StructuredContent[] = '';
+        // Extract content from message - always structured format
+        const content: Array<{type: string, text?: string, toolCallId?: string, toolName?: string, args?: any, result?: any, isError?: boolean}> = [];
         const toolUses: ToolUse[] = [];
         
         // Safety check for message content
         if (!rawMessage.message || !rawMessage.message.content) {
             console.log(`⚠️ Message missing content: ${rawMessage.uuid}`);
-            content = '';
+            // Return empty text content for missing content
+            content.push({ type: 'text', text: '' });
         } else if (typeof rawMessage.message.content === 'string') {
-            content = rawMessage.message.content;
+            // Convert string content to structured format
+            content.push({ type: 'text', text: rawMessage.message.content });
         } else if (Array.isArray(rawMessage.message.content)) {
-            // Handle structured content - create string representation for UI but preserve structure in metadata
-            const structuredContent: StructuredContent[] = [];
-            let textContent = '';
-            
+            // Handle structured content - create AI SDK compatible format
             for (const block of rawMessage.message.content) {
                 if (block.type === 'text') {
-                    structuredContent.push({
+                    content.push({
                         type: 'text',
                         text: block.text || ''
                     });
-                    textContent += block.text || '';
                 } else if (block.type === 'tool_use') {
-                    structuredContent.push({
+                    content.push({
                         type: 'tool-call',
                         toolCallId: block.id,
                         toolName: block.name,
@@ -168,22 +172,15 @@ export class ClaudeSessionParser {
                         name: block.name,
                         input: block.input
                     });
-                    textContent += `\n\n:::tool-call{name="${block.name}" id="${block.id}"}\n${JSON.stringify(block.input, null, 2)}\n:::\n`;
                 } else if (block.type === 'tool_result') {
-                    structuredContent.push({
+                    content.push({
                         type: 'tool-result',
                         toolCallId: block.tool_use_id || block.id || '',
-                        toolName: block.name || 'unknown',
                         result: block.content || '',
                         isError: block.isError
                     });
-                    const resultText = typeof block.content === 'string' ? block.content : JSON.stringify(block.content);
-                    textContent += `\n\n:::tool-result{id="${block.tool_use_id || block.id || ''}"}\n${resultText}\n:::\n`;
                 }
             }
-            
-            // Store as string content for UI compatibility, structured content in metadata
-            content = textContent.trim();
         }
         
         return {
@@ -193,7 +190,7 @@ export class ClaudeSessionParser {
             timestamp: new Date(rawMessage.timestamp || Date.now()),
             type: rawMessage.type || 'user',
             role: rawMessage.message?.role || rawMessage.type || 'user',
-            content: content.trim(),
+            content: content,
             model: rawMessage.message?.model,
             cwd: rawMessage.cwd,
             version: rawMessage.version,
@@ -217,18 +214,12 @@ export class ClaudeSessionParser {
         
         // Extract stop reason if available
         if ((rawMessage.message as any).stop_reason) {
-            metadata.stopReason = (rawMessage.message as any).stop_reason;
+            metadata.finishReason = (rawMessage.message as any).stop_reason;
         }
         
         // Extract any error information
         if ((rawMessage as any).error) {
             metadata.error = (rawMessage as any).error;
-        }
-        
-        // Store structured content if it exists (for potential future use)
-        if (Array.isArray(rawMessage.message?.content)) {
-            metadata.hasStructuredContent = true;
-            metadata.structuredContent = rawMessage.message.content;
         }
         
         return Object.keys(metadata).length > 0 ? metadata : undefined;

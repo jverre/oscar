@@ -6,10 +6,12 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { SignInButton } from "@/components/auth/SignInButton";
 import { useTabContext } from "@/contexts/TabContext";
+import { useRouter } from "next/navigation";
 
 export function Footer() {
   const user = useQuery(api.users.current);
   const { clearAllTabs } = useTabContext();
+  const router = useRouter();
 
   const { signIn, signOut } = useAuthActions();
   const [showCallout, setShowCallout] = useState(false);
@@ -89,6 +91,7 @@ export function Footer() {
               clearAllTabs();
               signOut();
               setShowSignOutMenu(false);
+              router.push('/');
             }}
             className="w-full px-3 py-1.5 text-left text-xs transition-colors"
             style={{ 

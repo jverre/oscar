@@ -57,3 +57,21 @@ export const getCurrentUserTeam = query({
     return await ctx.db.get(user.teamId);
   },
 });
+
+// Get team by organization ID and name (public access for public files)
+export const getByOrgAndNamePublic = query({
+  args: {
+    organizationId: v.id("organizations"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find team by organization and name (no authentication required)
+    const team = await ctx.db
+      .query("teams")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .filter((q) => q.eq(q.field("name"), args.name))
+      .first();
+
+    return team;
+  },
+});

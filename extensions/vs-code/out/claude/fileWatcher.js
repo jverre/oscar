@@ -65,17 +65,14 @@ class ClaudeFileWatcher {
         this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
         // Watch for new files
         this.watcher.onDidCreate(async (uri) => {
-            console.log('📄 New Claude session file detected:', uri.fsPath);
             await this.processSessionFile(uri.fsPath);
         });
         // Watch for file changes
         this.watcher.onDidChange(async (uri) => {
-            console.log('📝 Claude session file updated:', uri.fsPath);
             await this.processSessionFile(uri.fsPath);
         });
         // Watch for file deletions
         this.watcher.onDidDelete((uri) => {
-            console.log('🗑️ Claude session file deleted:', uri.fsPath);
             this.removeSession(uri.fsPath);
         });
         console.log('✅ Claude Code file watcher started successfully');
@@ -139,7 +136,6 @@ class ClaudeFileWatcher {
             const isNewSession = !existingSession;
             // Update session in map
             this.sessions.set(sessionId, session);
-            console.log(`📊 Processed session ${sessionId}: ${messageCount} messages (${isNewSession ? 'NEW' : 'UPDATED'})`);
             // Fire appropriate event
             if (isNewSession) {
                 this.onNewSession.fire(session);

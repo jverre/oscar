@@ -17,26 +17,26 @@ export function MainLayout({ children }: MainLayoutProps) {
   return (
     <SidebarProvider>
       <OscarSidebar />
-      <SidebarInset className="flex flex-col min-h-screen">
-        {/* Header - fixed at top */}
-        <div className="sticky top-0 z-50">
+      <SidebarInset className="flex flex-col h-screen">
+        {/* Header - fixed height at top */}
+        <div className="flex-shrink-0">
           <TopNav />
         </div>
         
-        {/* Tab Bar - hidden on mobile, sticky below header */}
+        {/* Tab Bar - fixed height below header (desktop only) */}
         {!isMobile && (
-          <div className="sticky top-[35px] z-40">
+          <div className="flex-shrink-0">
             <TabBar />
           </div>
         )}
         
-        {/* Main Content */}
-        <main className="flex-1">
+        {/* Main Content - takes remaining space */}
+        <main className="flex-1 min-h-0 overflow-hidden">
           {children}
         </main>
         
-        {/* Footer - sticky at bottom */}
-        <div className="sticky bottom-0 z-40">
+        {/* Footer - fixed height at bottom */}
+        <div className="flex-shrink-0">
           <Footer />
         </div>
       </SidebarInset>

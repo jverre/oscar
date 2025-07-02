@@ -185,6 +185,7 @@ export function BlogEditor({ fileId }: BlogEditorProps) {
     slashMenuItemsRef.current = slashMenuItems;
   }, [slashMenuItems]);
 
+
   const handleAutoSave = (content: any) => {
     // Clear existing timeout
     if (saveTimeout) {
@@ -236,15 +237,19 @@ export function BlogEditor({ fileId }: BlogEditorProps) {
       }
       
       if (props.event.key === 'ArrowDown') {
+        props.event.preventDefault();
+        props.event.stopPropagation();
         const currentIndex = slashMenuIndexRef.current;
-        const newIndex = currentIndex < props.items.length - 1 ? currentIndex + 1 : currentIndex;
+        const newIndex = currentIndex < props.items.length - 1 ? currentIndex + 1 : 0;
         setSlashMenuIndex(newIndex);
         return true;
       }
       
       if (props.event.key === 'ArrowUp') {
+        props.event.preventDefault();
+        props.event.stopPropagation();
         const currentIndex = slashMenuIndexRef.current;
-        const newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex;
+        const newIndex = currentIndex > 0 ? currentIndex - 1 : props.items.length - 1;
         setSlashMenuIndex(newIndex);
         return true;
       }
@@ -319,6 +324,46 @@ export function BlogEditor({ fileId }: BlogEditorProps) {
       }
     }
   }, [blog, editor]);
+
+  // Global keydown handler when slash menu is open
+  useEffect(() => {
+    if (!slashMenuOpen || !editor) return;
+
+    const handleGlobalKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        if (event.key === 'ArrowDown') {
+          const currentIndex = slashMenuIndexRef.current;
+          const newIndex = currentIndex < slashMenuItemsRef.current.length - 1 ? currentIndex + 1 : 0;
+          setSlashMenuIndex(newIndex);
+        } else if (event.key === 'ArrowUp') {
+          const currentIndex = slashMenuIndexRef.current;
+          const newIndex = currentIndex > 0 ? currentIndex - 1 : slashMenuItemsRef.current.length - 1;
+          setSlashMenuIndex(newIndex);
+        }
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+        const currentIndex = slashMenuIndexRef.current;
+        const selectedItem = slashMenuItemsRef.current[currentIndex];
+        if (selectedItem && slashRange) {
+          selectedItem.command({ editor, range: slashRange });
+          setSlashMenuOpen(false);
+          setSlashRange(null);
+        }
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        setSlashMenuOpen(false);
+        setSlashRange(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeydown, true);
+    return () => document.removeEventListener('keydown', handleGlobalKeydown, true);
+  }, [slashMenuOpen, editor, slashRange]);
 
   // Cleanup on unmount
   useEffect(() => {

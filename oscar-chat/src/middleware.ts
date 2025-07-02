@@ -1,22 +1,18 @@
 import { convexAuthNextjsMiddleware } from "@convex-dev/auth/nextjs/server";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextRequest, NextFetchEvent } from "next/server";
 
 const authMiddleware = convexAuthNextjsMiddleware();
 
-export default function middleware(request: NextRequest) {
+export default function middleware(request: NextRequest, event: NextFetchEvent) {
   // First run the Convex auth middleware
-  const authResponse = authMiddleware(request);
+  const authResponse = authMiddleware(request, event);
   
   // Check if user is authenticated by looking for the auth cookie
   const isAuthenticated = request.cookies.has("__convexAuthJWT");
   
-  // Redirect authenticated users from home to their org/team
-  // For now, redirect to /chat until user navigates to proper org/team URL
-  // The user will be redirected to the correct org/team URL on first file access
-  if (request.nextUrl.pathname === "/" && isAuthenticated) {
-    return NextResponse.redirect(new URL("/chat", request.url));
-  }
+  // Don't redirect authenticated users from home - let the page handle it
+  // The home page will check if user is authenticated and redirect to their org/team
   
   return authResponse;
 }

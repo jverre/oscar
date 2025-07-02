@@ -6,259 +6,13 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import { ToolCall } from '../ui/tool-call';
+import { normalizeContent, type StructuredContent } from '@/utils/contentUtils';
 
 interface MarkdownRendererProps {
-  content: string;
+  content: StructuredContent;
   className?: string;
-  metadata?: {
-    toolCalls?: Array<{
-      id: string;
-      name: string;
-      input: any;
-    }>;
-    toolResults?: Array<{
-      toolCallId: string;
-      toolName: string;
-      result: any;
-      isError?: boolean;
-    }>;
-    hasStructuredContent?: boolean;
-    structuredContent?: any[];
-  };
 }
 
-function parseWithMetadata(content: string, metadata: NonNullable<MarkdownRendererProps['metadata']>): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  let keyCounter = 0;
-
-  // Group tool calls with their results using metadata IDs
-  const toolGroups = metadata.toolCalls!.map(toolCall => {
-    const result = metadata.toolResults?.find(r => r.toolCallId === toolCall.id);
-    return {
-      toolCall,
-      result,
-      id: toolCall.id
-    };
-  });
-
-  // For metadata-based parsing, we'll render the content normally but replace tool sections
-  let processedContent = content;
-  
-  // Remove tool call/result blocks from content since we'll render them separately
-  processedContent = processedContent.replace(/\*\*🔧 Tool Call: [^*]+\*\*\s*\n```json\s*\n[\s\S]*?\n```/g, '');
-  processedContent = processedContent.replace(/\*\*🔧 Tool Result\*\*\s*\n[\s\S]*?(?=\n\*\*🔧|\n\n[A-Z]|$)/g, '');
-  
-  // Split content by paragraphs to intersperse tool calls
-  const contentParts = processedContent.split(/\n\n+/).filter(part => part.trim());
-  
-  // Add regular content
-  if (contentParts.length > 0) {
-    parts.push(
-      <ReactMarkdown
-        key={`text-${keyCounter++}`}
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[
-          [rehypeHighlight, { detect: true, ignoreMissing: true }],
-          rehypeRaw
-        ]}
-        components={getMarkdownComponents()}
-      >
-        {contentParts.join('\n\n')}
-      </ReactMarkdown>
-    );
-  }
-
-  // Add tool groups at the end
-  toolGroups.forEach(({ toolCall, result }) => {
-    parts.push(
-      <ToolCall 
-        key={`tool-${keyCounter++}`} 
-        name={toolCall.name} 
-        id={toolCall.id} 
-        result={result ? JSON.stringify(result.result) : undefined}
-      >
-        {JSON.stringify(toolCall.input, null, 2)}
-      </ToolCall>
-    );
-  });
-
-  return parts;
-}
-
-function parseToolBlocks(content: string, metadata?: MarkdownRendererProps['metadata']): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  let currentIndex = 0;
-  let keyCounter = 0;
-
-  // If we have structured metadata, use that for perfect tool call matching
-  if (metadata?.toolCalls && metadata.toolCalls.length > 0) {
-    return parseWithMetadata(content, metadata);
-  }
-
-  // First try the new format (:::tool-call style)
-  // Handle both escaped quotes (from JSON storage) and regular quotes
-  const newToolCallRegex = /:::tool-call\{name=\\?"([^"\\]+)\\?"\s+id=\\?"([^"\\]+)\\?"\}\n([\s\S]*?)\n:::/g;
-  const newToolResultRegex = /:::tool-result\{id=\\?"([^"\\]+)\\?"\}\n([\s\S]*?)\n:::/g;
-
-  // Also handle existing markdown format (**🔧 Tool Call:** style)
-  const markdownToolCallRegex = /\*\*🔧 Tool Call: ([^*]+)\*\*\s*\n```json\s*\n([\s\S]*?)\n```/g;
-  const markdownToolResultRegex = /\*\*🔧 Tool Result\*\*\s*\n([\s\S]*?)(?=\n\*\*🔧|\n\n[A-Z]|$)/g;
-
-  const toolCalls: Array<{
-    name: string;
-    id: string;
-    args: string;
-    index: number;
-    match: RegExpExecArray;
-  }> = [];
-  
-  const toolResults: Array<{
-    id: string;
-    result: string;
-    index: number;
-    match: RegExpExecArray;
-  }> = [];
-
-  // Check for new format first
-  let match;
-  while ((match = newToolCallRegex.exec(content)) !== null) {
-    const [, name, id, args] = match;
-    toolCalls.push({ name, id, args, index: match.index, match });
-  }
-
-  newToolCallRegex.lastIndex = 0;
-
-  while ((match = newToolResultRegex.exec(content)) !== null) {
-    const [, id, result] = match;
-    toolResults.push({ id, result, index: match.index, match });
-  }
-
-  // If no new format found, try markdown format
-  if (toolCalls.length === 0) {
-    let toolCallIndex = 0;
-    while ((match = markdownToolCallRegex.exec(content)) !== null) {
-      const [, name, args] = match;
-      const id = `tool-${toolCallIndex++}`;
-      toolCalls.push({ name, id, args, index: match.index, match });
-    }
-
-    markdownToolCallRegex.lastIndex = 0;
-
-    let toolResultIndex = 0;
-    while ((match = markdownToolResultRegex.exec(content)) !== null) {
-      const [, result] = match;
-      const id = `tool-${toolResultIndex++}`;
-      toolResults.push({ id, result, index: match.index, match });
-    }
-  }
-
-  // Group tool calls with their results
-  const toolGroups: Array<{
-    call: typeof toolCalls[0];
-    result?: typeof toolResults[0];
-    startIndex: number;
-    endIndex: number;
-  }> = [];
-
-  // Create a combined list of all tool items with their types
-  const allToolItems = [
-    ...toolCalls.map(call => ({ type: 'call' as const, item: call, index: call.index })),
-    ...toolResults.map(result => ({ type: 'result' as const, item: result, index: result.index }))
-  ].sort((a, b) => a.index - b.index);
-
-  // Group consecutive call-result pairs
-  for (let i = 0; i < allToolItems.length; i++) {
-    const current = allToolItems[i];
-    if (current.type === 'call') {
-      const next = allToolItems[i + 1];
-      const call = current.item as typeof toolCalls[0];
-      const result = (next && next.type === 'result') ? next.item as typeof toolResults[0] : undefined;
-      
-      const startIndex = call.index;
-      const endIndex = result ? 
-        result.index + result.match[0].length : 
-        call.index + call.match[0].length;
-      
-      toolGroups.push({ call, result, startIndex, endIndex });
-      
-      // Skip the result item since we've processed it
-      if (result) i++;
-    }
-  }
-
-  // Sort by start index
-  toolGroups.sort((a, b) => a.startIndex - b.startIndex);
-
-  toolGroups.forEach(({ call, result, startIndex, endIndex }) => {
-    // Add any content before this tool group
-    if (startIndex > currentIndex) {
-      const beforeContent = content.slice(currentIndex, startIndex);
-      if (beforeContent.trim()) {
-        parts.push(
-          <ReactMarkdown
-            key={`text-${keyCounter++}`}
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[
-              [rehypeHighlight, { detect: true, ignoreMissing: true }],
-              rehypeRaw
-            ]}
-            components={getMarkdownComponents()}
-          >
-            {beforeContent}
-          </ReactMarkdown>
-        );
-      }
-    }
-
-    // Add the grouped tool call and result
-    parts.push(
-      <ToolCall key={`tool-group-${keyCounter++}`} name={call.name} id={call.id} result={result?.result}>
-        {call.args}
-      </ToolCall>
-    );
-
-    currentIndex = endIndex;
-  });
-
-  // Add any remaining content
-  if (currentIndex < content.length) {
-    const remainingContent = content.slice(currentIndex);
-    if (remainingContent.trim()) {
-      parts.push(
-        <ReactMarkdown
-          key={`text-${keyCounter++}`}
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[
-            [rehypeHighlight, { detect: true, ignoreMissing: true }],
-            rehypeRaw
-          ]}
-          components={getMarkdownComponents()}
-        >
-          {remainingContent}
-        </ReactMarkdown>
-      );
-    }
-  }
-
-  // If no tool blocks found, return normal markdown
-  if (parts.length === 0) {
-    parts.push(
-      <ReactMarkdown
-        key="full-content"
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[
-          [rehypeHighlight, { detect: true, ignoreMissing: true }],
-          rehypeRaw
-        ]}
-        components={getMarkdownComponents()}
-      >
-        {content}
-      </ReactMarkdown>
-    );
-  }
-
-  return parts;
-}
 
 function getMarkdownComponents() {
   return {
@@ -532,8 +286,36 @@ function getMarkdownComponents() {
   };
 }
 
-export function MarkdownRenderer({ content, className = '', metadata }: MarkdownRendererProps) {
-  const renderedParts = parseToolBlocks(content, metadata);
+function parseStructuredContent(content: Array<{type: string, text?: string, toolCallId?: string, toolName?: string, args?: any, result?: any, isError?: boolean}>): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let keyCounter = 0;
+  
+  // Only render text content - tool calls are handled by ToolInteractionGroup
+  content.forEach(part => {
+    if (part.type === 'text' && part.text) {
+      parts.push(
+        <ReactMarkdown
+          key={`text-${keyCounter++}`}
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[
+            [rehypeHighlight, { detect: true, ignoreMissing: true }],
+            rehypeRaw
+          ]}
+          components={getMarkdownComponents()}
+        >
+          {part.text}
+        </ReactMarkdown>
+      );
+    }
+    // Tool calls and results are handled by ToolInteractionGroup component
+  });
+  
+  return parts;
+}
+
+export function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
+  const normalizedContent = normalizeContent(content);
+  const renderedParts = parseStructuredContent(normalizedContent);
   
   return (
     <div className={`markdown-content ${className}`}>

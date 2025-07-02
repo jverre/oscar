@@ -2,7 +2,12 @@
 
 import { useAuthActions } from "@convex-dev/auth/react";
 
-export function SignInButton() {
+interface SignInButtonProps {
+  afterSignInUrl?: string;
+  variant?: string;
+}
+
+export function SignInButton({ afterSignInUrl, variant }: SignInButtonProps) {
   const { signIn } = useAuthActions();
     
   const handleSignIn = () => {

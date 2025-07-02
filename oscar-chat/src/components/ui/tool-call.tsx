@@ -10,13 +10,29 @@ interface ToolCallProps {
     children: React.ReactNode;
     result?: string;
     defaultOpen?: boolean;
+    isExpanded?: boolean;
+    onToggle?: () => void;
+    isError?: boolean;
 }
 
-export function ToolCall({ name, id, children, result, defaultOpen = false }: ToolCallProps) {
-    const [isOpen, setIsOpen] = useState(defaultOpen);
+export function ToolCall({ 
+    name, 
+    id, 
+    children, 
+    result, 
+    defaultOpen = false, 
+    isExpanded, 
+    onToggle, 
+    isError = false 
+}: ToolCallProps) {
+    const [internalIsOpen, setInternalIsOpen] = useState(defaultOpen);
+    
+    // Use external control if provided, otherwise use internal state
+    const isOpen = isExpanded !== undefined ? isExpanded : internalIsOpen;
+    const handleToggle = onToggle || (() => setInternalIsOpen(!internalIsOpen));
 
     return (
-        <div className="my-2 border rounded overflow-hidden" style={{ 
+        <div className="my-1 border rounded overflow-hidden" style={{ 
             borderColor: 'var(--border-subtle)',
             fontSize: '12px',
             width: isOpen ? '80%' : '30%',
@@ -24,7 +40,7 @@ export function ToolCall({ name, id, children, result, defaultOpen = false }: To
             maxWidth: isOpen ? '800px' : '400px',
             transition: 'width 0.2s ease-in-out, max-width 0.2s ease-in-out'
         }}>
-            <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+            <Collapsible open={isOpen} onOpenChange={handleToggle}>
                 <CollapsibleTrigger 
                     className="w-full px-2 py-1 transition-colors duration-200 flex items-center gap-2 text-left"
                     style={{ 
@@ -45,8 +61,13 @@ export function ToolCall({ name, id, children, result, defaultOpen = false }: To
                     ) : (
                         <ChevronRight className="h-3 w-3" style={{ color: 'var(--text-secondary)' }} />
                     )}
-                    <Wrench className="h-3 w-3" style={{ color: 'var(--text-secondary)' }} />
+                    <Wrench className="h-3 w-3" style={{ color: isError ? 'var(--status-error)' : 'var(--text-secondary)' }} />
                     <span style={{ color: 'var(--text-primary)', fontSize: '12px' }}>{name}</span>
+                    {isError && (
+                        <span style={{ color: 'var(--status-error)', fontSize: '10px', marginLeft: 'auto' }}>
+                            ⚠ Error
+                        </span>
+                    )}
                 </CollapsibleTrigger>
                 <CollapsibleContent 
                     className="border-t"
@@ -55,27 +76,58 @@ export function ToolCall({ name, id, children, result, defaultOpen = false }: To
                         borderColor: 'var(--border-subtle)'
                     }}
                 >
-                    <div className="px-2 py-2">
-                        <div className="mb-2">
+                    <div className="px-2 py-1">
+                        <div className="mb-1">
                             <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Tool Call:</div>
-                            <pre className="text-xs overflow-x-auto" style={{ 
-                                color: 'var(--text-primary)',
-                                fontSize: '11px',
-                                lineHeight: '14px',
-                                margin: 0
+                            <div className="text-xs" style={{ 
+                                backgroundColor: 'var(--surface-secondary)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: '4px',
+                                padding: '8px',
+                                overflowX: 'auto'
                             }}>
-                                <code>{children}</code>
-                            </pre>
-                        </div>
-                        {result && (
-                            <div>
-                                <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Tool Result:</div>
-                                <div className="text-xs whitespace-pre-wrap" style={{ 
+                                <pre className="text-xs" style={{ 
                                     color: 'var(--text-primary)',
                                     fontSize: '11px',
-                                    lineHeight: '14px'
+                                    lineHeight: '14px',
+                                    margin: 0,
+                                    whiteSpace: 'pre-wrap',
+                                    fontFamily: 'monospace'
                                 }}>
-                                    {result}
+                                    <code>{children}</code>
+                                </pre>
+                            </div>
+                        </div>
+                        {result && (
+                            <div className="mt-1">
+                                <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Tool Result:</div>
+                                <div className="text-xs" style={{ 
+                                    backgroundColor: 'var(--surface-secondary)',
+                                    border: '1px solid var(--border-subtle)',
+                                    borderRadius: '4px',
+                                    padding: '8px',
+                                    maxHeight: '300px',
+                                    overflowY: 'auto',
+                                    overflowX: 'auto'
+                                }}>
+                                    <pre className="text-xs" style={{ 
+                                        color: 'var(--text-primary)',
+                                        fontSize: '11px',
+                                        lineHeight: '14px',
+                                        margin: 0,
+                                        whiteSpace: 'pre',
+                                        fontFamily: 'monospace'
+                                    }}>
+                                        <code>{
+                                            // Handle legacy content that might have markers and escaped newlines
+                                            result
+                                                .replace(/:::tool-result\{[^}]*\}\n?/g, '')
+                                                .replace(/\n?:::/g, '')
+                                                .replace(/\\n/g, '\n')
+                                                .replace(/\\t/g, '\t')
+                                                .trim()
+                                        }</code>
+                                    </pre>
                                 </div>
                             </div>
                         )}

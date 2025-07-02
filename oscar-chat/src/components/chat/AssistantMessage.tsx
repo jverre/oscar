@@ -1,39 +1,41 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer';
+import { normalizeContent, hasToolCalls as utilHasToolCalls } from '@/utils/contentUtils';
+import { ToolInteractionGroup, extractToolInteractions } from './ToolInteractionGroup';
 
 interface AssistantMessageProps {
-  content: string;
+  content: Array<{
+    type: string;
+    text?: string;
+    toolCallId?: string;
+    toolName?: string;
+    args?: any;
+    result?: any;
+    isError?: boolean;
+  }> | any; // Allow any during transition
   isStreaming?: boolean;
   error?: boolean;
   metadata?: {
     tokenCount?: number;
     latency?: number;
     error?: string;
-    toolCalls?: Array<{
-      id: string;
-      name: string;
-      input: any;
-    }>;
-    toolResults?: Array<{
-      toolCallId: string;
-      toolName: string;
-      result: any;
-      isError?: boolean;
-    }>;
-    hasStructuredContent?: boolean;
-    structuredContent?: any[];
+    finishReason?: string;
   };
 }
 
 // Helper function to detect if content contains tool calls
-function hasToolCalls(content: string): boolean {
-  return /:::tool-call\{/.test(content) || /:::tool-result\{/.test(content);
+function hasToolCalls(content: any): boolean {
+  return utilHasToolCalls(content);
 }
 
 export function AssistantMessage({ content, isStreaming, error, metadata }: AssistantMessageProps) {
   const [showRaw, setShowRaw] = useState(false);
   const messageRef = useRef<HTMLDivElement>(null);
+  const normalizedContent = normalizeContent(content);
   const containsToolCalls = hasToolCalls(content);
+  
+  // Extract tool interactions for the group component
+  const toolInteractions = extractToolInteractions([{ content: normalizedContent, role: 'assistant' }]);
 
   const toggleView = () => {
     // Find the scrollable container (messages container)
@@ -75,10 +77,18 @@ export function AssistantMessage({ content, isStreaming, error, metadata }: Assi
         <div>
           {showRaw ? (
             <div className="whitespace-pre-wrap break-words font-mono text-xs text-muted-foreground">
-              {content}
+              {JSON.stringify(content, null, 2)}
             </div>
           ) : (
-            <MarkdownRenderer content={content} metadata={metadata} />
+            <>
+              {/* Render text content */}
+              <MarkdownRenderer content={normalizedContent.filter(part => part.type === 'text')} />
+              
+              {/* Render tool interactions */}
+              {toolInteractions.length > 0 && (
+                <ToolInteractionGroup interactions={toolInteractions} className="mt-3" />
+              )}
+            </>
           )}
           {isStreaming && (
             <span 
@@ -89,7 +99,7 @@ export function AssistantMessage({ content, isStreaming, error, metadata }: Assi
         </div>
         
         {/* Toggle button - only show when not streaming, has content, and no tool calls */}
-        {!isStreaming && content && !containsToolCalls && (
+        {!isStreaming && normalizedContent.length > 0 && !containsToolCalls && (
           <div className="flex justify-end mt-2">
             <button
               onClick={toggleView}
