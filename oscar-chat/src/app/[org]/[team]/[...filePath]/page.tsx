@@ -101,15 +101,38 @@ export default function OrgTeamFilePage() {
   const loadOlderMessages = useCallback(async () => {
     if (isLoadingOlder || status !== "CanLoadMore") return;
     
+    console.log('Loading older messages...', { 
+      currentCount: messages?.length, 
+      status 
+    });
+    
+    // Store current scroll position to maintain it after loading
+    const container = messagesContainerRef.current;
+    const scrollHeightBefore = container?.scrollHeight || 0;
+    
     setIsLoadingOlder(true);
     try {
       await loadMore(50); // Load 50 more messages
+      
+      // Maintain scroll position after new messages are added
+      if (container) {
+        requestAnimationFrame(() => {
+          const scrollHeightAfter = container.scrollHeight;
+          const heightDifference = scrollHeightAfter - scrollHeightBefore;
+          container.scrollTop = container.scrollTop + heightDifference;
+        });
+      }
+      
+      console.log('✅ Successfully loaded older messages', {
+        newCount: messages?.length,
+        heightDiff: container ? container.scrollHeight - scrollHeightBefore : 0
+      });
     } catch (error) {
-      console.error('Failed to load older messages:', error);
+      console.error('❌ Failed to load older messages:', error);
     } finally {
       setIsLoadingOlder(false);
     }
-  }, [isLoadingOlder, status, loadMore]);
+  }, [isLoadingOlder, status, loadMore, messages?.length]);
 
   // Handle scroll events
   const handleScroll = useCallback(() => {
@@ -121,12 +144,24 @@ export default function OrgTeamFilePage() {
     
     setShouldAutoScroll(isAtBottom);
     
+    // Debug scroll position
+    if (isNearTop) {
+      console.log('📍 Near top detected', {
+        scrollTop,
+        isNearTop,
+        isLoadingOlder,
+        status,
+        canLoadMore: status === "CanLoadMore",
+        messagesCount: messages?.length
+      });
+    }
+    
     // Load older messages when scrolling near top
     if (isNearTop && !isLoadingOlder && status === "CanLoadMore") {
-      console.log('🔄 Loading older messages...');
+      console.log('🔄 Triggering load older messages...');
       loadOlderMessages();
     }
-  }, [isLoadingOlder, status, loadOlderMessages]);
+  }, [isLoadingOlder, status, loadOlderMessages, messages?.length]);
 
   // Handle new chat file - force scroll to bottom
   useEffect(() => {
