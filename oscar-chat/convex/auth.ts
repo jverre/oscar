@@ -18,34 +18,45 @@ export const { auth, signIn, signOut, store } = convexAuth({
   providers: [Google],
   callbacks: {
     async createOrUpdateUser(ctx, { existingUserId, profile }) {
-      const userId = existingUserId || await ctx.db.insert("users", {
-        email: profile.email!,
-        name: profile.name || profile.email!.split("@")[0],
-        image: profile.image,
+      if (existingUserId) {
+        // User already exists, just return the ID
+        return existingUserId;
+      }
+      
+      // Create a personal organization for the new user
+      const organizationId = await ctx.db.insert("organizations", {
+        name: `${profile.name || profile.email!.split("@")[0]}`,
+        domain: profile.email!.split("@")[1],
+        type: "personal",
         createdAt: Date.now(),
       });
       
-      // Ensure user has an API key for VS Code extension
-      const existingApiKey = await ctx.db
-        .query("apiKeys")
-        .filter(q => q.and(
-          q.eq(q.field("userId"), userId),
-          q.eq(q.field("name"), "VS Code Extension"),
-          q.eq(q.field("isActive"), true)
-        ))
-        .first();
+      // Create a default team within the organization
+      const teamId = await ctx.db.insert("teams", {
+        name: `${profile.name || profile.email!.split("@")[0]}`,
+        organizationId,
+        createdAt: Date.now(),
+      });
       
-      if (!existingApiKey) {
-        // Create API key if user doesn't have one
-        const apiKey = generateApiKey();
-        await ctx.db.insert("apiKeys", {
-          userId,
-          key: apiKey,
-          name: "VS Code Extension",
-          createdAt: Date.now(),
-          isActive: true,
-        });
-      }
+      // Create the user with the organization and team
+      const userId = await ctx.db.insert("users", {
+        email: profile.email!,
+        name: profile.name || profile.email!.split("@")[0],
+        image: profile.image,
+        organizationId,
+        teamId,
+        createdAt: Date.now(),
+      });
+      
+          // Create API key if user doesn't have one
+      const apiKey = generateApiKey();
+      await ctx.db.insert("apiKeys", {
+        userId,
+        key: apiKey,
+        name: "VS Code Extension",
+        createdAt: Date.now(),
+        isActive: true,
+      });
       
       return userId;
     },
