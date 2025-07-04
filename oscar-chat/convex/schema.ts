@@ -130,33 +130,20 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_and_timestamp", ["userId", "timestamp"]),
 
-  flyMachines: defineTable({
+  daytonaSandboxes: defineTable({
     userId: v.id("users"),
-    organizationId: v.id("organizations"),
-    teamId: v.id("teams"),
-    machineId: v.string(), // Fly.io machine ID
-    appName: v.string(), // Fly.io app name
-    status: v.union(
-      v.literal("creating"),
-      v.literal("running"),
-      v.literal("stopped"),
-      v.literal("error")
-    ),
-    region: v.string(), // e.g., "dfw", "iad"
-    volumeId: v.optional(v.string()), // Fly.io volume ID
-    volumeName: v.optional(v.string()), // Volume name for reference
-    mountPath: v.optional(v.string()), // Where volume is mounted (default: /repos)
-    autoStop: v.optional(v.boolean()), // Auto-stop enabled
-    autoStart: v.optional(v.boolean()), // Auto-start enabled
+    sandboxId: v.string(),
+    resources: v.optional(v.object({
+      cpu: v.number(),
+      memory: v.number(), // GB
+      disk: v.number(), // GB
+    })),
     createdAt: v.number(),
     lastUsedAt: v.number(),
     metadata: v.optional(v.any()),
   })
     .index("by_user", ["userId"])
-    .index("by_organization", ["organizationId"])
-    .index("by_team", ["teamId"])
-    .index("by_machine_id", ["machineId"])
-    .index("by_volume_id", ["volumeId"]),
+    .index("by_sandbox_id", ["sandboxId"]),
 
   blogs: defineTable({
     fileId: v.id("files"), // Link to the .blog file

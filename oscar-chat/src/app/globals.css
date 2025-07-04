@@ -455,3 +455,16 @@ button.terminal-button:hover {
 [title]:hover::after {
   transition-delay: 0ms !important;
 }
+
+/* Prevent iOS zoom on input fields */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="url"],
+  input[type="tel"],
+  textarea {
+    font-size: 16px !important;
+  }
+}

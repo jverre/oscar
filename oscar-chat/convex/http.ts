@@ -48,7 +48,7 @@ export const chatStream = httpAction(async (ctx, request) => {
 
       // Create streaming completion with AI SDK
       const result = await streamText({
-        model: openrouter("meta-llama/llama-3.1-8b-instruct:free"),
+        model: openrouter("openai/gpt-4.1"),
         messages: messages,
         temperature: 0.7,
         // Note: Tool calls are not configured here since you mentioned we don't need them in streaming

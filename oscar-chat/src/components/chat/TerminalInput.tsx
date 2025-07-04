@@ -17,23 +17,39 @@ export function TerminalInput({ onSubmit, placeholder = "Type a message...", cla
   // Auto-resize textarea based on content
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value);
-    // Auto-resize using CSS field-sizing if supported, fallback to JS
+    resizeTextarea();
+  };
+
+  // Resize function
+  const resizeTextarea = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+      });
     }
   };
 
-  // Focus on mount
+  // Focus on mount and handle resize
   useEffect(() => {
     textareaRef.current?.focus();
+    resizeTextarea();
   }, []);
+
+  // Handle resize on value changes (for cases like clearing input)
+  useEffect(() => {
+    resizeTextarea();
+  }, [value]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (value.trim() && onSubmit && !disabled) {
       onSubmit(value.trim());
       setValue('');
+      // Resize after clearing to ensure proper height
+      requestAnimationFrame(() => resizeTextarea());
     }
   };
 
@@ -51,9 +67,9 @@ export function TerminalInput({ onSubmit, placeholder = "Type a message...", cla
       className
     )}
     style={{ border: '1px solid var(--border-subtle)' }}>
-      <div className="flex items-start py-1.5">
+      <div className="flex items-start py-1 md:py-1.5">
         {/* Prompt */}
-        <span className="text-muted-foreground font-mono select-none flex-shrink-0 text-xs leading-tight mx-1.5">
+        <span className="text-muted-foreground font-mono select-none flex-shrink-0 text-base md:text-xs leading-tight mx-1 md:mx-1.5 scale-[0.875] origin-left md:scale-100">
           &gt;
         </span>
         
@@ -67,14 +83,16 @@ export function TerminalInput({ onSubmit, placeholder = "Type a message...", cla
           disabled={disabled}
           className={cn(
             "flex-1 bg-transparent outline-none resize-none",
-            "font-mono text-foreground text-xs",
+            "font-mono text-foreground text-base md:text-xs",
+            "scale-[0.875] origin-left md:scale-100",
+            "w-[114.3%] md:w-full",
             "placeholder:text-muted-foreground/50",
-            "leading-tight mr-1.5",
+            "leading-tight mr-1 md:mr-1.5 py-0 md:py-0",
             "focus:outline-none focus:ring-0",
             disabled && "opacity-50 cursor-not-allowed"
           )}
           style={{
-            minHeight: '1rem',
+            minHeight: '1.25rem',
             maxHeight: '160px',
             overflow: 'hidden'
           }}

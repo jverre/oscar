@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Search, Plus, FileText } from "lucide-react";
+import { Search, Plus, FileText, GitBranch } from "lucide-react";
 
 interface Command {
     id: string;
@@ -40,13 +40,13 @@ const mockCommands: Command[] = [
         icon: <FileText className="w-4 h-4" />,
         keywords: ["create", "new", "blog", "post", "write"]
     },
-    // {
-    //     id: "clone-repository",
-    //     title: "Clone Repository",
-    //     description: "Clone a GitHub repository",
-    //     icon: <GitBranch className="w-4 h-4" />,
-    //     keywords: ["clone", "git", "repository", "github", "repo"]
-    // },
+    {
+        id: "clone-repository",
+        title: "Clone Repository",
+        description: "Clone a GitHub repository",
+        icon: <GitBranch className="w-4 h-4" />,
+        keywords: ["clone", "git", "repository", "github", "repo"]
+    },
     {
         id: "search-chat",
         title: "Search Chat",

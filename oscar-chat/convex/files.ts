@@ -6,114 +6,6 @@ import { generateObject } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
 
-// Create a new Git folder from a GitHub repo URL and clone it to Fly.io machine
-export const createGitFolder = mutation({
-  args: {
-    repoUrl: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) {
-      throw new Error("Not authenticated");
-    }
-
-    // Support both formats: full URL and short format (user/repo)
-    let normalizedUrl: string;
-    
-    // Check if it's already a full GitHub URL
-    const fullUrlRegex = /^https:\/\/github\.com\/[^/]+\/[^/]+(?:\.git)?\/?$/;
-    if (fullUrlRegex.test(args.repoUrl)) {
-      normalizedUrl = args.repoUrl;
-    } else {
-      // Check if it's short format (user/repo)
-      const shortFormatRegex = /^[^/\s]+\/[^/\s]+$/;
-      if (shortFormatRegex.test(args.repoUrl)) {
-        normalizedUrl = `https://github.com/${args.repoUrl}`;
-      } else {
-        throw new Error("Invalid format. Please use: https://github.com/user/repo or user/repo");
-      }
-    }
-
-    // Extract owner and repo from normalized URL
-    const githubUrlRegex = /^https:\/\/github\.com\/([^/]+)\/([^/]+)(?:\.git)?\/?$/;
-    const match = normalizedUrl.match(githubUrlRegex);
-    if (!match) {
-      throw new Error("Invalid GitHub repository URL format");
-    }
-
-    const [, owner, repo] = match;
-    const gitFolderName = `${owner}/${repo}.git`;
-
-    // Get the user to find their organization and team
-    const user = await ctx.db.get(userId);
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    // Find the user's team
-    const team = await ctx.db
-      .query("teams")
-      .withIndex("by_organization", (q) => q.eq("organizationId", user.organizationId))
-      .first();
-    
-    if (!team) {
-      throw new Error("Team not found for user's organization");
-    }
-
-    // Check if a Git folder with this name already exists
-    const existingFile = await ctx.db
-      .query("files")
-      .withIndex("unique_name_in_team", (q) => 
-        q.eq("organizationId", user.organizationId)
-         .eq("teamId", team._id)
-         .eq("name", gitFolderName)
-      )
-      .first();
-
-    if (existingFile) {
-      throw new Error(`Repository "${gitFolderName}" is already cloned. Please choose a different repository.`);
-    }
-
-    const now = Date.now();
-
-    // Create the file record first
-    const fileId = await ctx.db.insert("files", {
-      organizationId: user.organizationId,
-      teamId: team._id,
-      name: gitFolderName,
-      lastMessageAt: now,
-      createdAt: now,
-      isStreaming: false,
-      visibility: "private", // Git repos are private by default
-      metadata: {
-        gitRepoUrl: normalizedUrl,
-        owner,
-        repo,
-        cloneStatus: "pending",
-      },
-    });
-
-    // Schedule the actual cloning operation
-    await ctx.scheduler.runAfter(0, internal.files.cloneRepository, {
-      fileId,
-      repoUrl: normalizedUrl,
-      owner,
-      repo,
-      userId,
-    });
-
-    // Record timeline event
-    await ctx.runMutation(internal.timeline.createFileEvent, {
-      userId,
-      eventType: "create_file",
-      fileId,
-      fileName: gitFolderName,
-    });
-
-    return fileId;
-  },
-});
-
 // Internal helper mutation to update file metadata
 export const updateFileMetadata = internalMutation({
   args: {
@@ -124,257 +16,6 @@ export const updateFileMetadata = internalMutation({
     await ctx.db.patch(args.fileId, {
       metadata: args.metadata,
     });
-  },
-});
-
-// Internal action to handle the actual repository cloning
-export const cloneRepository = internalAction({
-  args: {
-    fileId: v.id("files"),
-    repoUrl: v.string(),
-    owner: v.string(),
-    repo: v.string(),
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    try {
-      // Update file status to cloning
-      await ctx.runMutation(internal.files.updateFileMetadata, {
-        fileId: args.fileId,
-        metadata: {
-          gitRepoUrl: args.repoUrl,
-          owner: args.owner,
-          repo: args.repo,
-          cloneStatus: "cloning",
-        },
-      });
-
-      // Get or create user's Fly.io machine
-      // Query machines directly from the action context
-      const machines = await ctx.runQuery(internal.flyMachines.getUserMachines, {
-        userId: args.userId,
-      });
-      
-      const runningMachine = machines.find((m: any) => m.status === "running");
-      const stoppedMachine = machines.find((m: any) => m.status === "stopped");
-      let machineId: string;
-      
-      if (runningMachine) {
-        // Reuse existing running machine
-        console.log(`Reusing running machine: ${runningMachine.machineId}`);
-        machineId = runningMachine.machineId;
-      } else if (stoppedMachine) {
-        // Restart stopped machine
-        console.log(`Restarting stopped machine: ${stoppedMachine.machineId}`);
-        machineId = stoppedMachine.machineId;
-        
-        // Start the stopped machine
-        await ctx.runAction(internal.flyApi.startMachine, {
-          machineId,
-        });
-        
-        // Update machine status in database
-        await ctx.runMutation(internal.flyMachines.updateMachineStatusInternal, {
-          machineId,
-          status: "running",
-        });
-      } else {
-        // Create new machine only if no existing machines found
-        console.log(`Creating new machine for user ${args.userId}`);
-        const newMachine = await ctx.runAction(internal.flyApi.createMachine, {
-          userId: args.userId,
-        });
-        machineId = newMachine.machineId;
-      }
-
-      // Wait for machine to be ready (only if we created a new machine or restarted a stopped one)
-      if (!runningMachine) {
-        console.log(`Waiting for machine ${machineId} to be ready...`);
-        let attempts = 0;
-        const maxAttempts = 30; // 30 attempts = ~5 minutes
-        
-        while (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
-          
-          const status = await ctx.runAction(internal.flyApi.getMachineStatus, {
-            machineId,
-          });
-          
-          console.log(`Machine status check attempt ${attempts + 1}: ${status.state}`);
-          
-          if (status.state === "started" || status.state === "running") {
-            console.log(`Machine is ready with state: ${status.state}`);
-            break;
-          }
-          
-          attempts++;
-        }
-        
-        if (attempts >= maxAttempts) {
-          throw new Error("Machine failed to start within timeout");
-        }
-      }
-
-      // Clone the repository in background
-      const repoPath = `/repos/${args.owner}/${args.repo}`;
-      const logFile = `/tmp/clone_${args.owner}_${args.repo}.log`;
-      
-      // Create directory and start background clone
-      await ctx.runAction(internal.flyApi.execCommand, {
-        machineId,
-        command: ["mkdir", "-p", `/repos/${args.owner}`]
-      });
-
-      // Check if repo already exists (from previous clone)
-      try {
-        const checkResult = await ctx.runAction(internal.flyApi.execCommand, {
-          machineId,
-          command: ["test", "-d", repoPath]
-        });
-        // If no error, directory exists - remove it first
-        await ctx.runAction(internal.flyApi.execCommand, {
-          machineId,
-          command: ["rm", "-rf", repoPath]
-        });
-      } catch (e) {
-        // Directory doesn't exist, which is expected
-      }
-
-      // Start git clone in background with nohup
-      await ctx.runAction(internal.flyApi.execCommand, {
-        machineId,
-        command: ["nohup", "sh", "-c", `git clone ${args.repoUrl} ${repoPath} > ${logFile} 2>&1 && echo "CLONE_SUCCESS" >> ${logFile} || echo "CLONE_ERROR" >> ${logFile} &`]
-      });
-
-      // Schedule polling to check for completion
-      await ctx.scheduler.runAfter(5000, internal.files.checkCloneProgress, {
-        fileId: args.fileId,
-        machineId,
-        repoPath,
-        logFile,
-        owner: args.owner,
-        repo: args.repo,
-        attempt: 1
-      });
-
-      console.log(`Background git clone started for: ${args.repoUrl} -> ${repoPath}`);
-    } catch (error) {
-      console.error("Failed to start repository clone:", error);
-      
-      // Update file status to error
-      await ctx.runMutation(internal.files.updateFileMetadata, {
-        fileId: args.fileId,
-        metadata: {
-          gitRepoUrl: args.repoUrl,
-          owner: args.owner,
-          repo: args.repo,
-          cloneStatus: "error",
-          error: error instanceof Error ? error.message : "Unknown error",
-          errorAt: Date.now(),
-        },
-      });
-      
-      throw error;
-    }
-  },
-});
-
-// Check clone progress (scheduled function)
-export const checkCloneProgress = internalAction({
-  args: {
-    fileId: v.id("files"),
-    machineId: v.string(),
-    repoPath: v.string(),
-    logFile: v.string(),
-    owner: v.string(),
-    repo: v.string(),
-    attempt: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const maxAttempts = 120; // 10 minutes with 5-second intervals
-    
-    try {
-      // Check if clone process completed by reading the log file
-      const result = await ctx.runAction(internal.flyApi.execCommand, {
-        machineId: args.machineId,
-        command: ["tail", "-1", args.logFile]
-      });
-      
-      const lastLine = result.stdout?.trim() || "";
-      
-      if (lastLine.includes("CLONE_SUCCESS")) {
-        // Clone completed successfully
-        await ctx.runMutation(internal.files.updateFileMetadata, {
-          fileId: args.fileId,
-          metadata: {
-            cloneStatus: "completed",
-            repoPath: args.repoPath,
-            machineId: args.machineId,
-            clonedAt: Date.now(),
-          },
-        });
-        
-        console.log(`Repository clone completed: ${args.owner}/${args.repo}`);
-        return;
-      } else if (lastLine.includes("CLONE_ERROR")) {
-        // Clone failed
-        const logContent = await ctx.runAction(internal.flyApi.execCommand, {
-          machineId: args.machineId,
-          command: ["cat", args.logFile]
-        });
-        
-        await ctx.runMutation(internal.files.updateFileMetadata, {
-          fileId: args.fileId,
-          metadata: {
-            cloneStatus: "error",
-            error: logContent.stdout || "Clone failed",
-            errorAt: Date.now(),
-          },
-        });
-        
-        console.log(`Repository clone failed: ${args.owner}/${args.repo}`);
-        return;
-      } else if (args.attempt >= maxAttempts) {
-        // Timeout
-        await ctx.runMutation(internal.files.updateFileMetadata, {
-          fileId: args.fileId,
-          metadata: {
-            cloneStatus: "error",
-            error: "Clone operation timed out after 10 minutes",
-            errorAt: Date.now(),
-          },
-        });
-        
-        console.log(`Repository clone timed out: ${args.owner}/${args.repo}`);
-        return;
-      }
-      
-      // Still in progress, schedule next check (every 5 seconds)
-      await ctx.scheduler.runAfter(5000, internal.files.checkCloneProgress, {
-        ...args,
-        attempt: args.attempt + 1,
-      });
-      
-    } catch (error) {
-      console.error("Error checking clone progress:", error);
-      
-      if (args.attempt >= maxAttempts) {
-        await ctx.runMutation(internal.files.updateFileMetadata, {
-          fileId: args.fileId,
-          metadata: {
-            cloneStatus: "error",
-            error: error instanceof Error ? error.message : "Unknown error checking progress",
-            errorAt: Date.now(),
-          },
-        });
-      } else {
-        // Retry in 5 seconds
-        await ctx.scheduler.runAfter(5000, internal.files.checkCloneProgress, {
-          ...args,
-          attempt: args.attempt + 1,
-        });
-      }
-    }
   },
 });
 
@@ -432,14 +73,6 @@ export const create = mutation({
       isStreaming: false,
       visibility: args.visibility ?? "private", // Default to private
       metadata: args.metadata,
-    });
-
-    // Record timeline event
-    await ctx.runMutation(internal.timeline.createFileEvent, {
-      userId,
-      eventType: "create_file",
-      fileId,
-      fileName: args.name,
     });
 
     return fileId;
@@ -540,14 +173,6 @@ export const internalCreate = internalMutation({
       isStreaming: false,
       visibility: args.visibility ?? "private", // Default to private
       metadata: args.metadata,
-    });
-
-    // Record timeline event
-    await ctx.runMutation(internal.timeline.createFileEvent, {
-      userId: args.userId,
-      eventType: "create_file",
-      fileId,
-      fileName: args.name,
     });
 
     return fileId;
@@ -795,13 +420,6 @@ export const updateName = mutation({
       name: args.name,
     });
 
-    // Record timeline event
-    await ctx.runMutation(internal.timeline.createFileEvent, {
-      userId,
-      eventType: "rename_file",
-      fileId: args.fileId,
-      fileName: args.name,
-    });
   },
 });
 
@@ -900,13 +518,7 @@ export const remove = mutation({
     const isGitRepo = file.name.endsWith('.git') && metadata?.gitRepoUrl;
 
     if (isGitRepo) {
-      // Schedule cleanup of the repository on Fly.io machine
-      await ctx.scheduler.runAfter(0, internal.files.cleanupGitRepository, {
-        fileId: args.fileId,
-        userId,
-        owner: metadata.owner,
-        repo: metadata.repo,
-      });
+      // Schedule cleanup of the repository in Daytona sandbox
     } else {
       // Check if this is a blog file
       const isBlogFile = file.name.endsWith('.blog');
@@ -937,53 +549,8 @@ export const remove = mutation({
       // Orphan messages will remain but won't cause problems
     }
 
-    // Record timeline event before deletion
-    await ctx.runMutation(internal.timeline.createFileEvent, {
-      userId,
-      eventType: "delete_file",
-      fileName: file.name,
-    });
-
     // Delete the file
     await ctx.db.delete(args.fileId);
-  },
-});
-
-// Internal action to cleanup Git repository from Fly.io machine
-export const cleanupGitRepository = internalAction({
-  args: {
-    fileId: v.id("files"),
-    userId: v.id("users"),
-    owner: v.string(),
-    repo: v.string(),
-  },
-  handler: async (ctx, args) => {
-    try {
-      // Get the user's machine
-      const machines = await ctx.runQuery(internal.flyMachines.getUserMachines, {
-        userId: args.userId,
-      });
-      
-      const runningMachine = machines.find((m: any) => m.status === "running");
-
-      if (runningMachine) {
-        // Remove the repository directory from the machine
-        const repoPath = `/repos/${args.owner}/${args.repo}`;
-        
-        try {
-          await ctx.runAction(internal.flyApi.execCommand, {
-            machineId: runningMachine.machineId,
-            command: ["rm", "-rf", repoPath]
-          });
-        } catch (error) {
-          console.error(`Failed to cleanup repository ${repoPath}:`, error);
-          // Don't throw here - we still want to delete the file record
-        }
-      }
-    } catch (error) {
-      console.error("Failed to cleanup Git repository:", error);
-      // Don't throw - the file record should still be deleted
-    }
   },
 });
 
@@ -1286,14 +853,6 @@ Please provide a title that would help someone quickly understand what this conv
       await ctx.runMutation(internal.files.updateFilename, {
         fileId: args.fileId,
         name: newFileName,
-      });
-
-      // Record timeline event
-      await ctx.runMutation(internal.timeline.createFileEvent, {
-        userId: args.userId,
-        eventType: "rename_file",
-        fileId: args.fileId,
-        fileName: newFileName,
       });
 
       console.log(`Title regenerated successfully: ${newFileName}`);

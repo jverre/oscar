@@ -1,5 +1,6 @@
 import { convexAuth } from "@convex-dev/auth/server";
 import Google from "@auth/core/providers/google";
+import { internal } from "./_generated/api";
 
 // Generate a secure random API key
 function generateApiKey(): string {
@@ -19,6 +20,11 @@ export const { auth, signIn, signOut, store } = convexAuth({
   callbacks: {
     async createOrUpdateUser(ctx, { existingUserId, profile }) {
       if (existingUserId) {
+        // Ensure user has a sandbox
+        await ctx.runMutation(internal.daytonaSandboxes.ensureUserHasSandbox, {
+          userId: existingUserId,
+        });
+
         // User already exists, just return the ID
         return existingUserId;
       }
@@ -56,6 +62,11 @@ export const { auth, signIn, signOut, store } = convexAuth({
         name: "VS Code Extension",
         createdAt: Date.now(),
         isActive: true,
+      });
+      
+      // Ensure new user has a sandbox
+      await ctx.runMutation(internal.daytonaSandboxes.ensureUserHasSandbox, {
+        userId,
       });
       
       return userId;

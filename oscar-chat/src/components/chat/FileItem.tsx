@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { cn } from "@/lib/utils";
 import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { getFileDisplayName } from "@/utils/folderUtils";
@@ -26,7 +26,7 @@ interface FileItemProps {
     files: Doc<"files">[] | undefined;
 }
 
-export function FileItem({
+const FileItem = memo(function FileItem({
     file,
     level,
     isActive,
@@ -48,15 +48,15 @@ export function FileItem({
     const [showTooltip, setShowTooltip] = useState(false);
     const [showDescriptionTooltip, setShowDescriptionTooltip] = useState(false);
     
-    // Split the display name into main part and extension
+    // Simple file name processing
     const lastDotIndex = displayName.lastIndexOf('.');
     const hasExtension = lastDotIndex > 0 && lastDotIndex < displayName.length - 1;
     const mainName = hasExtension ? displayName.substring(0, lastDotIndex) : displayName;
     const extension = hasExtension ? displayName.substring(lastDotIndex) : '';
     
-    // Simple truncation - if main name is too long, truncate it
     const maxMainNameLength = 15;
-    const truncatedMainName = mainName.length > maxMainNameLength 
+    const isTruncated = mainName.length > maxMainNameLength;
+    const truncatedMainName = isTruncated 
         ? mainName.substring(0, maxMainNameLength) + '[...]'
         : mainName;
 
@@ -184,7 +184,8 @@ export function FileItem({
                     ? 'var(--interactive-hover)'
                     : isActive 
                     ? 'var(--interactive-primary)'
-                    : 'transparent'
+                    : 'transparent',
+                touchAction: 'manipulation' // Disable 300ms click delay on mobile
             }}
             onMouseEnter={(e) => {
                 if (!isActive && !isSelected) {
@@ -244,7 +245,7 @@ export function FileItem({
                 )}
                 
                 {/* Custom filename tooltip */}
-                {showTooltip && truncatedMainName.includes('[...]') && (
+                {showTooltip && isTruncated && (
                     <div
                         className="absolute bottom-full mb-2 right-0 z-50 pointer-events-none"
                         style={{
@@ -260,7 +261,7 @@ export function FileItem({
                             animation: 'fadeIn 0.1s ease-out'
                         }}
                     >
-                        {mainName}
+                        {displayName}
                     </div>
                 )}
                 
@@ -287,4 +288,6 @@ export function FileItem({
             </div>
         </div>
     );
-}
+});
+
+export { FileItem };

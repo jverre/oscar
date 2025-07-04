@@ -46,7 +46,7 @@ export function TopNav() {
   const mockCommands = [
     { id: "create-chat", title: "Create Chat", keywords: ["create", "new", "chat", "conversation", "start"] },
     { id: "create-blog", title: "Create Blog", keywords: ["create", "new", "blog", "post", "write"] },
-    //{ id: "clone-repository", title: "Clone Repository", keywords: ["clone", "git", "repository", "github", "repo"] },
+    { id: "clone-repository", title: "Clone Repository", keywords: ["clone", "git", "repository", "github", "repo"] },
     { id: "search-chat", title: "Search Chat", keywords: ["search", "find", "chat", "conversation", "browse"] }
   ];
 
@@ -274,12 +274,50 @@ export function TopNav() {
   const executeCommand = async (commandId: string) => {
     switch (commandId) {
       case 'create-chat':
-        await createFile({ navigate: true, fileType: 'chat' });
-        handleClose();
+        // Switch to input mode instead of closing
+        setSearchValue("");
+        setInputMode({
+          placeholder: "Enter chat name (e.g., My Project Chat)",
+          onSubmit: async (chatName: string) => {
+            if (chatName.trim()) {
+              const result = await createFile({ 
+                name: chatName.trim(), 
+                navigate: true, 
+                fileType: 'chat' 
+              });
+              if (result) {
+                // Success - close the input
+                handleClose();
+              } else {
+                // Error - update input mode to show error and keep it open
+                setInputMode(prev => prev ? { ...prev, error: "Failed to create chat. Please try again." } : null);
+              }
+            }
+          }
+        });
         break;
       case 'create-blog':
-        await createFile({ navigate: true, fileType: 'blog' });
-        handleClose();
+        // Switch to input mode instead of closing
+        setSearchValue("");
+        setInputMode({
+          placeholder: "Enter blog title (e.g., My First Blog Post)",
+          onSubmit: async (blogTitle: string) => {
+            if (blogTitle.trim()) {
+              const result = await createFile({ 
+                name: blogTitle.trim(), 
+                navigate: true, 
+                fileType: 'blog' 
+              });
+              if (result) {
+                // Success - close the input
+                handleClose();
+              } else {
+                // Error - update input mode to show error and keep it open
+                setInputMode(prev => prev ? { ...prev, error: "Failed to create blog. Please try again." } : null);
+              }
+            }
+          }
+        });
         break;
       case 'clone-repository':
         // Switch to input mode instead of closing
@@ -336,7 +374,7 @@ export function TopNav() {
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
             onKeyDown={handleInputKeyDown}
-            className="w-full pl-8 pr-12 h-[24px] bg-sidebar-accent rounded text-xs focus:outline-none text-foreground transition-colors"
+            className="w-full pl-8 pr-12 h-[24px] bg-sidebar-accent rounded text-base md:text-xs focus:outline-none text-foreground transition-colors"
             style={{ 
               border: '1px solid var(--border-subtle)',
               WebkitAppearance: 'none'

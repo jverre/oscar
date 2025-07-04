@@ -18,6 +18,7 @@ import { FileItem } from "./FileItem";
 import { EmptyFolderState } from "./EmptyFolderState";
 import { buildFileUrl } from "@/utils/fileUrlUtils";
 import { validateFileName, areFileNamesDuplicate } from "@/utils/fileNameUtils";
+import { useSidebar } from "@/components/ui/sidebar";
 
 interface FileListProps {
   files: Doc<"files">[] | undefined;
@@ -52,6 +53,13 @@ export function FileList({
   const { addTab, closeTab, closeTabs, getTabByFile, isTabOpenByFile, switchToTab, updateTabTitle, activeTabId, openTabs } = useTabContext();
   const router = useRouter();
   const { createFile, error: createFileError } = useFileCreation();
+  const { setOpenMobile, isMobile } = useSidebar();
+  
+  // Simple mutations
+  const updateName = useMutation(api.files.updateName);
+  const updateVisibility = useMutation(api.files.updateVisibility);
+  const deleteFileMutation = useMutation(api.files.remove);
+  const regenerateTitleMutation = useMutation(api.files.regenerateTitle);
   
   // Get user's organization and team for URL generation
   const userOrg = useQuery(api.organizations.getCurrentUserOrg);
@@ -60,6 +68,7 @@ export function FileList({
   // Get the current file ID from the active tab
   const activeTab = openTabs.find(tab => tab.id === activeTabId);
   const currentFileId = activeTab?.fileId || null;
+  
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -68,11 +77,43 @@ export function FileList({
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
-  
-  // Folder state
-  const [folderStructure, setFolderStructure] = useState<FolderNode | null>(null);
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set());
   
+  // Folder structure state
+  const [folderStructure, setFolderStructure] = useState<FolderNode | null>(null);
+
+  // Build folder structure when files change
+  useEffect(() => {
+    if (!files) return;
+    
+    const structure = buildFolderStructure(files);
+    
+    // Restore expansion state from localStorage
+    const savedExpansionState = localStorage.getItem('folderExpansionState');
+    if (savedExpansionState) {
+      try {
+        const expansionState: Record<string, boolean> = JSON.parse(savedExpansionState);
+        const applyExpansionState = (node: FolderNode): FolderNode => {
+          const newChildren = new Map();
+          node.children.forEach((child, key) => {
+            const restoredChild = applyExpansionState(child);
+            if (expansionState[restoredChild.path] !== undefined) {
+              restoredChild.isExpanded = expansionState[restoredChild.path];
+            }
+            newChildren.set(key, restoredChild);
+          });
+          return { ...node, children: newChildren };
+        };
+        
+        setFolderStructure(applyExpansionState(structure));
+      } catch (error) {
+        console.error('Failed to restore folder expansion state:', error);
+        setFolderStructure(structure);
+      }
+    } else {
+      setFolderStructure(structure);
+    }
+  }, [files]);
 
   // Placeholder input state
   const [placeholderValue, setPlaceholderValue] = useState("");
@@ -85,44 +126,6 @@ export function FileList({
   // Rename validation state
   const [renameError, setRenameError] = useState<string | null>(null);
 
-  const updateName = useMutation(api.files.updateName);
-  const updateVisibility = useMutation(api.files.updateVisibility);
-  const deleteFileMutation = useMutation(api.files.remove);
-  const regenerateTitleMutation = useMutation(api.files.regenerateTitle);
-
-  // Build folder structure when files change
-  useEffect(() => {
-    if (files) {
-      const structure = buildFolderStructure(files);
-      
-      // Restore expansion state from localStorage
-      const savedExpansionState = localStorage.getItem('folderExpansionState');
-      if (savedExpansionState) {
-        try {
-          const expansionState: Record<string, boolean> = JSON.parse(savedExpansionState);
-          const applyExpansionState = (node: FolderNode): FolderNode => {
-            const newChildren = new Map();
-            node.children.forEach((child, key) => {
-              const restoredChild = applyExpansionState(child);
-              if (expansionState[restoredChild.path] !== undefined) {
-                restoredChild.isExpanded = expansionState[restoredChild.path];
-              }
-              newChildren.set(key, restoredChild);
-            });
-            return { ...node, children: newChildren };
-          };
-          
-          setFolderStructure(applyExpansionState(structure));
-        } catch (error) {
-          console.error('Failed to restore folder expansion state:', error);
-          setFolderStructure(structure);
-        }
-      } else {
-        setFolderStructure(structure);
-      }
-    }
-  }, [files]);
-
 
   const handleFileClick = (fileId: string, event?: React.MouseEvent) => {
     if (event) {
@@ -132,7 +135,6 @@ export function FileList({
       // If modifier keys are pressed, handle selection instead of navigation
       if (isCtrlOrCmd || isShift) {
         event.preventDefault();
-        // Clear folder selection when selecting individual files
         setSelectedFolders(new Set());
         toggleSelection(fileId, isShift, isCtrlOrCmd);
         return;
@@ -143,6 +145,7 @@ export function FileList({
     setSelectedIds(new Set([fileId]));
     setLastSelectedId(fileId);
     setSelectedFolders(new Set());
+    
     const file = files?.find(f => f._id === fileId);
     if (file) {
       const fileIdTyped = fileId as Id<"files">;
@@ -153,6 +156,10 @@ export function FileList({
         const existingTab = getTabByFile(fileIdTyped);
         if (existingTab) {
           switchToTab(existingTab.id);
+          // Close mobile sidebar after switching to existing tab
+          if (isMobile) {
+            setOpenMobile(false);
+          }
         }
       } else {
         // Create new tab only if none exists
@@ -169,6 +176,11 @@ export function FileList({
         } else {
           // If org/team not loaded yet, do nothing or show loading state
           console.log("Org/team data not loaded yet");
+        }
+        
+        // Close mobile sidebar after creating new tab
+        if (isMobile) {
+          setOpenMobile(false);
         }
       }
     }
@@ -246,8 +258,6 @@ export function FileList({
       setRenameError(null);
     } catch (error) {
       console.error("Failed to rename file:", error);
-      
-      // Extract error message for user display
       const errorMessage = error instanceof Error ? error.message : "Failed to rename file";
       setRenameError(errorMessage);
     }
@@ -453,8 +463,54 @@ export function FileList({
     setDeleteDialog(null);
   };
 
-  // Get files in their display order (as they appear in the UI)
-  const getFilesInDisplayOrder = useCallback((): Doc<"files">[] => {
+  // Simple selection helper
+  const toggleSelection = (fileId: string, isShift: boolean, isCtrlOrCmd: boolean) => {
+    if (isShift && lastSelectedId && files) {
+      // Range selection
+      const startIndex = files.findIndex(f => f._id === lastSelectedId);
+      const endIndex = files.findIndex(f => f._id === fileId);
+      
+      if (startIndex !== -1 && endIndex !== -1) {
+        const start = Math.min(startIndex, endIndex);
+        const end = Math.max(startIndex, endIndex);
+        const newSelected = new Set(selectedIds);
+        
+        for (let i = start; i <= end; i++) {
+          newSelected.add(files[i]._id);
+        }
+        
+        setSelectedIds(newSelected);
+      }
+    } else if (isCtrlOrCmd) {
+      // Toggle selection
+      setSelectedIds(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(fileId)) {
+          newSet.delete(fileId);
+        } else {
+          newSet.add(fileId);
+        }
+        return newSet;
+      });
+    } else {
+      // Single selection
+      setSelectedIds(new Set([fileId]));
+    }
+    
+    if (!isShift) {
+      setLastSelectedId(fileId);
+    }
+  };
+
+  // Simple clear selection
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setLastSelectedId(null);
+    setSelectedFolders(new Set());
+  };
+
+  // Files in display order - keeping this memoized is actually good for performance
+  const filesInDisplayOrder = (): Doc<"files">[] => {
     if (!folderStructure) return files || [];
     
     const orderedFiles: Doc<"files">[] = [];
@@ -478,79 +534,8 @@ export function FileList({
     
     traverseFolder(folderStructure);
     return orderedFiles;
-  }, [folderStructure, files]);
-
-  // Selection helper functions
-  const toggleSelection = (fileId: string, isShift: boolean, isCtrlOrCmd: boolean) => {
-    if (isShift) {
-      // Range selection - use lastSelectedId or currentFileId as start point
-      let startId = lastSelectedId;
-      
-      // If no lastSelectedId but we have a current file, use that as the start
-      if (!startId && currentFileId) {
-        const displayOrderFiles = getFilesInDisplayOrder();
-        const currentFileInThisList = displayOrderFiles.some(f => f._id === currentFileId);
-        if (currentFileInThisList) {
-          startId = currentFileId;
-        }
-      }
-      
-      if (startId) {
-        const displayOrderFiles = getFilesInDisplayOrder();
-        const startIndex = displayOrderFiles.findIndex(f => f._id === startId);
-        const endIndex = displayOrderFiles.findIndex(f => f._id === fileId);
-        
-        if (startIndex !== -1 && endIndex !== -1) {
-          const start = Math.min(startIndex, endIndex);
-          const end = Math.max(startIndex, endIndex);
-          const rangeIds = displayOrderFiles
-            .slice(start, end + 1)
-            .map(f => f._id);
-          
-          setSelectedIds(prev => {
-            const newSet = new Set(prev);
-            rangeIds.forEach(id => newSet.add(id));
-            return newSet;
-          });
-          
-          // Update lastSelectedId to the clicked item for future range selections
-          setLastSelectedId(fileId);
-        }
-      }
-    } else if (isCtrlOrCmd) {
-      // Toggle individual selection
-      setSelectedIds(prev => {
-        const newSet = new Set(prev);
-        
-        // If this is the first selection and current file exists, include it
-        if (newSet.size === 0 && currentFileId && currentFileId !== fileId) {
-          const displayOrderFiles = getFilesInDisplayOrder();
-          const currentFileInThisList = displayOrderFiles.some(f => f._id === currentFileId);
-          if (currentFileInThisList) {
-            newSet.add(currentFileId);
-          }
-        }
-        
-        if (newSet.has(fileId)) {
-          newSet.delete(fileId);
-        } else {
-          newSet.add(fileId);
-        }
-        return newSet;
-      });
-      setLastSelectedId(fileId);
-    } else {
-      // Single selection (clear others)
-      setSelectedIds(new Set([fileId]));
-      setLastSelectedId(fileId);
-    }
   };
 
-  const clearSelection = useCallback(() => {
-    setSelectedIds(new Set());
-    setLastSelectedId(null);
-    setSelectedFolders(new Set());
-  }, []);
 
   // Folder interaction handlers
   const toggleFolderExpanded = (folderPath: string) => {
@@ -607,9 +592,8 @@ export function FileList({
     setSelectedFolders(new Set([folderPath]));
   };
 
+
   const toggleFolderSelection = (folderPath: string, isShift: boolean, isCtrlOrCmd: boolean) => {
-    if (!folderStructure) return;
-    
     if (isCtrlOrCmd) {
       setSelectedFolders(prev => {
         const newSet = new Set(prev);
@@ -623,6 +607,10 @@ export function FileList({
     } else {
       setSelectedFolders(new Set([folderPath]));
     }
+    
+    // Clear file selection when selecting folders
+    setSelectedIds(new Set());
+    setLastSelectedId(null);
   };
 
   const handleFolderContextMenu = (e: React.MouseEvent, folderPath: string) => {
@@ -845,7 +833,7 @@ export function FileList({
 
 
 
-  // Keyboard and custom event handlers for clearing selection
+  // Simple keyboard and custom event handlers for clearing selection
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && (selectedIds.size > 0 || selectedFolders.size > 0)) {
@@ -871,12 +859,13 @@ export function FileList({
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('clearFileSelection', handleClearSelection);
     document.addEventListener('click', handleClickOutside);
+    
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('clearFileSelection', handleClearSelection);
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [selectedIds.size, selectedFolders.size, clearSelection]);
+  }, [selectedIds.size, selectedFolders.size]);
 
   // Handle placeholder input events
   const handlePlaceholderKeyDown = async (e: React.KeyboardEvent) => {

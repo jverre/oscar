@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
-import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { paginationOptsValidator } from "convex/server";
 
@@ -85,23 +84,6 @@ export const createUserMessage = mutation({
     // Update file's lastMessageAt
     await ctx.db.patch(args.fileId, {
       lastMessageAt: now,
-    });
-
-    // Record timeline event - extract text safely
-    const textContent = args.content
-      .filter(part => part && part.type === 'text')
-      .map(part => (part as { type: 'text'; text: string }).text)
-      .filter(Boolean)
-      .join(' ')
-      .trim();
-    const messagePreview = textContent.length > 100 ? textContent.substring(0, 100) + "..." : textContent || "[Message with tool calls]";
-    
-    await ctx.runMutation(internal.timeline.createSendMessageEvent, {
-      userId,
-      fileId: args.fileId,
-      messageId,
-      messagePreview,
-      fileName: file.name,
     });
 
     return messageId;
@@ -242,28 +224,6 @@ export const internalCreateMessage = internalMutation({
         error: args.metadata?.error,
         finishReason: args.metadata?.finishReason,
       },
-    });
-
-    // Update file's lastMessageAt
-    // await ctx.db.patch(args.fileId, {
-    //   lastMessageAt: now,
-    // });
-
-    // Record timeline event - extract text safely
-    const textContent = args.content
-      .filter(part => part && part.type === 'text')
-      .map(part => (part as { type: 'text'; text: string }).text)
-      .filter(Boolean)
-      .join(' ')
-      .trim();
-    const messagePreview = textContent.length > 100 ? textContent.substring(0, 100) + "..." : textContent || "[Message with tool calls]";
-    
-    await ctx.runMutation(internal.timeline.createSendMessageEvent, {
-      userId: args.userId,
-      fileId: args.fileId,
-      messageId,
-      messagePreview,
-      fileName: file.name,
     });
 
     return messageId;

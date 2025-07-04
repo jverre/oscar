@@ -345,7 +345,7 @@ export default function OrgTeamFilePage() {
       </div>
       
       {/* Fixed input area at bottom - never scrolls */}
-      <div className="flex-shrink-0 bg-background px-6 py-6">
+      <div className="flex-shrink-0 bg-background px-4 md:px-6 py-3 md:py-6">
         <div className="w-full max-w-4xl mx-auto">
           <TerminalInput 
             onSubmit={handleSubmit}
