@@ -3,18 +3,14 @@ import * as React from "react"
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {
-  // Initialize with proper SSR-safe value
-  const [isMobile, setIsMobile] = React.useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < MOBILE_BREAKPOINT
-    }
-    return false
-  })
+  const [isMobile, setIsMobile] = React.useState<boolean>(false)
+  const [isHydrated, setIsHydrated] = React.useState(false)
 
   React.useEffect(() => {
+    setIsHydrated(true)
+    
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
     
-    // Use mql.matches instead of window.innerWidth for better performance
     const onChange = () => {
       setIsMobile(mql.matches)
     }
@@ -32,5 +28,6 @@ export function useIsMobile() {
     }
   }, [])
 
-  return isMobile
+  // Return false during SSR and initial hydration to ensure consistency
+  return isHydrated ? isMobile : false
 }

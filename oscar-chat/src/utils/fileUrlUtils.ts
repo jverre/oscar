@@ -22,13 +22,3 @@ export function buildFileUrl(
   return `/chat?file=${file._id}`;
 }
 
-/**
- * Build file URL from separate components
- */
-export function buildFileUrlFromComponents(
-  orgName: string,
-  teamName: string,
-  fileName: string
-): string {
-  return `/${encodeURIComponent(orgName)}/${encodeURIComponent(teamName)}/${encodeURIComponent(fileName)}`;
-}

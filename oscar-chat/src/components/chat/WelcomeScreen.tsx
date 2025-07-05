@@ -7,11 +7,7 @@ import { useRouter } from "next/navigation";
 import { MessageSquare, FileText } from "lucide-react";
 import { buildFileUrl } from "@/utils/fileUrlUtils";
 
-interface WelcomeScreenProps {
-    // No props needed - using useChatCreation hook directly
-}
-
-export function WelcomeScreen({}: WelcomeScreenProps) {
+export function WelcomeScreen() {
     const { createFile, isCreating } = useFileCreation();
     const router = useRouter();
     const files = useQuery(api.files.list);

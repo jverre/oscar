@@ -143,21 +143,3 @@ export function areFileNamesDuplicate(name1: string, name2: string): boolean {
   return name1.toLowerCase() === name2.toLowerCase();
 }
 
-/**
- * Filters out duplicate names from an array (case-insensitive)
- */
-export function findDuplicateNames(names: string[]): string[] {
-  const seen = new Set<string>();
-  const duplicates = new Set<string>();
-  
-  names.forEach(name => {
-    const lowerName = name.toLowerCase();
-    if (seen.has(lowerName)) {
-      duplicates.add(name);
-    } else {
-      seen.add(lowerName);
-    }
-  });
-  
-  return Array.from(duplicates);
-}

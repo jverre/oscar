@@ -92,7 +92,7 @@ export function MessageList({ messages, isSubmitting, className }: MessageListPr
         
         return (
           <React.Fragment key={message._id}>
-            <div className={needsExtraSpacing ? 'mt-4' : 'mt-1'}>
+            <div className={needsExtraSpacing ? 'mt-4' : 'mt-1'} data-message-id={message._id}>
               {message.role === 'user' ? (
                 <div className="mb-3">
                   <UserMessage content={message.content} />

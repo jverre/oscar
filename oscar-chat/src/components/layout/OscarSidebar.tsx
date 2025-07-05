@@ -1,10 +1,10 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Plus, MessageSquare, FileText } from "lucide-react";
+import { ChevronDown, ChevronRight, MessageSquare, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { FileList } from "../chat/FileList";
+import { FileTree } from "../file-tree/FileTree";
 import { 
   Sidebar, 
   SidebarContent,
@@ -36,6 +36,10 @@ export function OscarSidebar() {
   
   // Use appropriate files based on authentication
   const files = currentUser ? authenticatedFiles : publicFiles;
+  
+  // Get user's organization and team for URL generation
+  const userOrg = useQuery(api.organizations.getCurrentUserOrg);
+  const userTeam = useQuery(api.teams.getCurrentUserTeam);
   
   const handleCreateFile = async () => {
     setShouldCreateFile(true);
@@ -136,12 +140,12 @@ export function OscarSidebar() {
             
             {isChatsExpanded && (
               <SidebarGroupContent className="flex-1 overflow-y-auto">
-                <FileList
+                <FileTree
                   files={files}
-                  shouldCreateFile={currentUser ? shouldCreateFile : false}
-                  onFileCreated={() => setShouldCreateFile(false)}
-                  shouldCreateBlog={currentUser ? shouldCreateBlog : false}
-                  onBlogCreated={() => setShouldCreateBlog(false)}
+                  userOrg={userOrg || undefined}
+                  userTeam={userTeam || undefined}
+                  onCreateFile={currentUser && shouldCreateFile ? () => setShouldCreateFile(false) : undefined}
+                  onCreateBlog={currentUser && shouldCreateBlog ? () => setShouldCreateBlog(false) : undefined}
                 />
               </SidebarGroupContent>
             )}

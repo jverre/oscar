@@ -6,7 +6,6 @@ import { TopNav } from "./TopNav";
 import { Footer } from "./Footer";
 import { TabBar } from "./TabBar";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useState, useEffect } from "react";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -14,12 +13,6 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const isMobile = useIsMobile();
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  // Wait for hydration to complete before showing mobile-specific content
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   return (
     <SidebarProvider>
@@ -31,16 +24,16 @@ export function MainLayout({ children }: MainLayoutProps) {
         </div>
         
         {/* Tab Bar - fixed height below header (desktop only) */}
-        {isHydrated && !isMobile && (
+        {!isMobile && (
           <div className="flex-shrink-0">
             <TabBar />
           </div>
         )}
         
         {/* Main Content - takes remaining space */}
-        <main className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {children}
-        </main>
+        </div>
         
         {/* Footer - fixed height at bottom */}
         <div className="flex-shrink-0">

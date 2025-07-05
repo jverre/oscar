@@ -14,7 +14,7 @@ interface UseGitCreationReturn {
 export function useGitCreation(): UseGitCreationReturn {
     const [isCreating, setIsCreating] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const createGitFolderMutation = useMutation(api.files.createGitFolder);
+    //const createGitFolderMutation = useMutation(api.files.createGitFolder);
 
     const createGitFolder = useCallback(async (repoUrl: string): Promise<Id<"files"> | null> => {
         // Prevent concurrent creation attempts
@@ -45,9 +45,10 @@ export function useGitCreation(): UseGitCreationReturn {
             }
 
             // Create the Git folder with normalized URL
-            const fileId = await createGitFolderMutation({
-                repoUrl: normalizedUrl.trim(),
-            });
+            // const fileId = await createGitFolderMutation({
+            //     repoUrl: normalizedUrl.trim(),
+            // });
+            const fileId = undefined;
 
             if (!fileId) {
                 throw new Error("Failed to create Git folder - no ID returned");
@@ -65,7 +66,7 @@ export function useGitCreation(): UseGitCreationReturn {
         } finally {
             setIsCreating(false);
         }
-    }, [isCreating, createGitFolderMutation]);
+    }, [isCreating]);
 
     return {
         createGitFolder,

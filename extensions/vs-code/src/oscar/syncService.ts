@@ -109,19 +109,11 @@ export class OscarSyncService {
             }
 
             // Use simple session ID-based name for easier verification
-            const friendlyName = `/claude/${sessionId}.chat`;
+            const friendlyName = `claude/${sessionId}.claude`;
             const sessionSummary = this.generateSessionSummary(parsedSession, sortedMessages);
 
             // Create Claude Code log entries for new messages only
             const entries = this.buildClaudeCodeEntries(newMessages);
-
-            // Log entry statistics
-            const userMessages = entries.filter(e => e.role === 'user').length;
-            const assistantMessages = entries.filter(e => e.role === 'assistant').length;
-            const toolUseMessages = entries.filter(e => e.metadata.isToolUse).length;
-            const toolCallMessages = entries.filter(e => e.metadata.toolCallId).length;
-            const toolResultMessages = entries.filter(e => e.metadata.toolResultId).length;
-            const modelsUsed = [...new Set(entries.map(e => e.metadata.claudeOriginal?.model).filter(Boolean))];
 
             // Create batch log request
             const batchRequest: ClaudeCodeBatchLogRequest = {
@@ -295,47 +287,6 @@ export class OscarSyncService {
         }
         
         return undefined;
-    }
-
-    private generateUserFriendlyName(parsedSession: ParsedClaudeSession, sortedMessages: ParsedClaudeMessage[]): string {
-        // Try to extract meaningful name from first user message
-        const firstUserMessage = sortedMessages.find(m => m.role === 'user');
-        if (firstUserMessage && firstUserMessage.content) {
-            // Extract text content from structured content
-            let content = this.extractTextFromStructuredContent(firstUserMessage.content)
-                .replace(/:::tool-\w+\{[^}]*\}[\s\S]*?:::/g, '') // Remove tool blocks
-                .replace(/\n+/g, ' ') // Replace newlines with spaces
-                .trim();
-            
-            // Take first sentence or first 50 characters
-            const firstSentence = content.split(/[.!?]/)[0].trim();
-            if (firstSentence.length > 0 && firstSentence.length <= 60) {
-                return `/claude/${this.sanitizeFileName(firstSentence)}.chat`;
-            }
-            
-            // Fallback to first 50 characters
-            if (content.length > 50) {
-                content = content.substring(0, 47) + '...';
-            }
-            
-            if (content.length > 0) {
-                return `/claude/${this.sanitizeFileName(content)}.chat`;
-            }
-        }
-        
-        // Fallback to project-based naming
-        const projectName = parsedSession.projectPath || 'Unknown Project';
-        const timestamp = parsedSession.metadata.startTime.toISOString().substring(0, 16).replace('T', ' ');
-        
-        return `/claude/${this.sanitizeFileName(projectName)} - ${timestamp}.chat`;
-    }
-
-    private sanitizeFileName(name: string): string {
-        // Remove or replace invalid file name characters
-        return name
-            .replace(/[<>:"/\\|?*]/g, '') // Remove invalid characters
-            .replace(/\s+/g, ' ') // Normalize whitespace
-            .trim();
     }
 
     private generateSessionSummary(parsedSession: ParsedClaudeSession, sortedMessages: ParsedClaudeMessage[]): string {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { useAuthToken } from "@convex-dev/auth/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -9,6 +9,7 @@ import { TerminalInput } from "@/components/chat/TerminalInput";
 import { MessageList } from "@/components/chat/MessageList";
 import { FileNotFound } from "@/components/chat/FileNotFound";
 import { BlogEditor } from "@/components/blog/BlogEditor";
+import { ClaudeSessionViewer } from "@/components/chat/ClaudeSessionViewer";
 import { useTabContext } from "@/contexts/TabContext";
 
 export default function OrgTeamFilePage() {
@@ -48,6 +49,7 @@ export default function OrgTeamFilePage() {
   // Determine file type based on extension
   const isChatFile = fileName.endsWith('.chat');
   const isBlogFile = fileName.endsWith('.blog');
+  const isClaudeFile = fileName.endsWith('.claude');
   // Only consider file as "not found" when query has completed and returned null
   const fileExists = file !== null;
   const fileLoading = file === undefined;
@@ -59,135 +61,217 @@ export default function OrgTeamFilePage() {
   // Mutations
   const createUserMessage = useMutation(api.messages.createUserMessage);
   
-  // Only run messages query if we have a valid file and it's a chat file
+  // Only run messages query if we have a valid file and it's a chat or claude file
   // Use public query for unauthenticated users, authenticated query for logged-in users
   const { results: messages, status, loadMore } = usePaginatedQuery(
     user ? api.messages.list : api.messages.listPublic,
-    file && isChatFile ? { fileId: file._id } : "skip",
+    file && (isChatFile || isClaudeFile) ? { fileId: file._id } : "skip",
     { initialNumItems: 25 } // Load first 25 messages (will be scrollable)
   );
 
-  // Auto-scroll refs and logic
+  // Refs for pagination
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const bottomElementRef = useRef<HTMLDivElement>(null);
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
-  const prevFileIdRef = useRef<string | undefined>(undefined);
+  const topObserverRef = useRef<HTMLDivElement>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  // Auto-scroll state
+  const [isUserAtBottom, setIsUserAtBottom] = useState(true);
+  const isAutoScrollingRef = useRef(false);
+  const isPaginationRestoringRef = useRef(false);
+  const previousMessageCountRef = useRef(0);
+  const scrollBeforeNewMessagesRef = useRef<{ scrollTop: number; scrollHeight: number } | null>(null);
 
-  // Optimized scroll to bottom function
-  const scrollToBottom = useCallback((force = false) => {
-    if (!shouldAutoScroll && !force) return;
+  // Intersection observer for smooth pagination trigger
+  useEffect(() => {
+    if (!topObserverRef.current || status !== "CanLoadMore") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && !isLoadingMore) {
+          handleLoadMore();
+        }
+      },
+      {
+        root: messagesContainerRef.current,
+        rootMargin: '20px', // Trigger 20px before reaching the top
+        threshold: 0.1
+      }
+    );
+
+    observer.observe(topObserverRef.current);
+
+    return () => observer.disconnect();
+  }, [status, isLoadingMore]);
+
+  // Handle loading more messages with smooth scroll preservation
+  const handleLoadMore = useCallback(async () => {
+    if (isLoadingMore || status !== "CanLoadMore") return;
+
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    setIsLoadingMore(true);
+
+    try {
+      await loadMore(25); // Load 25 more messages
+    } catch (error) {
+      console.error('Failed to load more messages:', error);
+    } finally {
+      // The scroll compensation will be handled by the useLayoutEffect
+      setTimeout(() => setIsLoadingMore(false), 50);
+    }
+  }, [isLoadingMore, status, loadMore]);
+
+  // Check if user is at bottom of scroll container
+  const checkIfUserAtBottom = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return false;
     
-    // Primary method: use bottom element ref
-    if (bottomElementRef.current) {
-      bottomElementRef.current.scrollIntoView({ behavior: 'instant', block: 'end' });
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const threshold = 100; // Consider "at bottom" if within 100px
+    return scrollHeight - (scrollTop + clientHeight) <= threshold;
+  }, []);
+
+  // Handle scroll events to track user position
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (isAutoScrollingRef.current) {
+        // Don't update user position during auto-scroll
+        return;
+      }
+      setIsUserAtBottom(checkIfUserAtBottom());
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [checkIfUserAtBottom]);
+
+  // Auto-scroll to bottom when messages change and user is at bottom
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || !messages?.length) return;
+
+    // Check if there's a streaming message
+    const hasStreamingMessage = messages.some(msg => msg.isStreaming);
+    
+    if (hasStreamingMessage && isUserAtBottom) {
+      isAutoScrollingRef.current = true;
+      
+      // Use requestAnimationFrame for smooth scrolling
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+        isAutoScrollingRef.current = false;
+      });
+    }
+  }, [messages, isUserAtBottom]);
+
+  // Track scroll position continuously to capture it before changes
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    
+    const updateScrollState = () => {
+      if (!isLoadingMore && !isPaginationRestoringRef.current && !isAutoScrollingRef.current) {
+        scrollBeforeNewMessagesRef.current = {
+          scrollTop: container.scrollTop,
+          scrollHeight: container.scrollHeight
+        };
+      }
+    };
+    
+    // Update on scroll and periodically to catch state before changes
+    container.addEventListener('scroll', updateScrollState);
+    const interval = setInterval(updateScrollState, 100);
+    
+    return () => {
+      container.removeEventListener('scroll', updateScrollState);
+      clearInterval(interval);
+    };
+  }, [isLoadingMore]);
+
+  // Auto-scroll to bottom when new messages are added
+  useLayoutEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || !messages?.length) return;
+
+    const currentMessageCount = messages.length;
+    const previousMessageCount = previousMessageCountRef.current;
+    
+    console.log('Message count change:', { previousMessageCount, currentMessageCount, isLoadingMore, scrollBeforeState: scrollBeforeNewMessagesRef.current });
+    
+    // If this is the initial load, just update the count
+    if (previousMessageCount === 0) {
+      previousMessageCountRef.current = currentMessageCount;
       return;
     }
     
-    // Fallback: manual scroll
-    const container = messagesContainerRef.current;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
-  }, [shouldAutoScroll]);
-
-  // Load older messages when user scrolls near top
-  const loadOlderMessages = useCallback(async () => {
-    if (isLoadingOlder || status !== "CanLoadMore") return;
+    // Check if new messages were added (count increased)
+    const messagesAdded = currentMessageCount > previousMessageCount;
     
-    console.log('Loading older messages...', { 
-      currentCount: messages?.length, 
-      status 
-    });
-    
-    // Store current scroll position to maintain it after loading
-    const container = messagesContainerRef.current;
-    const scrollHeightBefore = container?.scrollHeight || 0;
-    
-    setIsLoadingOlder(true);
-    try {
-      await loadMore(50); // Load 50 more messages
-      
-      // Maintain scroll position after new messages are added
-      if (container) {
-        requestAnimationFrame(() => {
-          const scrollHeightAfter = container.scrollHeight;
-          const heightDifference = scrollHeightAfter - scrollHeightBefore;
-          container.scrollTop = container.scrollTop + heightDifference;
-        });
-      }
-      
-      console.log('✅ Successfully loaded older messages', {
-        newCount: messages?.length,
-        heightDiff: container ? container.scrollHeight - scrollHeightBefore : 0
+    if (messagesAdded) {
+      const isPaginating = isLoadingMore || isPaginationRestoringRef.current;
+      console.log('Messages added!', { 
+        isPaginating, 
+        isUserAtBottom, 
+        hasScrollState: !!scrollBeforeNewMessagesRef.current,
+        count: currentMessageCount - previousMessageCount
       });
-    } catch (error) {
-      console.error('❌ Failed to load older messages:', error);
-    } finally {
-      setIsLoadingOlder(false);
-    }
-  }, [isLoadingOlder, status, loadMore, messages?.length]);
-
-  // Handle scroll events
-  const handleScroll = useCallback(() => {
-    if (!messagesContainerRef.current) return;
-    
-    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-    const isAtBottom = Math.abs((scrollTop + clientHeight) - scrollHeight) <= 2;
-    const isNearTop = scrollTop < 25; // Within 300px of top
-    
-    setShouldAutoScroll(isAtBottom);
-    
-    // Debug scroll position
-    if (isNearTop) {
-      console.log('📍 Near top detected', {
-        scrollTop,
-        isNearTop,
-        isLoadingOlder,
-        status,
-        canLoadMore: status === "CanLoadMore",
-        messagesCount: messages?.length
-      });
-    }
-    
-    // Load older messages when scrolling near top
-    if (isNearTop && !isLoadingOlder && status === "CanLoadMore") {
-      console.log('🔄 Triggering load older messages...');
-      loadOlderMessages();
-    }
-  }, [isLoadingOlder, status, loadOlderMessages, messages?.length]);
-
-  // Handle new chat file - force scroll to bottom
-  useEffect(() => {
-    if (file?._id && file._id !== prevFileIdRef.current && isChatFile) {
-      prevFileIdRef.current = file._id;
-      setShouldAutoScroll(true);
       
-      // Force scroll to bottom when switching to a new chat
-      // Use multiple RAF to ensure DOM is fully updated
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            scrollToBottom(true); // Force scroll regardless of shouldAutoScroll
+      if (scrollBeforeNewMessagesRef.current) {
+        const { scrollTop: prevScrollTop, scrollHeight: prevScrollHeight } = scrollBeforeNewMessagesRef.current;
+        const currentScrollHeight = container.scrollHeight;
+        const addedHeight = currentScrollHeight - prevScrollHeight;
+        
+        if (isPaginating) {
+          // For pagination, ALWAYS maintain scroll position
+          console.log('Pagination scroll compensation:', {
+            prevScrollTop,
+            prevScrollHeight,
+            currentScrollHeight,
+            addedHeight,
+            willSetScrollTop: prevScrollTop + addedHeight
           });
-        });
-      });
+          
+          container.scrollTop = prevScrollTop + addedHeight;
+        } else {
+          // For new messages (not pagination)
+          if (isUserAtBottom) {
+            // User is at bottom, auto-scroll to show new messages
+            isAutoScrollingRef.current = true;
+            container.scrollTop = container.scrollHeight;
+            isAutoScrollingRef.current = false;
+          } else {
+            // User is not at bottom, maintain their position
+            console.log('New message scroll compensation:', {
+              prevScrollTop,
+              prevScrollHeight,
+              currentScrollHeight,
+              addedHeight,
+              willSetScrollTop: prevScrollTop + addedHeight
+            });
+            
+            container.scrollTop = prevScrollTop + addedHeight;
+          }
+        }
+      } else {
+        console.log('WARNING: No scroll state captured before messages were added!');
+      }
     }
-  }, [file?._id, isChatFile, scrollToBottom]);
+    
+    // Update the ref for next time
+    previousMessageCountRef.current = currentMessageCount;
+  }, [messages?.length, isUserAtBottom, isLoadingMore]);
 
-  // Auto-scroll when messages change (for existing chat)
-  useEffect(() => {
-    if (file?._id === prevFileIdRef.current) {
-      // Only auto-scroll if we're in the same chat (not switching chats)
-      scrollToBottom();
-    }
-  }, [messages, scrollToBottom, file?._id]);
+
 
   const handleSubmit = async (content: string) => {
     if (!activeTabId || isSubmitting || !file) return;
     
     setIsSubmitting(true);
-    setShouldAutoScroll(true);
     
     try {
       // Create user message (with optimistic update)
@@ -295,6 +379,15 @@ export default function OrgTeamFilePage() {
     );
   }
 
+  // Show Claude session viewer for .claude files
+  if (isClaudeFile) {
+    return (
+      <div className="flex-1 flex flex-col h-full">
+        <ClaudeSessionViewer messages={[...(messages || [])].reverse()} />
+      </div>
+    );
+  }
+
   // Show placeholder for other non-chat files
   if (!isChatFile) {
     return (
@@ -307,7 +400,7 @@ export default function OrgTeamFilePage() {
                 This file type is not supported yet.
               </div>
               <div className="text-sm text-muted-foreground">
-                Only .chat and .blog files are supported.
+                Only .chat, .claude, and .blog files are supported.
               </div>
             </div>
           </div>
@@ -319,32 +412,35 @@ export default function OrgTeamFilePage() {
   // Show chat interface for .chat files
   return (
     <div className="flex flex-col h-full w-full">
-      {/* Messages scrollable area - takes remaining space */}
-      <div className="flex-1 overflow-hidden">
-        <div 
-          ref={messagesContainerRef}
-          className="h-full overflow-y-auto px-6"
-          data-scroll-container
-          onScroll={handleScroll}
-        >
-          <div className="w-full max-w-4xl mx-auto py-2">
-            {/* Loading indicator for older messages */}
-            {isLoadingOlder && (
-              <div className="flex justify-center py-2">
-                <div className="text-xs text-muted-foreground">Loading more chats...</div>
+      {/* Messages scrollable area */}
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-6 relative"
+      >
+        <div className="w-full max-w-4xl mx-auto py-2">
+          {/* Intersection observer trigger for pagination */}
+          {status === "CanLoadMore" && (
+            <div ref={topObserverRef} className="h-1 w-full" />
+          )}
+          
+          {/* Loading indicator */}
+          {isLoadingMore && (
+            <div className="flex justify-center py-2">
+              <div className="flex items-center gap-1.5 text-xs text-foreground bg-background px-2 py-1 rounded border shadow-sm">
+                <div className="w-2.5 h-2.5 border border-current border-t-transparent rounded animate-spin" />
+                <span>Loading older messages...</span>
               </div>
-            )}
-            <MessageList
-              messages={[...(messages || [])].reverse()}
-              isSubmitting={isSubmitting}
-            />
-            {/* Invisible element at bottom for scrolling */}
-            <div ref={bottomElementRef} style={{ height: '1px' }} />
-          </div>
+            </div>
+          )}
+          
+          <MessageList
+            messages={[...(messages || [])].reverse()}
+            isSubmitting={isSubmitting}
+          />
         </div>
       </div>
       
-      {/* Fixed input area at bottom - never scrolls */}
+      {/* Input area */}
       <div className="flex-shrink-0 bg-background px-4 md:px-6 py-3 md:py-6">
         <div className="w-full max-w-4xl mx-auto">
           <TerminalInput 
