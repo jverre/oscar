@@ -201,8 +201,6 @@ export default function OrgTeamFilePage() {
     const currentMessageCount = messages.length;
     const previousMessageCount = previousMessageCountRef.current;
     
-    console.log('Message count change:', { previousMessageCount, currentMessageCount, isLoadingMore, scrollBeforeState: scrollBeforeNewMessagesRef.current });
-    
     // If this is the initial load, just update the count
     if (previousMessageCount === 0) {
       previousMessageCountRef.current = currentMessageCount;
@@ -214,12 +212,6 @@ export default function OrgTeamFilePage() {
     
     if (messagesAdded) {
       const isPaginating = isLoadingMore || isPaginationRestoringRef.current;
-      console.log('Messages added!', { 
-        isPaginating, 
-        isUserAtBottom, 
-        hasScrollState: !!scrollBeforeNewMessagesRef.current,
-        count: currentMessageCount - previousMessageCount
-      });
       
       if (scrollBeforeNewMessagesRef.current) {
         const { scrollTop: prevScrollTop, scrollHeight: prevScrollHeight } = scrollBeforeNewMessagesRef.current;
@@ -228,14 +220,6 @@ export default function OrgTeamFilePage() {
         
         if (isPaginating) {
           // For pagination, ALWAYS maintain scroll position
-          console.log('Pagination scroll compensation:', {
-            prevScrollTop,
-            prevScrollHeight,
-            currentScrollHeight,
-            addedHeight,
-            willSetScrollTop: prevScrollTop + addedHeight
-          });
-          
           container.scrollTop = prevScrollTop + addedHeight;
         } else {
           // For new messages (not pagination)
@@ -246,19 +230,9 @@ export default function OrgTeamFilePage() {
             isAutoScrollingRef.current = false;
           } else {
             // User is not at bottom, maintain their position
-            console.log('New message scroll compensation:', {
-              prevScrollTop,
-              prevScrollHeight,
-              currentScrollHeight,
-              addedHeight,
-              willSetScrollTop: prevScrollTop + addedHeight
-            });
-            
             container.scrollTop = prevScrollTop + addedHeight;
           }
         }
-      } else {
-        console.log('WARNING: No scroll state captured before messages were added!');
       }
     }
     
