@@ -1,0 +1,13 @@
+{
+  "name": "websocket-proxy",
+  "version": "1.0.0",
+  "description": "WebSocket proxy for Daytona authentication",
+  "main": "websocket-proxy.js",
+  "scripts": {
+    "start": "node websocket-proxy.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "node-fetch": "^2.6.7"
+  }
+}
