@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from "convex/react";
+import { useAuthToken } from "@convex-dev/auth/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,26 +14,20 @@ interface ClaudeCodeViewerProps {
   userId: Id<"users">;
 }
 
-// Helper function to create authenticated preview URL
-function getAuthenticatedPreviewUrl(session: any): string {
-  if (!session.previewUrl) return '';
+// Helper function to create authenticated preview URL using proxy
+function getAuthenticatedPreviewUrl(session: any, authToken: string | null): string {
+  if (!session.previewUrl || !session._id || !authToken) return '';
   
-  // If we have a preview token, we need to handle authentication
-  if (session.previewToken) {
-    // For iframe usage, we might need to use a different approach
-    // since iframes can't send custom headers
-    // Let's try adding the token as a query parameter for now
-    const url = new URL(session.previewUrl);
-    url.searchParams.set('token', session.previewToken);
-    return url.toString();
-  }
-  
-  return session.previewUrl;
+  // Use our proxy endpoint with the session ID and auth token
+  return `/api/daytona-proxy?sessionId=${session._id}&token=${encodeURIComponent(authToken)}`;
 }
 
 export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Get auth token for proxy authentication
+  const authToken = useAuthToken();
 
   // Query for active Claude Code session
   const activeSession = useQuery(api.claudeSessions.getActiveSession, { userId });
@@ -165,7 +160,7 @@ export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
             <CardContent>
               <div className="w-full h-96 border rounded-lg overflow-hidden">
                 <iframe
-                  src={getAuthenticatedPreviewUrl(activeSession)}
+                  src={getAuthenticatedPreviewUrl(activeSession, authToken)}
                   className="w-full h-full"
                   title="Claude Code Web Terminal"
                   sandbox="allow-same-origin allow-scripts allow-forms"

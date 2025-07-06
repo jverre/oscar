@@ -31,6 +31,24 @@ export const getActiveSession = query({
   },
 });
 
+// Query to get session by ID (for proxy authentication)
+export const getSessionById = query({
+  args: {
+    sessionId: v.id("claudeSessions"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId);
+    
+    // Verify the session belongs to the requesting user
+    if (!session || session.userId !== args.userId) {
+      return null;
+    }
+    
+    return session;
+  },
+});
+
 // Mutation to start a new Claude Code session
 export const startClaudeCodeSession = mutation({
   args: {

@@ -10,6 +10,7 @@ import { MessageList } from "@/components/chat/MessageList";
 import { FileNotFound } from "@/components/chat/FileNotFound";
 import { BlogEditor } from "@/components/blog/BlogEditor";
 import { ClaudeSessionViewer } from "@/components/chat/ClaudeSessionViewer";
+import { ClaudeCodeViewer } from "@/components/chat/ClaudeCodeViewer";
 import { useTabContext } from "@/contexts/TabContext";
 
 export default function OrgTeamFilePage() {
@@ -50,6 +51,7 @@ export default function OrgTeamFilePage() {
   const isChatFile = fileName.endsWith('.chat');
   const isBlogFile = fileName.endsWith('.blog');
   const isClaudeFile = fileName.endsWith('.claude');
+  const isClaudeSessionFile = fileName.endsWith('.claude_session');
   // Only consider file as "not found" when query has completed and returned null
   const fileExists = file !== null;
   const fileLoading = file === undefined;
@@ -362,6 +364,28 @@ export default function OrgTeamFilePage() {
     );
   }
 
+  // Show Claude Code viewer for .claude_session files
+  if (isClaudeSessionFile) {
+    return (
+      <div className="flex-1 flex flex-col h-full">
+        {user ? (
+          <ClaudeCodeViewer userId={user._id} />
+        ) : (
+          <div className="flex-1 flex flex-col h-full px-6">
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center space-y-4">
+                <div className="text-xl font-medium text-foreground">Authentication Required</div>
+                <div className="text-muted-foreground">
+                  Please log in to view Claude Code sessions.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // Show placeholder for other non-chat files
   if (!isChatFile) {
     return (
@@ -374,7 +398,7 @@ export default function OrgTeamFilePage() {
                 This file type is not supported yet.
               </div>
               <div className="text-sm text-muted-foreground">
-                Only .chat, .claude, and .blog files are supported.
+                Only .chat, .claude, .claude_session, and .blog files are supported.
               </div>
             </div>
           </div>

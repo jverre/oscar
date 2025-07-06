@@ -8,7 +8,7 @@ import { useFileCreation } from "@/hooks/useFileCreation";
 import { useGitCreation } from "@/hooks/useGitCreation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useTabContext } from "@/contexts/TabContext";
 import { useRouter } from "next/navigation";
@@ -30,9 +30,13 @@ export function TopNav() {
   const { addTab, isTabOpenByFile, getTabByFile, switchToTab } = useTabContext();
   const router = useRouter();
   
-  // Get user's organization and team for URL generation
+  // Get current user and organization/team info
+  const currentUser = useQuery(api.users.current);
   const userOrg = useQuery(api.organizations.getCurrentUserOrg);
   const userTeam = useQuery(api.teams.getCurrentUserTeam);
+  
+  // Claude Code session mutation
+  const startClaudeCodeSession = useMutation(api.claudeSessions.startClaudeCodeSession);
   
   // Search query
   const searchQueryResults = useQuery(
@@ -46,6 +50,7 @@ export function TopNav() {
   const mockCommands = [
     { id: "create-chat", title: "Create Chat", keywords: ["create", "new", "chat", "conversation", "start"] },
     { id: "create-blog", title: "Create Blog", keywords: ["create", "new", "blog", "post", "write"] },
+    { id: "start-claude-code", title: "Start Claude Code Session", keywords: ["claude", "code", "terminal", "session", "start", "web"] },
     { id: "clone-repository", title: "Clone Repository", keywords: ["clone", "git", "repository", "github", "repo"] },
     { id: "search-chat", title: "Search Chat", keywords: ["search", "find", "chat", "conversation", "browse"] }
   ];
@@ -337,6 +342,35 @@ export function TopNav() {
             }
           }
         });
+        break;
+      case 'start-claude-code':
+        // Start Claude Code session
+        if (!currentUser) {
+          console.error("User not authenticated");
+          handleClose();
+          break;
+        }
+        
+        try {
+          console.log("Starting Claude Code session for user:", currentUser._id);
+          const result = await startClaudeCodeSession({ userId: currentUser._id });
+          console.log("Claude Code session result:", result);
+          
+          // Create a special file for Claude Code session
+          const claudeCodeResult = await createFile({ 
+            name: 'claude_session.claude_session', 
+            navigate: true, 
+            fileType: 'claude_session' 
+          });
+          
+          if (claudeCodeResult) {
+            handleClose();
+          } else {
+            console.error("Failed to create Claude Code session file");
+          }
+        } catch (error) {
+          console.error("Failed to start Claude Code session:", error);
+        }
         break;
       case 'search-chat':
         // Enter search mode

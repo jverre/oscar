@@ -1,6 +1,7 @@
 const CHAT_EXTENSION = '.chat';
 const BLOG_EXTENSION = '.blog';
-const SUPPORTED_EXTENSIONS = ['.chat', '.blog'] as const;
+const CLAUDE_SESSION_EXTENSION = '.claude_session';
+const SUPPORTED_EXTENSIONS = ['.chat', '.blog', '.claude_session'] as const;
 
 /**
  * Adds an extension to a title if it doesn't already have one
@@ -62,6 +63,13 @@ function ensureBlogExtension(title: string): string {
 }
 
 /**
+ * Ensures a claude session title has the .claude_session extension
+ */
+function ensureClaudeSessionExtension(title: string): string {
+    return ensureExtension(title, CLAUDE_SESSION_EXTENSION);
+}
+
+/**
  * Validates and normalizes a conversation title for creation/editing
  */
 export function normalizeConversationTitle(title: string): string {
@@ -83,4 +91,16 @@ export function normalizeBlogTitle(title: string): string {
     
     const trimmed = title.trim();
     return ensureBlogExtension(trimmed);
+}
+
+/**
+ * Validates and normalizes a claude session title for creation/editing
+ */
+export function normalizeClaudeSessionTitle(title: string): string {
+    if (!title || !title.trim()) {
+        return 'New Claude Session' + CLAUDE_SESSION_EXTENSION;
+    }
+    
+    const trimmed = title.trim();
+    return ensureClaudeSessionExtension(trimmed);
 }

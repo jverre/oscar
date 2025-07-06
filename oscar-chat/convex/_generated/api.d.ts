@@ -16,6 +16,7 @@ import type {
 import type * as apiKeys from "../apiKeys.js";
 import type * as auth from "../auth.js";
 import type * as blogs from "../blogs.js";
+import type * as claudeSessions from "../claudeSessions.js";
 import type * as daytonaNode from "../daytonaNode.js";
 import type * as daytonaSandboxes from "../daytonaSandboxes.js";
 import type * as files from "../files.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   apiKeys: typeof apiKeys;
   auth: typeof auth;
   blogs: typeof blogs;
+  claudeSessions: typeof claudeSessions;
   daytonaNode: typeof daytonaNode;
   daytonaSandboxes: typeof daytonaSandboxes;
   files: typeof files;

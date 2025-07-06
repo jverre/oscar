@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useTabContext } from "@/contexts/TabContext";
-import { normalizeConversationTitle, normalizeBlogTitle } from "@/utils/extensionUtils";
+import { normalizeConversationTitle, normalizeBlogTitle, normalizeClaudeSessionTitle } from "@/utils/extensionUtils";
 import { generateUniqueFileName, validateFileName } from "@/utils/fileNameUtils";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -15,7 +15,7 @@ interface CreateFileOptions {
   navigate?: boolean;       // Whether to navigate to new file (default: true)  
   skipNormalization?: boolean; // Skip adding extension (for sidebar input flow)
   autoNumber?: boolean;     // Auto-number if duplicate exists (default: true)
-  fileType?: 'chat' | 'blog'; // File type to create (default: 'chat')
+  fileType?: 'chat' | 'blog' | 'claude_session'; // File type to create (default: 'chat')
 }
 
 interface UseFileCreationReturn {
@@ -59,7 +59,10 @@ export function useFileCreation(): UseFileCreationReturn {
 
     try {
       // Determine the file name based on file type
-      let fileName = name || (fileType === 'blog' ? "New Blog.blog" : "New File.chat");
+      let fileName = name || 
+        (fileType === 'blog' ? "New Blog.blog" : 
+         fileType === 'claude_session' ? "New Claude Session.claude_session" : 
+         "New File.chat");
       
       // If no name but there's an initial message, generate name from it
       if (!name && initialMessage) {
@@ -73,6 +76,8 @@ export function useFileCreation(): UseFileCreationReturn {
       } else {
         normalizedName = fileType === 'blog' 
           ? normalizeBlogTitle(fileName)
+          : fileType === 'claude_session'
+          ? normalizeClaudeSessionTitle(fileName)
           : normalizeConversationTitle(fileName);
       }
       

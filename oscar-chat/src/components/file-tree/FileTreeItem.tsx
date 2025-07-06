@@ -5,7 +5,7 @@ import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { getFileDisplayName } from "@/utils/folderUtils";
 import { validateFileName, areFileNamesDuplicate } from "@/utils/fileNameUtils";
-import { File, Hash, GitBranch, Globe, Lock, Bot } from "lucide-react";
+import { File, Hash, GitBranch, Globe, Lock, Bot, Terminal } from "lucide-react";
 
 interface FileTreeItemProps {
   file: Doc<"files">;
@@ -49,6 +49,8 @@ export function FileTreeItem({
       icon = <Hash className="h-3 w-3" style={{ color: 'var(--text-secondary)' }} />;
     } else if (file.name.endsWith('.claude')) {
       icon = <Bot className="h-3 w-3" style={{ color: 'var(--text-secondary)' }} />;
+    } else if (file.name.endsWith('.claude_session')) {
+      icon = <Terminal className="h-3 w-3" style={{ color: 'var(--text-secondary)' }} />;
     } else if (file.name.endsWith('.blog')) {
       icon = <File className="h-3 w-3" style={{ color: 'var(--text-secondary)' }} />;
     } else if (file.name.endsWith('.git')) {

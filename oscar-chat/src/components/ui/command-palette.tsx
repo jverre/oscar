@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Search, Plus, FileText, GitBranch } from "lucide-react";
+import { Search, Plus, FileText, GitBranch, Terminal } from "lucide-react";
 
 interface Command {
     id: string;
@@ -39,6 +39,13 @@ const mockCommands: Command[] = [
         description: "Write a new blog post",
         icon: <FileText className="w-4 h-4" />,
         keywords: ["create", "new", "blog", "post", "write"]
+    },
+    {
+        id: "start-claude-code",
+        title: "Start Claude Code Session",
+        description: "Launch Claude Code web terminal",
+        icon: <Terminal className="w-4 h-4" />,
+        keywords: ["claude", "code", "terminal", "session", "start", "web"]
     },
     {
         id: "clone-repository",
