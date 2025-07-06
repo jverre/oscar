@@ -75,6 +75,33 @@ export async function GET(request: NextRequest) {
       headers['x-daytona-preview-token'] = session.previewToken;
     }
 
+    // Try to get authentication cookie by making a request to Daytona first
+    if (session.previewToken) {
+      try {
+        console.log('Attempting to get Daytona auth cookie...');
+        const authResponse = await fetch(session.previewUrl, {
+          method: 'GET',
+          headers: {
+            'x-daytona-preview-token': session.previewToken,
+            'User-Agent': headers['User-Agent'] || 'Oscar-Proxy/1.0'
+          },
+          redirect: 'manual' // Don't follow redirects
+        });
+        
+        // Extract Set-Cookie headers
+        const setCookies = authResponse.headers.getSetCookie?.() || [];
+        if (setCookies.length > 0) {
+          console.log('Found cookies from Daytona:', setCookies);
+          // Combine cookies into a single Cookie header
+          const cookieValues = setCookies.map(cookie => cookie.split(';')[0]).join('; ');
+          headers['Cookie'] = cookieValues;
+          console.log('Added Cookie header:', cookieValues);
+        }
+      } catch (cookieError) {
+        console.log('Failed to get auth cookie:', cookieError);
+      }
+    }
+
     // Forward common headers
     const forwardHeaders = ['accept', 'accept-language', 'cache-control', 'connection', 'upgrade'];
     forwardHeaders.forEach(headerName => {
@@ -128,10 +155,27 @@ export async function GET(request: NextRequest) {
       console.log('Modified HTML with base tag and auth parameters');
       console.log('First 500 chars of modified HTML:', html.substring(0, 500));
       
+      // Prepare response headers including cookies
+      const htmlHeaders = new Headers({ 'content-type': 'text/html' });
+      
+      // If we got authentication cookies from Daytona, set them for the iframe
+      if (headers['Cookie']) {
+        // Extract individual cookies and set them
+        const cookies = headers['Cookie'].split('; ');
+        cookies.forEach(cookie => {
+          const [name, value] = cookie.split('=');
+          if (name && value) {
+            // Set cookie for the Daytona domain so WebSocket can use it
+            htmlHeaders.append('Set-Cookie', `${name}=${value}; Domain=.proxy.daytona.work; Path=/; Secure; SameSite=None`);
+          }
+        });
+        console.log('Setting authentication cookies for iframe');
+      }
+      
       return new Response(html, {
         status: response.status,
         statusText: response.statusText,
-        headers: { 'content-type': 'text/html' }
+        headers: htmlHeaders
       });
     }
 

@@ -114,29 +114,16 @@ export async function GET(
       console.log('First 200 chars of client.js:', clientJs.substring(0, 200));
       console.log('Original WebSocket line found:', clientJs.includes('window.location.host'));
       
-      // Try WebSocket subprotocol approach for authentication
+      // WebSocket needs cookies for authentication - browser should automatically include them
       const daytonaWsUrl = session.previewUrl.replace(/^https?:/, 'wss:');
       
-      // Replace the WebSocket connection logic to use subprotocols
+      // Replace the WebSocket connection logic
       const originalConnectMethod = /this\.socket = new WebSocket\(wsUrl\);/;
-      let newConnectMethod;
-      
-      if (session.previewToken) {
-        // Use subprotocol to pass the token (some servers support this)
-        newConnectMethod = `
-        console.log('Trying WebSocket with subprotocol auth:', "${daytonaWsUrl}");
-        console.log('Preview token:', "${session.previewToken}");
-        try {
-          this.socket = new WebSocket("${daytonaWsUrl}", ["daytona-auth-${session.previewToken}"]);
-        } catch (e) {
-          console.log('Subprotocol failed, trying basic connection:', e);
-          this.socket = new WebSocket("${daytonaWsUrl}");
-        }`;
-      } else {
-        newConnectMethod = `
-        console.log('No preview token, connecting without auth:', "${daytonaWsUrl}");
-        this.socket = new WebSocket("${daytonaWsUrl}");`;
-      }
+      const newConnectMethod = `
+      console.log('Connecting to Daytona WebSocket (cookies should be included automatically):', "${daytonaWsUrl}");
+      console.log('Document cookies:', document.cookie);
+      // The browser should automatically include cookies for the same domain
+      this.socket = new WebSocket("${daytonaWsUrl}");`;
       
       clientJs = clientJs.replace(originalConnectMethod, newConnectMethod);
       
