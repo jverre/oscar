@@ -210,7 +210,7 @@ export const setupClaudeCodeSession = internalAction({
 
       // Step 5: Get preview URL and token
       console.log(`Getting preview URL and token...`);
-      const previewResponse = await fetch(`${baseUrl}/sandbox/${args.sandboxId}/ports/3456/preview-link`, {
+      const previewResponse = await fetch(`${baseUrl}/sandbox/${args.sandboxId}/ports/3456/preview-url`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
@@ -220,27 +220,38 @@ export const setupClaudeCodeSession = internalAction({
       let previewUrl = null;
       let previewToken = null;
       if (previewResponse.ok) {
-        const previewData = await previewResponse.json();
-        previewUrl = previewData.url;
-        previewToken = previewData.token;
+        const previewText = await previewResponse.text();
+        try {
+          const previewData = JSON.parse(previewText);
+          previewUrl = previewData.url;
+          previewToken = previewData.token; // May be undefined
+        } catch (e) {
+          previewUrl = previewText; // In case it's just a plain URL
+        }
         console.log(`Preview URL: ${previewUrl}`);
-        console.log(`Preview token: ${previewToken}`);
+        console.log(`Preview token: ${previewToken || 'none'}`);
       } else {
         console.log(`Failed to get preview link: ${previewResponse.status} ${previewResponse.statusText}`);
       }
 
       // Update session with success
-      await ctx.runMutation(internal.claudeSessions.updateSessionStatus, {
+      const updateParams: any = {
         sessionId: args.sessionDbId,
         status: "running",
         sessionIdValue: sessionId,
         previewUrl,
-        previewToken,
         metadata: {
           sandboxState: sandbox.state,
           serverRunning: true,
         },
-      });
+      };
+
+      // Only include previewToken if it exists
+      if (previewToken) {
+        updateParams.previewToken = previewToken;
+      }
+
+      await ctx.runMutation(internal.claudeSessions.updateSessionStatus, updateParams);
 
       console.log(`Claude Code session setup complete!`);
 
