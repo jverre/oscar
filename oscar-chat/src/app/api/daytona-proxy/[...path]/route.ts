@@ -117,21 +117,39 @@ export async function GET(
       // Replace the WebSocket URL to point directly to Daytona
       const daytonaWsUrl = session.previewUrl.replace(/^https?:/, 'wss:');
       
-      // Replace the WebSocket connection logic to include authentication
+      // Replace the WebSocket connection logic with enhanced debugging
       const originalConnectMethod = /this\.socket = new WebSocket\(wsUrl\);/;
       let newConnectMethod = `
-      console.log('Connecting to WebSocket:', "${daytonaWsUrl}");
+      console.log('Original wsUrl would be:', wsUrl);
+      console.log('Connecting to Daytona WebSocket:', "${daytonaWsUrl}");
+      console.log('Preview token available:', ${!!session.previewToken});
       this.socket = new WebSocket("${daytonaWsUrl}");`;
       
-      // If we have a preview token, try to add it to headers (though this might not work for WebSocket)
-      if (session.previewToken) {
-        newConnectMethod = `
-        console.log('Connecting to WebSocket with auth:', "${daytonaWsUrl}");
-        this.socket = new WebSocket("${daytonaWsUrl}");
-        // Note: WebSocket headers can't be set from browser, may need different auth method`;
-      }
-      
       clientJs = clientJs.replace(originalConnectMethod, newConnectMethod);
+      
+      // Also enhance the error logging
+      const originalErrorHandler = /this\.socket\.onerror = \(error\) => \{[\s\S]*?\};/;
+      const newErrorHandler = `
+      this.socket.onerror = (error) => {
+        console.error('WebSocket error details:', error);
+        console.error('WebSocket readyState:', this.socket.readyState);
+        console.error('WebSocket URL was:', "${daytonaWsUrl}");
+        this.updateConnectionStatus('disconnected');
+      };`;
+      
+      clientJs = clientJs.replace(originalErrorHandler, newErrorHandler);
+      
+      // Enhanced close handler
+      const originalCloseHandler = /this\.socket\.onclose = \(event\) => \{[\s\S]*?\};/;
+      const newCloseHandler = `
+      this.socket.onclose = (event) => {
+        console.log('WebSocket closed with code:', event.code, 'reason:', event.reason);
+        console.log('WebSocket close event:', event);
+        this.updateConnectionStatus('disconnected');
+        this.attemptReconnect();
+      };`;
+      
+      clientJs = clientJs.replace(originalCloseHandler, newCloseHandler);
       
       // Also replace the wsUrl line as backup
       const originalLine = /const wsUrl = `\${protocol}\/\/\${window\.location\.host}`;/;
