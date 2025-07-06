@@ -114,44 +114,92 @@ export async function GET(
       console.log('First 200 chars of client.js:', clientJs.substring(0, 200));
       console.log('Original WebSocket line found:', clientJs.includes('window.location.host'));
       
-      // Since this is our own WebSocket server, let's try connecting without auth
-      const daytonaWsUrl = session.previewUrl.replace(/^https?:/, 'wss:');
+      // Replace WebSocket with Server-Sent Events (much simpler!)
+      const baseUrl = session.previewUrl;
       
-      // Replace the WebSocket connection logic with basic connection
+      // Replace the entire WebSocket connection logic with SSE
       const originalConnectMethod = /this\.socket = new WebSocket\(wsUrl\);/;
       const newConnectMethod = `
-      console.log('Our own WebSocket server - no auth needed');
-      console.log('Connecting to our terminal WebSocket:', "${daytonaWsUrl}");
-      console.log('This should work since it\\'s our own server from the snapshot');
+      console.log('Using Server-Sent Events instead of WebSocket');
+      console.log('Base URL:', "${baseUrl}");
       
-      // Try the connection - our server.js doesn\\'t require authentication
-      this.socket = new WebSocket("${daytonaWsUrl}");`;
+      // Create SSE connection for terminal output
+      this.eventSource = new EventSource("${baseUrl}/terminal-stream");
+      this.connected = false;
+      
+      this.eventSource.onopen = () => {
+        console.log('SSE connection opened');
+        this.connected = true;
+        this.updateConnectionStatus('connected');
+        
+        // Send initial terminal size
+        this.sendTerminalInput(JSON.stringify({
+          type: 'resize',
+          cols: this.terminal.cols,
+          rows: this.terminal.rows
+        }));
+      };
+      
+      this.eventSource.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === 'output') {
+            this.terminal.write(message.data);
+          } else if (message.type === 'exit') {
+            this.terminal.write('\\r\\n\\r\\n[Process exited]');
+            this.updateConnectionStatus('disconnected');
+          }
+        } catch (error) {
+          console.error('Error parsing SSE message:', error);
+        }
+      };
+      
+      this.eventSource.onerror = (error) => {
+        console.error('SSE error:', error);
+        this.updateConnectionStatus('disconnected');
+      };
+      
+      // Function to send input via HTTP POST
+      this.sendTerminalInput = async (data) => {
+        if (!this.connected) return;
+        
+        try {
+          await fetch("${baseUrl}/terminal-input", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: data
+          });
+        } catch (error) {
+          console.error('Error sending terminal input:', error);
+        }
+      };`;
       
       clientJs = clientJs.replace(originalConnectMethod, newConnectMethod);
       
-      // Also enhance the error logging
-      const originalErrorHandler = /this\.socket\.onerror = \(error\) => \{[\s\S]*?\};/;
-      const newErrorHandler = `
-      this.socket.onerror = (error) => {
-        console.error('WebSocket error details:', error);
-        console.error('WebSocket readyState:', this.socket.readyState);
-        console.error('WebSocket URL was:', "${daytonaWsUrl}");
-        this.updateConnectionStatus('disconnected');
-      };`;
+      // Replace terminal input handlers to use HTTP instead of WebSocket
+      const originalInputHandler = /this\.terminal\.onData\(\(data\) => \{[\s\S]*?\}\);/;
+      const newInputHandler = `
+      this.terminal.onData((data) => {
+        this.sendTerminalInput(JSON.stringify({
+          type: 'input',
+          data: data
+        }));
+      });`;
       
-      clientJs = clientJs.replace(originalErrorHandler, newErrorHandler);
+      clientJs = clientJs.replace(originalInputHandler, newInputHandler);
       
-      // Enhanced close handler
-      const originalCloseHandler = /this\.socket\.onclose = \(event\) => \{[\s\S]*?\};/;
-      const newCloseHandler = `
-      this.socket.onclose = (event) => {
-        console.log('WebSocket closed with code:', event.code, 'reason:', event.reason);
-        console.log('WebSocket close event:', event);
-        this.updateConnectionStatus('disconnected');
-        this.attemptReconnect();
-      };`;
+      // Replace terminal resize handler  
+      const originalResizeHandler = /this\.terminal\.onResize\(\(size\) => \{[\s\S]*?\}\);/;
+      const newResizeHandler = `
+      this.terminal.onResize((size) => {
+        this.sendTerminalInput(JSON.stringify({
+          type: 'resize',
+          cols: size.cols,
+          rows: size.rows
+        }));
+      });`;
       
-      clientJs = clientJs.replace(originalCloseHandler, newCloseHandler);
+      clientJs = clientJs.replace(originalResizeHandler, newResizeHandler);
       
       // Also replace the wsUrl line as backup
       const originalLine = /const wsUrl = `\${protocol}\/\/\${window\.location\.host}`;/;
