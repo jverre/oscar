@@ -122,6 +122,27 @@ export async function GET(request: NextRequest) {
 
     console.log(`Daytona response status: ${response.status} ${response.statusText}`);
 
+    // Check if this is an HTML response that needs URL modification
+    const responseContentType = response.headers.get('content-type') || '';
+    if (response.ok && responseContentType.includes('text/html')) {
+      console.log('Modifying HTML to include auth parameters in relative URLs');
+      
+      let html = await response.text();
+      const authParams = `?sessionId=${sessionId}&token=${encodeURIComponent(token)}`;
+      
+      // Replace relative script and link sources to include auth parameters
+      html = html.replace(/src="([^"]*(?:\.js))"/g, `src="$1${authParams}"`);
+      html = html.replace(/href="([^"]*\.css)"/g, `href="$1${authParams}"`);
+      
+      console.log('Modified HTML with auth parameters for relative URLs');
+      
+      return new Response(html, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: { 'content-type': 'text/html' }
+      });
+    }
+
     // Prepare response headers
     const responseHeaders = new Headers();
     
