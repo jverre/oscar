@@ -54,30 +54,17 @@ export async function GET(
     console.log(`Session status: ${session.status}`);
     console.log(`Preview token available: ${!!session.previewToken}`);
 
-    // For the root request (no path segments), redirect directly to Daytona
+    // Construct the target URL - always proxy, never redirect
     const pathSegments = params.path || [];
-    
-    if (pathSegments.length === 0) {
-      // This is the root iframe request - redirect to Daytona URL with auth
-      const daytonaUrl = new URL(session.previewUrl);
-      
-      // Add authentication if available
-      if (session.previewToken) {
-        // Try adding token as a query parameter (some services support this)
-        daytonaUrl.searchParams.set('auth-token', session.previewToken);
-      }
-      
-      console.log(`Redirecting to Daytona URL: ${daytonaUrl.toString()}`);
-      
-      return Response.redirect(daytonaUrl.toString(), 302);
-    }
-    
-    // For sub-paths, proxy the request
     const targetUrl = new URL(session.previewUrl);
-    const additionalPath = pathSegments.join('/');
-    targetUrl.pathname = targetUrl.pathname.endsWith('/') 
-      ? targetUrl.pathname + additionalPath
-      : targetUrl.pathname + '/' + additionalPath;
+    
+    // If there are path segments, append them to the Daytona URL
+    if (pathSegments.length > 0) {
+      const additionalPath = pathSegments.join('/');
+      targetUrl.pathname = targetUrl.pathname.endsWith('/') 
+        ? targetUrl.pathname + additionalPath
+        : targetUrl.pathname + '/' + additionalPath;
+    }
 
     // Forward query parameters (except our internal ones)
     const forwardParams = new URLSearchParams(request.nextUrl.search);
@@ -108,12 +95,20 @@ export async function GET(
 
     // Make request to Daytona
     console.log(`Final target URL: ${targetUrl.toString()}`);
+    console.log(`Request method: ${request.method}`);
     console.log(`Request headers:`, headers);
     
-    const response = await fetch(targetUrl.toString(), {
+    const requestOptions: RequestInit = {
       method: request.method,
       headers,
-    });
+    };
+
+    // Add body for POST/PUT requests
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      requestOptions.body = request.body;
+    }
+    
+    const response = await fetch(targetUrl.toString(), requestOptions);
 
     console.log(`Daytona response status: ${response.status} ${response.statusText}`);
 
@@ -148,12 +143,22 @@ export async function GET(
       }
     }
 
-    // Return the response
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders,
-    });
+    // For successful responses, stream the content
+    if (response.ok) {
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+      });
+    } else {
+      // For error responses, read the body and return a proper error
+      const errorText = await response.text();
+      console.log(`Daytona error response: ${errorText}`);
+      return new Response(`Daytona Error: ${response.status} ${response.statusText}\n${errorText}`, {
+        status: response.status,
+        headers: { 'content-type': 'text/plain' }
+      });
+    }
 
   } catch (error) {
     console.error('Daytona proxy error:', error);
