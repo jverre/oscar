@@ -125,16 +125,27 @@ export async function GET(request: NextRequest) {
     // Check if this is an HTML response that needs URL modification
     const responseContentType = response.headers.get('content-type') || '';
     if (response.ok && responseContentType.includes('text/html')) {
-      console.log('Modifying HTML to include auth parameters in relative URLs');
+      console.log('Modifying HTML to fix base URL and add auth parameters');
       
       let html = await response.text();
       const authParams = `?sessionId=${sessionId}&token=${encodeURIComponent(token)}`;
+      const baseUrl = `/api/daytona-proxy/`;
+      
+      // Add or modify the base tag to ensure correct URL resolution
+      if (html.includes('<base ')) {
+        // Replace existing base tag
+        html = html.replace(/<base [^>]*>/i, `<base href="${baseUrl}">`);
+      } else {
+        // Add base tag after <head>
+        html = html.replace(/<head>/i, `<head><base href="${baseUrl}">`);
+      }
       
       // Replace relative script and link sources to include auth parameters
       html = html.replace(/src="([^"]*(?:\.js))"/g, `src="$1${authParams}"`);
       html = html.replace(/href="([^"]*\.css)"/g, `href="$1${authParams}"`);
       
-      console.log('Modified HTML with auth parameters for relative URLs');
+      console.log('Modified HTML with base tag and auth parameters');
+      console.log('First 500 chars of modified HTML:', html.substring(0, 500));
       
       return new Response(html, {
         status: response.status,

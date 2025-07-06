@@ -10,6 +10,7 @@ export async function GET(
   console.log(`=== DAYTONA PROXY SUB-PATH REQUEST ===`);
   console.log(`Request URL: ${request.url}`);
   console.log(`Path segments:`, params.path);
+  console.log(`Query params:`, Object.fromEntries(request.nextUrl.searchParams.entries()));
   
   try {
     // Get auth token from header or query parameter (for iframe usage)
