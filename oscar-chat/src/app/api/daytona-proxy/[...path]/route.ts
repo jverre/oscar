@@ -100,14 +100,36 @@ export async function GET(
       const response = await fetch(targetUrl.toString(), requestOptions);
       let clientJs = await response.text();
       
+      console.log('Original client.js length:', clientJs.length);
+      console.log('Original WebSocket line found:', clientJs.includes('window.location.host'));
+      
       // Replace the WebSocket URL to point directly to Daytona
       const daytonaWsUrl = session.previewUrl.replace(/^https?:/, 'wss:');
-      clientJs = clientJs.replace(
-        /const wsUrl = `\${protocol}\/\/\${window\.location\.host}`;/,
-        `const wsUrl = "${daytonaWsUrl}";`
-      );
+      
+      // Replace the WebSocket connection logic to include authentication
+      const originalConnectMethod = /this\.socket = new WebSocket\(wsUrl\);/;
+      let newConnectMethod = `
+      console.log('Connecting to WebSocket:', "${daytonaWsUrl}");
+      this.socket = new WebSocket("${daytonaWsUrl}");`;
+      
+      // If we have a preview token, try to add it to headers (though this might not work for WebSocket)
+      if (session.previewToken) {
+        newConnectMethod = `
+        console.log('Connecting to WebSocket with auth:', "${daytonaWsUrl}");
+        this.socket = new WebSocket("${daytonaWsUrl}");
+        // Note: WebSocket headers can't be set from browser, may need different auth method`;
+      }
+      
+      clientJs = clientJs.replace(originalConnectMethod, newConnectMethod);
+      
+      // Also replace the wsUrl line as backup
+      const originalLine = /const wsUrl = `\${protocol}\/\/\${window\.location\.host}`;/;
+      const newLine = `const wsUrl = "${daytonaWsUrl}";`;
+      clientJs = clientJs.replace(originalLine, newLine);
       
       console.log(`Modified WebSocket URL to: ${daytonaWsUrl}`);
+      console.log('Modified client.js length:', clientJs.length);
+      console.log('Replacement successful:', !clientJs.includes('window.location.host'));
       
       return new Response(clientJs, {
         status: 200,

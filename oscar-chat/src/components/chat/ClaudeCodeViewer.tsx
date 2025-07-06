@@ -179,7 +179,10 @@ export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
                   className="w-full h-full"
                   title="Claude Code Web Terminal"
                   sandbox="allow-same-origin allow-scripts allow-forms"
-                  onLoad={() => console.log('Iframe loaded successfully')}
+                  onLoad={() => {
+                    console.log('Iframe loaded successfully');
+                    console.log('Direct Daytona URL:', activeSession.previewUrl);
+                  }}
                   onError={(e) => console.error('Iframe error:', e)}
                 />
               </div>
