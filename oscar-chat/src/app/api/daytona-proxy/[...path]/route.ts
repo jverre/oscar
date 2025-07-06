@@ -7,10 +7,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
+  console.log(`=== DAYTONA PROXY REQUEST START ===`);
+  console.log(`Request URL: ${request.url}`);
+  console.log(`Path segments:`, params.path);
+  console.log(`Query params:`, Object.fromEntries(request.nextUrl.searchParams.entries()));
+  
   try {
-    console.log(`=== PROXY REQUEST START ===`);
-    console.log(`Request URL: ${request.url}`);
-    console.log(`Path segments:`, params.path);
     // Get auth token from header or query parameter (for iframe usage)
     let token = '';
     const authHeader = request.headers.get('authorization');

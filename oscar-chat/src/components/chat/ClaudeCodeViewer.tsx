@@ -18,7 +18,7 @@ interface ClaudeCodeViewerProps {
 function getAuthenticatedPreviewUrl(session: any, authToken: string | null): string {
   if (!session.previewUrl || !session._id || !authToken) return '';
   
-  // Use our proxy endpoint to handle authentication and avoid redirect loops
+  // Test if the proxy route is working at all
   return `/api/daytona-proxy?sessionId=${session._id}&token=${encodeURIComponent(authToken)}`;
 }
 
@@ -159,11 +159,28 @@ export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
           {activeSession.previewUrl && activeSession.status === 'running' && (
             <CardContent>
               <div className="w-full h-96 border rounded-lg overflow-hidden">
+                <div className="mb-2 text-xs text-gray-500 space-y-1">
+                  <div>Preview URL: {activeSession.previewUrl}</div>
+                  <div>Proxy URL: {getAuthenticatedPreviewUrl(activeSession, authToken)}</div>
+                  <div>Session ID: {activeSession._id}</div>
+                  <div>Auth Token: {authToken ? `${authToken.substring(0, 20)}...` : 'None'}</div>
+                  <div>
+                    <a 
+                      href={`/api/debug-proxy?sessionId=${activeSession._id}&token=${encodeURIComponent(authToken || '')}`}
+                      target="_blank"
+                      className="text-blue-500 hover:underline"
+                    >
+                      Test Proxy Debug
+                    </a>
+                  </div>
+                </div>
                 <iframe
                   src={getAuthenticatedPreviewUrl(activeSession, authToken)}
                   className="w-full h-full"
                   title="Claude Code Web Terminal"
                   sandbox="allow-same-origin allow-scripts allow-forms"
+                  onLoad={() => console.log('Iframe loaded successfully')}
+                  onError={(e) => console.error('Iframe error:', e)}
                 />
               </div>
             </CardContent>
