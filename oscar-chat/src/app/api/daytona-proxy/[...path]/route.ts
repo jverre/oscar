@@ -114,14 +114,23 @@ export async function GET(
       console.log('First 200 chars of client.js:', clientJs.substring(0, 200));
       console.log('Original WebSocket line found:', clientJs.includes('window.location.host'));
       
-      // Replace the WebSocket URL to point directly to Daytona
-      const daytonaWsUrl = session.previewUrl.replace(/^https?:/, 'wss:');
+      // Replace the WebSocket URL to point directly to Daytona with auth token
+      let daytonaWsUrl = session.previewUrl.replace(/^https?:/, 'wss:');
+      
+      // Try adding the preview token as a query parameter
+      if (session.previewToken) {
+        const wsUrlObj = new URL(daytonaWsUrl);
+        wsUrlObj.searchParams.set('token', session.previewToken);
+        wsUrlObj.searchParams.set('auth-token', session.previewToken);
+        wsUrlObj.searchParams.set('x-daytona-preview-token', session.previewToken);
+        daytonaWsUrl = wsUrlObj.toString();
+      }
       
       // Replace the WebSocket connection logic with enhanced debugging
       const originalConnectMethod = /this\.socket = new WebSocket\(wsUrl\);/;
       let newConnectMethod = `
       console.log('Original wsUrl would be:', wsUrl);
-      console.log('Connecting to Daytona WebSocket:', "${daytonaWsUrl}");
+      console.log('Connecting to Daytona WebSocket with auth:', "${daytonaWsUrl}");
       console.log('Preview token available:', ${!!session.previewToken});
       this.socket = new WebSocket("${daytonaWsUrl}");`;
       
