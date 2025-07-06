@@ -55,26 +55,7 @@ export async function GET(request: NextRequest) {
     // Construct the target URL - use the Daytona preview URL directly
     const targetUrl = new URL(session.previewUrl);
 
-    // Check if this is a request for client.js - we need to modify it
-    if (targetUrl.pathname.endsWith('/client.js')) {
-      console.log('Serving modified client.js with correct WebSocket URL');
-      
-      // Fetch the original client.js
-      const response = await fetch(targetUrl.toString(), requestOptions);
-      let clientJs = await response.text();
-      
-      // Replace the WebSocket URL to point directly to Daytona
-      const daytonaWsUrl = session.previewUrl.replace(/^https?:/, 'wss:');
-      clientJs = clientJs.replace(
-        /const wsUrl = `\${protocol}\/\/\${window\.location\.host}`;/,
-        `const wsUrl = "${daytonaWsUrl}";`
-      );
-      
-      return new Response(clientJs, {
-        status: 200,
-        headers: { 'content-type': 'application/javascript' }
-      });
-    }
+    // client.js handling is now done by the catch-all route
 
     // Forward query parameters (except our internal ones)
     const forwardParams = new URLSearchParams(request.nextUrl.search);
