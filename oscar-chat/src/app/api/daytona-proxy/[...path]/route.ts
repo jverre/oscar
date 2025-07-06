@@ -114,15 +114,17 @@ export async function GET(
       console.log('First 200 chars of client.js:', clientJs.substring(0, 200));
       console.log('Original WebSocket line found:', clientJs.includes('window.location.host'));
       
-      // Simple approach - just try connecting directly and see what happens
+      // Since this is our own WebSocket server, let's try connecting without auth
       const daytonaWsUrl = session.previewUrl.replace(/^https?:/, 'wss:');
       
       // Replace the WebSocket connection logic with basic connection
       const originalConnectMethod = /this\.socket = new WebSocket\(wsUrl\);/;
       const newConnectMethod = `
-      console.log('Connecting directly to Daytona WebSocket:', "${daytonaWsUrl}");
-      console.log('Current document domain:', document.domain);
-      console.log('Current window location:', window.location.href);
+      console.log('Our own WebSocket server - no auth needed');
+      console.log('Connecting to our terminal WebSocket:', "${daytonaWsUrl}");
+      console.log('This should work since it\\'s our own server from the snapshot');
+      
+      // Try the connection - our server.js doesn\\'t require authentication
       this.socket = new WebSocket("${daytonaWsUrl}");`;
       
       clientJs = clientJs.replace(originalConnectMethod, newConnectMethod);

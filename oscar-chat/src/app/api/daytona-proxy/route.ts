@@ -139,47 +139,12 @@ export async function GET(request: NextRequest) {
       const authParams = `?sessionId=${sessionId}&token=${encodeURIComponent(token)}`;
       const baseUrl = `/api/daytona-proxy/`;
       
-      // Cookie trick: Inject JavaScript to redirect to Daytona first, then back
-      const cookieAuthScript = `
-      <script>
-        console.log('Cookie authentication trick starting...');
-        
-        // Check if we've already done the cookie redirect
-        if (!sessionStorage.getItem('daytona-cookie-set')) {
-          console.log('Redirecting to Daytona to establish cookie...');
-          sessionStorage.setItem('daytona-cookie-set', 'true');
-          
-          // Redirect to Daytona URL with auth token, then back to our proxy
-          const daytonaUrl = '${session.previewUrl}';
-          const returnUrl = window.location.href;
-          
-          // Create a temporary iframe to establish the cookie
-          const authFrame = document.createElement('iframe');
-          authFrame.style.display = 'none';
-          authFrame.src = daytonaUrl + '?return=' + encodeURIComponent(returnUrl);
-          document.body.appendChild(authFrame);
-          
-          // Wait a bit, then reload the main page
-          setTimeout(() => {
-            console.log('Cookie should be set, reloading...');
-            window.location.reload();
-          }, 2000);
-          
-          return; // Don't execute the rest of the terminal code yet
-        } else {
-          console.log('Cookie redirect already done, proceeding with terminal');
-        }
-      </script>`;
-      
       // Add or modify the base tag to ensure correct URL resolution
       if (html.includes('<base ')) {
         html = html.replace(/<base [^>]*>/i, `<base href="${baseUrl}">`);
       } else {
         html = html.replace(/<head>/i, `<head><base href="${baseUrl}">`);
       }
-      
-      // Inject the cookie authentication script
-      html = html.replace(/<head>/i, `<head>${cookieAuthScript}`);
       
       // Replace relative script and link sources to include auth parameters
       html = html.replace(/src="([^"]*(?:\.js))"/g, `src="$1${authParams}"`);
