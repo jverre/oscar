@@ -55,6 +55,27 @@ export async function GET(request: NextRequest) {
     // Construct the target URL - use the Daytona preview URL directly
     const targetUrl = new URL(session.previewUrl);
 
+    // Check if this is a request for client.js - we need to modify it
+    if (targetUrl.pathname.endsWith('/client.js')) {
+      console.log('Serving modified client.js with correct WebSocket URL');
+      
+      // Fetch the original client.js
+      const response = await fetch(targetUrl.toString(), requestOptions);
+      let clientJs = await response.text();
+      
+      // Replace the WebSocket URL to point directly to Daytona
+      const daytonaWsUrl = session.previewUrl.replace(/^https?:/, 'wss:');
+      clientJs = clientJs.replace(
+        /const wsUrl = `\${protocol}\/\/\${window\.location\.host}`;/,
+        `const wsUrl = "${daytonaWsUrl}";`
+      );
+      
+      return new Response(clientJs, {
+        status: 200,
+        headers: { 'content-type': 'application/javascript' }
+      });
+    }
+
     // Forward query parameters (except our internal ones)
     const forwardParams = new URLSearchParams(request.nextUrl.search);
     forwardParams.delete('sessionId');
@@ -121,15 +142,14 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Handle WebSocket upgrade
-    if (response.headers.get('upgrade') === 'websocket') {
-      responseHeaders.set('upgrade', 'websocket');
-      responseHeaders.set('connection', 'upgrade');
-      
-      const wsKeyHeader = request.headers.get('sec-websocket-key');
-      if (wsKeyHeader) {
-        responseHeaders.set('sec-websocket-accept', response.headers.get('sec-websocket-accept') || '');
-      }
+    // Handle WebSocket upgrade - but this won't work in Next.js API routes
+    // WebSocket upgrades need to be handled differently
+    if (request.headers.get('upgrade') === 'websocket') {
+      console.log('WebSocket upgrade attempt detected - this needs special handling');
+      return new Response('WebSocket upgrades not supported in this proxy', { 
+        status: 501,
+        headers: { 'content-type': 'text/plain' }
+      });
     }
 
     // For successful responses, stream the content
