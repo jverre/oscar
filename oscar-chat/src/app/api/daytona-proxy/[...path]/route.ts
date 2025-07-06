@@ -96,11 +96,21 @@ export async function GET(
     // Check if this is a request for client.js - we need to modify it
     if (targetUrl.pathname.endsWith('/client.js')) {
       console.log('Serving modified client.js with correct WebSocket URL');
+      console.log('Target URL for client.js:', targetUrl.toString());
       
       const response = await fetch(targetUrl.toString(), requestOptions);
+      console.log('Client.js response status:', response.status, response.statusText);
+      console.log('Client.js response content-type:', response.headers.get('content-type'));
+      
+      if (!response.ok) {
+        console.error('Failed to fetch client.js from Daytona');
+        return new Response('Error fetching client.js', { status: response.status });
+      }
+      
       let clientJs = await response.text();
       
       console.log('Original client.js length:', clientJs.length);
+      console.log('First 200 chars of client.js:', clientJs.substring(0, 200));
       console.log('Original WebSocket line found:', clientJs.includes('window.location.host'));
       
       // Replace the WebSocket URL to point directly to Daytona
@@ -169,6 +179,7 @@ export async function GET(
 
   } catch (error) {
     console.error('Daytona proxy sub-path error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return new Response(`Internal Server Error: ${error}`, { 
       status: 500,
       headers: { 'content-type': 'text/plain' }

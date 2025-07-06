@@ -164,13 +164,27 @@ export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
                   <div>Proxy URL: {getAuthenticatedPreviewUrl(activeSession, authToken)}</div>
                   <div>Session ID: {activeSession._id}</div>
                   <div>Auth Token: {authToken ? `${authToken.substring(0, 20)}...` : 'None'}</div>
-                  <div>
+                  <div className="space-x-2">
                     <a 
                       href={`/api/debug-proxy?sessionId=${activeSession._id}&token=${encodeURIComponent(authToken || '')}`}
                       target="_blank"
                       className="text-blue-500 hover:underline"
                     >
                       Test Proxy Debug
+                    </a>
+                    <a 
+                      href={`/api/test-subpath/client.js`}
+                      target="_blank"
+                      className="text-blue-500 hover:underline"
+                    >
+                      Test Subpath
+                    </a>
+                    <a 
+                      href={`/api/daytona-proxy/client.js?sessionId=${activeSession._id}&token=${encodeURIComponent(authToken || '')}`}
+                      target="_blank"
+                      className="text-blue-500 hover:underline"
+                    >
+                      Test Client.js Direct
                     </a>
                   </div>
                 </div>
