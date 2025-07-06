@@ -114,18 +114,16 @@ export async function GET(
       console.log('First 200 chars of client.js:', clientJs.substring(0, 200));
       console.log('Original WebSocket line found:', clientJs.includes('window.location.host'));
       
-      // Since we can't set cookies cross-origin, let's connect to our WebSocket proxy instead
-      const wsProxyUrl = 'ws://localhost:3001';
+      // Simple approach - just try connecting directly and see what happens
+      const daytonaWsUrl = session.previewUrl.replace(/^https?:/, 'wss:');
       
-      // Replace the WebSocket connection logic to use our proxy
+      // Replace the WebSocket connection logic with basic connection
       const originalConnectMethod = /this\.socket = new WebSocket\(wsUrl\);/;
       const newConnectMethod = `
-      console.log('Connecting to WebSocket proxy instead of direct Daytona connection');
-      console.log('Proxy URL:', '${wsProxyUrl}');
-      console.log('Session ID for auth:', '${sessionId}');
-      
-      // Connect to our proxy with session ID for authentication
-      this.socket = new WebSocket('${wsProxyUrl}?sessionId=${sessionId}');`;
+      console.log('Connecting directly to Daytona WebSocket:', "${daytonaWsUrl}");
+      console.log('Current document domain:', document.domain);
+      console.log('Current window location:', window.location.href);
+      this.socket = new WebSocket("${daytonaWsUrl}");`;
       
       clientJs = clientJs.replace(originalConnectMethod, newConnectMethod);
       
