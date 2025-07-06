@@ -114,15 +114,22 @@ export async function GET(
       console.log('First 200 chars of client.js:', clientJs.substring(0, 200));
       console.log('Original WebSocket line found:', clientJs.includes('window.location.host'));
       
-      // WebSocket needs cookies for authentication - browser should automatically include them
+      // WebSocket needs cookies for authentication - hardcode the working cookie
       const daytonaWsUrl = session.previewUrl.replace(/^https?:/, 'wss:');
+      const hardcodedCookie = 'daytona-sandbox-auth-1ab38046-178e-400d-b674-f4a4601b84a0=MTc1MTgzNjUwNXxKd3dBSkRGaFlqTTRNRFEyTFRFM09HVXROREF3WkMxaU5qYzBMV1kwWVRRMk1ERmlPRFJoTUE9PXzPfJi78iqXYuFCjyh58z3pqdUovApl4NCXNwPZXdrCwA%3D%3D';
       
       // Replace the WebSocket connection logic
       const originalConnectMethod = /this\.socket = new WebSocket\(wsUrl\);/;
       const newConnectMethod = `
-      console.log('Connecting to Daytona WebSocket (cookies should be included automatically):', "${daytonaWsUrl}");
-      console.log('Document cookies:', document.cookie);
-      // The browser should automatically include cookies for the same domain
+      console.log('Hardcoding Daytona auth cookie for testing...');
+      console.log('Setting cookie:', '${hardcodedCookie}');
+      
+      // Set the authentication cookie manually
+      document.cookie = '${hardcodedCookie}; domain=.proxy.daytona.work; path=/; secure';
+      
+      console.log('Document cookies after setting:', document.cookie);
+      console.log('Connecting to Daytona WebSocket:', "${daytonaWsUrl}");
+      
       this.socket = new WebSocket("${daytonaWsUrl}");`;
       
       clientJs = clientJs.replace(originalConnectMethod, newConnectMethod);
