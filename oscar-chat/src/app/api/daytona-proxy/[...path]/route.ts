@@ -8,6 +8,9 @@ export async function GET(
   { params }: { params: { path: string[] } }
 ) {
   try {
+    console.log(`=== PROXY REQUEST START ===`);
+    console.log(`Request URL: ${request.url}`);
+    console.log(`Path segments:`, params.path);
     // Get auth token from header or query parameter (for iframe usage)
     let token = '';
     const authHeader = request.headers.get('authorization');
@@ -51,18 +54,30 @@ export async function GET(
     console.log(`Session status: ${session.status}`);
     console.log(`Preview token available: ${!!session.previewToken}`);
 
-    // Construct the target URL - use the Daytona preview URL directly
+    // For the root request (no path segments), redirect directly to Daytona
     const pathSegments = params.path || [];
-    const targetUrl = new URL(session.previewUrl);
     
-    // If there are path segments, append them to the Daytona URL
-    if (pathSegments.length > 0) {
-      // Ensure we don't double up on slashes
-      const additionalPath = pathSegments.join('/');
-      targetUrl.pathname = targetUrl.pathname.endsWith('/') 
-        ? targetUrl.pathname + additionalPath
-        : targetUrl.pathname + '/' + additionalPath;
+    if (pathSegments.length === 0) {
+      // This is the root iframe request - redirect to Daytona URL with auth
+      const daytonaUrl = new URL(session.previewUrl);
+      
+      // Add authentication if available
+      if (session.previewToken) {
+        // Try adding token as a query parameter (some services support this)
+        daytonaUrl.searchParams.set('auth-token', session.previewToken);
+      }
+      
+      console.log(`Redirecting to Daytona URL: ${daytonaUrl.toString()}`);
+      
+      return Response.redirect(daytonaUrl.toString(), 302);
     }
+    
+    // For sub-paths, proxy the request
+    const targetUrl = new URL(session.previewUrl);
+    const additionalPath = pathSegments.join('/');
+    targetUrl.pathname = targetUrl.pathname.endsWith('/') 
+      ? targetUrl.pathname + additionalPath
+      : targetUrl.pathname + '/' + additionalPath;
 
     // Forward query parameters (except our internal ones)
     const forwardParams = new URLSearchParams(request.nextUrl.search);

@@ -16,10 +16,16 @@ interface ClaudeCodeViewerProps {
 
 // Helper function to create authenticated preview URL using proxy
 function getAuthenticatedPreviewUrl(session: any, authToken: string | null): string {
-  if (!session.previewUrl || !session._id || !authToken) return '';
+  if (!session.previewUrl) return '';
   
-  // Use our proxy endpoint with the session ID and auth token
-  return `/api/daytona-proxy?sessionId=${session._id}&token=${encodeURIComponent(authToken)}`;
+  // Try using the Daytona preview URL directly first
+  // If authentication is needed, we'll implement token-based auth
+  return session.previewUrl;
+  
+  // TODO: If direct access doesn't work, we may need to:
+  // 1. Use proxy with proper streaming
+  // 2. Implement token-based authentication
+  // 3. Use postMessage communication
 }
 
 export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
