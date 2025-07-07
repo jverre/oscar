@@ -1,27 +1,19 @@
 const express = require('express');
 const WebSocket = require('ws');
 const pty = require('node-pty');
-const path = require('path');
+const http = require('http');
 
 const app = express();
 const PORT = 3456;
 
-// Serve static files
-app.use(express.static('public'));
+// Parse JSON bodies
+app.use(express.json());
 
-// Create HTTP server
-const server = app.listen(PORT, () => {
-  console.log(`Claude Code Web Interface running on port ${PORT}`);
-});
+// Store active terminal sessions
+const sessions = new Map();
 
-// Create WebSocket server
-const wss = new WebSocket.Server({ server });
-
-wss.on('connection', (ws) => {
-  console.log('New WebSocket connection');
-  
-  // Spawn shell instead of Claude Code directly
-  console.log('Spawning shell process...');
+// Function to create a new terminal session
+function createTerminalSession(sessionId = 'default') {
   const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
   const ptyProcess = pty.spawn(shell, [], {
     name: 'xterm-256color',
@@ -34,55 +26,123 @@ wss.on('connection', (ws) => {
       COLORTERM: 'truecolor'
     }
   });
-  
-  console.log('Shell process spawned with PID:', ptyProcess.pid);
 
-  // Send terminal output to browser
+  const session = {
+    ptyProcess,
+    clients: new Set(),
+    buffer: [] // Store recent output for new connections
+  };
+
+  // Handle terminal output
   ptyProcess.onData((data) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'output', data }));
+    // Add to buffer (keep last 1000 lines)
+    session.buffer.push({ type: 'output', data, timestamp: Date.now() });
+    if (session.buffer.length > 1000) {
+      session.buffer.shift();
     }
+
+    // Send to all connected WebSocket clients
+    const message = JSON.stringify({ type: 'output', data });
+    session.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
   });
 
   // Auto-run claude command when terminal starts
   setTimeout(() => {
     ptyProcess.write('claude\r');
-  }, 1000); // Wait 1 second for shell to be ready
+  }, 1000);
 
   // Handle process exit
   ptyProcess.onExit((code, signal) => {
-    console.log(`Shell process exited with code: ${code}, signal: ${signal}`);
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'exit', code, signal }));
-    }
-  });
-
-  // Handle incoming messages from browser
-  ws.on('message', (message) => {
-    try {
-      const parsed = JSON.parse(message);
-      
-      if (parsed.type === 'input') {
-        ptyProcess.write(parsed.data);
-      } else if (parsed.type === 'resize') {
-        ptyProcess.resize(parsed.cols, parsed.rows);
+    const exitMessage = JSON.stringify({ type: 'exit', code, signal });
+    session.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(exitMessage);
       }
-    } catch (error) {
-      console.error('Error parsing message:', error);
-    }
+    });
+
+    // Clean up session after a delay
+    setTimeout(() => {
+      sessions.delete(sessionId);
+    }, 5000);
   });
 
-  // Clean up on disconnect
-  ws.on('close', () => {
-    console.log('WebSocket connection closed');
-    ptyProcess.kill();
-  });
+  sessions.set(sessionId, session);
+  return session;
+}
 
-  // Handle errors
-  ws.on('error', (error) => {
-    console.error('WebSocket error:', error);
-    ptyProcess.kill();
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    sessions: sessions.size,
+    uptime: process.uptime()
   });
 });
 
-console.log('WebSocket server ready for connections');
+// Create HTTP server
+const server = http.createServer(app);
+
+// Create WebSocket server
+const wss = new WebSocket.Server({ 
+  server,
+  path: '/terminal-stream'
+});
+
+wss.on('connection', (ws) => {
+  console.log('WebSocket connection established');
+  
+  // Get or create terminal session
+  const sessionId = 'default'; // For now, use default session
+  let session = sessions.get(sessionId);
+  
+  if (!session) {
+    session = createTerminalSession(sessionId);
+  }
+
+  // Add client to session
+  session.clients.add(ws);
+
+  // Send recent buffer to new client
+  session.buffer.forEach(item => {
+    ws.send(JSON.stringify(item));
+  });
+
+  // Send connection confirmation
+  ws.send(JSON.stringify({ type: 'connected' }));
+
+  // Handle incoming messages
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      
+      if (data.type === 'input') {
+        session.ptyProcess.write(data.data);
+      } else if (data.type === 'resize') {
+        session.ptyProcess.resize(data.cols, data.rows);
+      }
+    } catch (error) {
+      console.error('Error processing WebSocket message:', error);
+    }
+  });
+
+  // Handle disconnect
+  ws.on('close', () => {
+    console.log('WebSocket connection closed');
+    session.clients.delete(ws);
+  });
+
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+    session.clients.delete(ws);
+  });
+});
+
+// Start server
+server.listen(PORT, () => {
+  console.log(`Claude Code Web Interface running on port ${PORT}`);
+  console.log('WebSocket endpoint: ws://localhost:' + PORT + '/terminal-stream');
+});

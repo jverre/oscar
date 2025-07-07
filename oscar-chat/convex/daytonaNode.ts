@@ -13,19 +13,29 @@ export const createSandbox = internalAction({
     // Create new sandbox
     console.log("Creating new sandbox for user:", args.userId);
 
-    const response = await fetch('https://app.daytona.io/api/sandbox', {
+    const apiKey = process.env.DAYTONA_API_KEY;
+    const baseUrl = process.env.DAYTONA_BASE_URL || 'https://api.daytona.io';
+    
+    if (!apiKey) {
+      throw new Error("DAYTONA_API_KEY not configured");
+    }
+
+    const response = await fetch(`${baseUrl}/sandbox`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.DAYTONA_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        snapshot: 'claude-code-oscar:1751823179092',
+        snapshot: 'claude-code-oscar:1751923626481',
         envVars: { NODE_ENV: 'development' }
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Sandbox creation failed: ${response.status} ${response.statusText}`);
+      console.error(`Error body: ${errorText}`);
       throw new Error(`Failed to create sandbox: ${response.statusText}`);
     }
 

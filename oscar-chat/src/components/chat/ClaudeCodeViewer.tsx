@@ -7,20 +7,14 @@ import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Terminal, Loader2, AlertCircle, ExternalLink, RefreshCw } from "lucide-react";
+import { Terminal as TerminalIcon, Loader2, AlertCircle, ExternalLink, RefreshCw } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
+import { Terminal } from "./Terminal";
 
 interface ClaudeCodeViewerProps {
   userId: Id<"users">;
 }
 
-// Helper function to create authenticated preview URL using proxy
-function getAuthenticatedPreviewUrl(session: any, authToken: string | null): string {
-  if (!session.previewUrl || !session._id || !authToken) return '';
-  
-  // Test if the proxy route is working at all
-  return `/api/daytona-proxy?sessionId=${session._id}&token=${encodeURIComponent(authToken)}`;
-}
 
 export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -90,7 +84,7 @@ export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
     <div className="w-full h-full flex flex-col space-y-4 p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Terminal className="h-5 w-5" />
+          <TerminalIcon className="h-5 w-5" />
           <h2 className="text-lg font-semibold">Claude Code Sessions</h2>
         </div>
         
@@ -103,7 +97,7 @@ export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Terminal className="h-4 w-4" />
+              <TerminalIcon className="h-4 w-4" />
             )}
             <span>Start Session</span>
           </Button>
@@ -159,45 +153,13 @@ export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
           {activeSession.previewUrl && activeSession.status === 'running' && (
             <CardContent>
               <div className="w-full h-96 border rounded-lg overflow-hidden">
-                <div className="mb-2 text-xs text-gray-500 space-y-1">
-                  <div>Preview URL: {activeSession.previewUrl}</div>
-                  <div>Proxy URL: {getAuthenticatedPreviewUrl(activeSession, authToken)}</div>
-                  <div>Session ID: {activeSession._id}</div>
-                  <div>Auth Token: {authToken ? `${authToken.substring(0, 20)}...` : 'None'}</div>
-                  <div className="space-x-2">
-                    <a 
-                      href={`/api/debug-proxy?sessionId=${activeSession._id}&token=${encodeURIComponent(authToken || '')}`}
-                      target="_blank"
-                      className="text-blue-500 hover:underline"
-                    >
-                      Test Proxy Debug
-                    </a>
-                    <a 
-                      href={`/api/test-subpath/client.js`}
-                      target="_blank"
-                      className="text-blue-500 hover:underline"
-                    >
-                      Test Subpath
-                    </a>
-                    <a 
-                      href={`/api/daytona-proxy/client.js?sessionId=${activeSession._id}&token=${encodeURIComponent(authToken || '')}`}
-                      target="_blank"
-                      className="text-blue-500 hover:underline"
-                    >
-                      Test Client.js Direct
-                    </a>
-                  </div>
-                </div>
-                <iframe
-                  src={getAuthenticatedPreviewUrl(activeSession, authToken)}
+                <Terminal
+                  websocketUrl={activeSession.previewUrl.replace(/^https?:\/\//, 'wss://') + '/terminal-stream'}
+                  authToken={activeSession.previewToken}
                   className="w-full h-full"
-                  title="Claude Code Web Terminal"
-                  sandbox="allow-same-origin allow-scripts allow-forms"
-                  onLoad={() => {
-                    console.log('Iframe loaded successfully');
-                    console.log('Direct Daytona URL:', activeSession.previewUrl);
-                  }}
-                  onError={(e) => console.error('Iframe error:', e)}
+                  onConnect={() => console.log('Terminal connected')}
+                  onDisconnect={() => console.log('Terminal disconnected')}
+                  onError={(error) => console.error('Terminal error:', error)}
                 />
               </div>
             </CardContent>
@@ -240,7 +202,7 @@ export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
                   className="flex items-center justify-between p-3 border rounded-lg"
                 >
                   <div className="flex items-center space-x-3">
-                    <Terminal className="h-4 w-4 text-gray-500" />
+                    <TerminalIcon className="h-4 w-4 text-gray-500" />
                     <div>
                       <div className="text-sm font-medium">
                         Session {session.sessionId}
@@ -274,7 +236,7 @@ export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
-              <Terminal className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <TerminalIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 No Claude Code Sessions
               </h3>

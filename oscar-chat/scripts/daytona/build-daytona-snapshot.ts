@@ -33,88 +33,63 @@ async function buildSnapshot(): Promise<void> {
     const snapshotName = `claude-code-oscar:${Date.now()}`;
     console.log(`Creating Snapshot with name: ${snapshotName}`);
     
-    // Create a setup script that will be added to the image
+    // Simplified setup script
     const setupScriptPath = 'setup-claude-code.sh';
     const setupScriptContent = `#!/bin/bash
 set -e
 
-echo "Setting up Claude Code Web environment..."
+echo "Setting up Claude Code environment..."
 
-# Update package lists
+# Update and install essentials
 apt-get update
-
-# Install build essentials and Python (needed for node-pty)
-apt-get install -y build-essential python3-dev curl git
+apt-get install -y curl git
 
 # Install Node.js 20.x
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt-get install -y nodejs
 
-# Verify installations
-node --version
-npm --version
-
 # Install Claude Code globally
 npm install -g @anthropic-ai/claude-code
 
-# Create workspace directory
+# Create workspace
 mkdir -p /workspace
 
-# Create startup script for web terminal
-cat > /workspace/start-terminal.sh << 'EOF'
-#!/bin/bash
-cd /workspace
-npm start
-EOF
-
-chmod +x /workspace/start-terminal.sh
-
-echo "Claude Code Web environment setup complete!"
-echo "To start the web terminal, run: /workspace/start-terminal.sh"
+echo "Setup complete!"
 `;
     
     fs.writeFileSync(setupScriptPath, setupScriptContent);
     
-    // Create the image with all necessary dependencies
+    // Create the image with minimal operations
     const image = Image.debianSlim('3.12')
       .addLocalFile(setupScriptPath, '/tmp/setup-claude-code.sh')
       .runCommands(
         'chmod +x /tmp/setup-claude-code.sh',
-        '/tmp/setup-claude-code.sh',
-        'rm /tmp/setup-claude-code.sh'
+        '/tmp/setup-claude-code.sh'
       )
-      // Add web terminal server files
+      // Add terminal server files
       .addLocalFile(path.join(__dirname, 'server.js'), '/workspace/server.js')
       .addLocalFile(path.join(__dirname, 'package.json'), '/workspace/package.json')
-      .addLocalFile(path.join(__dirname, 'public/index.html'), '/workspace/public/index.html')
-      .addLocalFile(path.join(__dirname, 'public/client.js'), '/workspace/public/client.js')
-      // Install web terminal dependencies
-      .runCommands(
-        'cd /workspace && npm install',
-        'echo "Web terminal server installed successfully"'
-      )
+      .runCommands('cd /workspace && npm install --production')
       .workdir('/workspace')
       .env({
         NODE_ENV: 'production',
-        TERM: 'xterm-256color',
-        COLORTERM: 'truecolor'
+        TERM: 'xterm-256color'
       });
     
-    // Create the Snapshot and stream the build logs
+    // Create the Snapshot
     console.log(`\n=== Creating Snapshot: ${snapshotName} ===\n`);
     await daytona.snapshot.create(
       {
         name: snapshotName,
         image,
         resources: {
-          cpu: 2,
-          memory: 4,
-          disk: 8,
+          cpu: 1,
+          memory: 2,
+          disk: 4,
         },
       },
       {
         onLogs: (log) => {
-          // Print logs as they come in
           process.stdout.write(log);
           process.stdout.write("\n");
         },
@@ -122,12 +97,8 @@ echo "To start the web terminal, run: /workspace/start-terminal.sh"
     );
     
     console.log(`\n✅ Snapshot created successfully: ${snapshotName}`);
-    console.log("\nYou can now use this snapshot for faster deployments:");
-    console.log(`  Snapshot name: ${snapshotName}`);
-    console.log("\nTo test the snapshot, create a sandbox:");
-    console.log(`  const sandbox = await daytona.create({ snapshot: '${snapshotName}' })`);
     
-    // Clean up local setup script
+    // Clean up
     fs.unlinkSync(setupScriptPath);
     
   } catch (error) {
