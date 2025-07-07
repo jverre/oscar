@@ -149,10 +149,11 @@ export function Terminal({
       let wsUrl = websocketUrl;
       if (authToken) {
         const url = new URL(websocketUrl);
-        url.searchParams.set('token', authToken);
+        url.searchParams.set('DAYTONA_SANDBOX_AUTH_KEY', authToken);
         wsUrl = url.toString();
       }
       
+      console.log('Attempting WebSocket connection to:', wsUrl);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 

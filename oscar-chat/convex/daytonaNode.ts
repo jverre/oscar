@@ -209,7 +209,7 @@ export const setupClaudeCodeSession = internalAction({
             'Authorization': `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
-            command: 'cd /workspace && npm start',
+            command: 'cd /workspace/scripts/daytona && npm install && npm start',
             run_async: true
           }),
         }).catch(err => console.error('Failed to start server:', err));
