@@ -518,7 +518,7 @@ export const remove = mutation({
     const isGitRepo = file.name.endsWith('.git') && metadata?.gitRepoUrl;
 
     if (isGitRepo) {
-      // Schedule cleanup of the repository in Daytona sandbox
+      // Schedule cleanup of the repository
     } else {
       // Check if this is a blog file
       const isBlogFile = file.name.endsWith('.blog');

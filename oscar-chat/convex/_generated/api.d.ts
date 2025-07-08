@@ -16,9 +16,7 @@ import type {
 import type * as apiKeys from "../apiKeys.js";
 import type * as auth from "../auth.js";
 import type * as blogs from "../blogs.js";
-import type * as claudeSessions from "../claudeSessions.js";
-import type * as daytonaNode from "../daytonaNode.js";
-import type * as daytonaSandboxes from "../daytonaSandboxes.js";
+import type * as claudeCodeSession from "../claudeCodeSession.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
@@ -40,9 +38,7 @@ declare const fullApi: ApiFromModules<{
   apiKeys: typeof apiKeys;
   auth: typeof auth;
   blogs: typeof blogs;
-  claudeSessions: typeof claudeSessions;
-  daytonaNode: typeof daytonaNode;
-  daytonaSandboxes: typeof daytonaSandboxes;
+  claudeCodeSession: typeof claudeCodeSession;
   files: typeof files;
   http: typeof http;
   messages: typeof messages;

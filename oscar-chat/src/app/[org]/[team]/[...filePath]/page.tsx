@@ -368,8 +368,8 @@ export default function OrgTeamFilePage() {
   if (isClaudeSessionFile) {
     return (
       <div className="flex-1 flex flex-col h-full">
-        {user ? (
-          <ClaudeCodeViewer userId={user._id} />
+        {user && file ? (
+          <ClaudeCodeViewer userId={user._id} fileId={file._id} />
         ) : (
           <div className="flex-1 flex flex-col h-full px-6">
             <div className="flex-1 flex items-center justify-center">

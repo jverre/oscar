@@ -28,6 +28,7 @@ export function TopNav() {
   const { createFile } = useFileCreation();
   const { createGitFolder, error: gitError } = useGitCreation();
   const { addTab, isTabOpenByFile, getTabByFile, switchToTab } = useTabContext();
+  const createSession = useMutation(api.claudeCodeSession.createSession);
   const router = useRouter();
   
   // Get current user and organization/team info
@@ -35,8 +36,6 @@ export function TopNav() {
   const userOrg = useQuery(api.organizations.getCurrentUserOrg);
   const userTeam = useQuery(api.teams.getCurrentUserTeam);
   
-  // Claude Code session mutation
-  const startClaudeCodeSession = useMutation(api.claudeSessions.startClaudeCodeSession);
   
   // Search query
   const searchQueryResults = useQuery(
@@ -344,32 +343,28 @@ export function TopNav() {
         });
         break;
       case 'start-claude-code':
-        // Start Claude Code session
-        if (!currentUser) {
-          console.error("User not authenticated");
-          handleClose();
-          break;
-        }
-        
         try {
-          console.log("Starting Claude Code session for user:", currentUser._id);
-          const result = await startClaudeCodeSession({ userId: currentUser._id });
-          console.log("Claude Code session result:", result);
+          // Create a new Claude Code session
+          const sessionResult = await createSession({});
           
-          // Create a special file for Claude Code session
-          const claudeCodeResult = await createFile({ 
-            name: 'claude_session.claude_session', 
-            navigate: true, 
-            fileType: 'claude_session' 
-          });
-          
-          if (claudeCodeResult) {
+          if (sessionResult && currentUser && userOrg && userTeam) {
+            // Navigate to the new session file
+            const sessionPath = `/${userOrg.name}/${userTeam.name}/${sessionResult.sessionName}`;
+            router.push(sessionPath);
+            
+            // Add tab for the session
+            addTab({
+              id: sessionResult.fileId,
+              title: sessionResult.sessionName.replace('.claude_session', ''),
+              fileId: sessionResult.fileId,
+            });
+            
             handleClose();
           } else {
-            console.error("Failed to create Claude Code session file");
+            console.error("Failed to create Claude Code session");
           }
         } catch (error) {
-          console.error("Failed to start Claude Code session:", error);
+          console.error("Error creating Claude Code session:", error);
         }
         break;
       case 'search-chat':

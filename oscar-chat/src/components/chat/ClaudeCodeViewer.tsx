@@ -1,260 +1,118 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation } from "convex/react";
-import { useAuthToken } from "@convex-dev/auth/react";
+import React, { useEffect, useState } from 'react';
+import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Terminal as TerminalIcon, Loader2, AlertCircle, ExternalLink, RefreshCw } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
-import { Terminal } from "./Terminal";
+import { Loader2, Terminal, AlertCircle } from 'lucide-react';
 
 interface ClaudeCodeViewerProps {
-  userId: Id<"users">;
+  userId: string;
+  fileId: Id<"files">;
 }
 
+export function ClaudeCodeViewer({ userId, fileId }: ClaudeCodeViewerProps) {
+  const fileData = useQuery(api.files.get, { fileId });
+  const [terminalLoaded, setTerminalLoaded] = useState(false);
 
-export function ClaudeCodeViewer({ userId }: ClaudeCodeViewerProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Get auth token for proxy authentication
-  const authToken = useAuthToken();
+  const metadata = fileData?.metadata as { 
+    state?: "pending" | "ready" | "error"; 
+    terminalUrl?: string; 
+    error?: string;
+  } | undefined;
 
-  // Query for active Claude Code session
-  const activeSession = useQuery(api.claudeSessions.getActiveSession, { userId });
-  const allSessions = useQuery(api.claudeSessions.getUserSessions, { userId });
-
-  // Mutations
-  const startSession = useMutation(api.claudeSessions.startClaudeCodeSession);
-  const stopSession = useMutation(api.claudeSessions.stopClaudeCodeSession);
-
-  const handleStartSession = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const result = await startSession({ userId });
-      console.log('Session started:', result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start session');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleIframeLoad = () => {
+    setTerminalLoaded(true);
   };
 
-  const handleStopSession = async (sessionId: Id<"claudeSessions">) => {
-    try {
-      await stopSession({ sessionId });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to stop session');
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'running':
-        return <Badge variant="default" className="bg-green-500">Running</Badge>;
-      case 'starting':
-        return <Badge variant="secondary">Starting</Badge>;
-      case 'stopped':
-        return <Badge variant="outline">Stopped</Badge>;
-      case 'error':
-        return <Badge variant="destructive">Error</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  const formatTimestamp = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString();
-  };
-
-  // Show loading state while queries are loading
-  if (activeSession === undefined || allSessions === undefined) {
+  if (!fileData) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex-1 flex items-center justify-center">
+        <div className="flex items-center space-x-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Loading session...</span>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="w-full h-full flex flex-col space-y-4 p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <TerminalIcon className="h-5 w-5" />
-          <h2 className="text-lg font-semibold">Claude Code Sessions</h2>
+  if (metadata?.state === "error") {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-md">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
+          <div className="text-xl font-medium text-foreground">Session Creation Failed</div>
+          <div className="text-muted-foreground">
+            Failed to create the terminal sandbox. Please try creating a new session.
+          </div>
+          {metadata.error && (
+            <div className="text-sm text-red-600 bg-red-50 p-3 rounded border">
+              Error: {metadata.error}
+            </div>
+          )}
         </div>
-        
-        {!activeSession && (
-          <Button 
-            onClick={handleStartSession}
-            disabled={isLoading}
-            className="flex items-center space-x-2"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <TerminalIcon className="h-4 w-4" />
-            )}
-            <span>Start Session</span>
-          </Button>
-        )}
       </div>
+    );
+  }
 
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-4">
-            <div className="flex items-center space-x-2 text-red-700">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm">{error}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+  if (metadata?.state === "pending") {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="relative">
+            <Terminal className="h-16 w-16 text-blue-500 mx-auto" />
+            <Loader2 className="h-6 w-6 text-blue-500 animate-spin absolute -top-1 -right-1" />
+          </div>
+          <div className="text-xl font-medium text-foreground">Creating Terminal Session</div>
+          <div className="text-muted-foreground">
+            Setting up your sandbox environment...
+          </div>
+          <div className="text-sm text-muted-foreground">
+            This usually takes about 10 seconds
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-      {/* Active Session */}
-      {activeSession && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center space-x-2">
-                  <span>Active Session</span>
-                  {getStatusBadge(activeSession.status)}
-                </CardTitle>
-                <CardDescription>
-                  Created: {formatTimestamp(activeSession.createdAt)}
-                </CardDescription>
-              </div>
-              <div className="flex space-x-2">
-                {activeSession.previewUrl && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(activeSession.previewUrl!, '_blank')}
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleStopSession(activeSession._id)}
-                >
-                  Stop
-                </Button>
+  if (metadata?.state === "ready" && metadata.terminalUrl) {
+    return (
+      <div className="flex-1 flex flex-col h-full">
+        <div className="flex-1 relative">
+          {!terminalLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background">
+              <div className="flex items-center space-x-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Loading terminal...</span>
               </div>
             </div>
-          </CardHeader>
-          
-          {activeSession.previewUrl && activeSession.status === 'running' && (
-            <CardContent>
-              <div className="w-full h-96 border rounded-lg overflow-hidden">
-                <Terminal
-                  websocketUrl={activeSession.previewUrl.replace(/^https?:\/\//, 'wss://') + '/terminal-stream'}
-                  authToken={activeSession.previewToken}
-                  className="w-full h-full"
-                  onConnect={() => console.log('Terminal connected')}
-                  onDisconnect={() => console.log('Terminal disconnected')}
-                  onError={(error) => console.error('Terminal error:', error)}
-                />
-              </div>
-            </CardContent>
           )}
+          <iframe
+            src={metadata.terminalUrl}
+            className="w-full h-full border-0"
+            onLoad={handleIframeLoad}
+            title="Claude Code Terminal"
+            allow="fullscreen"
+            style={{ 
+              opacity: terminalLoaded ? 1 : 0,
+              transition: 'opacity 0.3s ease-in-out'
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
 
-          {activeSession.status === 'starting' && (
-            <CardContent>
-              <div className="flex items-center justify-center h-32 text-gray-500">
-                <div className="flex items-center space-x-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Starting Claude Code session...</span>
-                </div>
-              </div>
-            </CardContent>
-          )}
-
-          {activeSession.status === 'error' && activeSession.metadata?.error && (
-            <CardContent>
-              <div className="flex items-center space-x-2 text-red-700 bg-red-50 p-3 rounded-lg">
-                <AlertCircle className="h-4 w-4" />
-                <span className="text-sm">{activeSession.metadata.error}</span>
-              </div>
-            </CardContent>
-          )}
-        </Card>
-      )}
-
-      {/* Session History */}
-      {allSessions && allSessions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Session History</CardTitle>
-            <CardDescription>Previous Claude Code sessions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {allSessions.slice(0, 5).map((session) => (
-                <div
-                  key={session._id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex items-center space-x-3">
-                    <TerminalIcon className="h-4 w-4 text-gray-500" />
-                    <div>
-                      <div className="text-sm font-medium">
-                        Session {session.sessionId}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {formatTimestamp(session.createdAt)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {getStatusBadge(session.status)}
-                    {session.previewUrl && session.status === 'running' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(session.previewUrl!, '_blank')}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Empty State */}
-      {!activeSession && (!allSessions || allSessions.length === 0) && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <TerminalIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No Claude Code Sessions
-              </h3>
-              <p className="text-gray-500 mb-4">
-                Start your first Claude Code session to access the web terminal interface.
-              </p>
-              <Button onClick={handleStartSession} disabled={isLoading}>
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Terminal className="h-4 w-4 mr-2" />
-                )}
-                Start Claude Code Session
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+  // Fallback for unknown state
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <Terminal className="h-16 w-16 text-muted-foreground mx-auto" />
+        <div className="text-xl font-medium text-foreground">Claude Code Session</div>
+        <div className="text-muted-foreground">
+          Session state unknown. Please refresh the page.
+        </div>
+      </div>
     </div>
   );
 }

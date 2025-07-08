@@ -130,21 +130,6 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_and_timestamp", ["userId", "timestamp"]),
 
-  daytonaSandboxes: defineTable({
-    userId: v.id("users"),
-    sandboxId: v.string(),
-    resources: v.optional(v.object({
-      cpu: v.number(),
-      memory: v.number(), // GB
-      disk: v.number(), // GB
-    })),
-    createdAt: v.number(),
-    lastUsedAt: v.number(),
-    metadata: v.optional(v.any()),
-  })
-    .index("by_user", ["userId"])
-    .index("by_sandbox_id", ["sandboxId"]),
-
   blogs: defineTable({
     fileId: v.id("files"), // Link to the .blog file
     content: v.object({
@@ -169,29 +154,4 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_key", ["key"]),
-
-  claudeSessions: defineTable({
-    userId: v.id("users"),
-    sandboxId: v.string(),
-    sessionId: v.string(),
-    previewUrl: v.optional(v.string()),
-    previewToken: v.optional(v.string()),
-    status: v.union(
-      v.literal("starting"),
-      v.literal("running"), 
-      v.literal("stopped"),
-      v.literal("error")
-    ),
-    createdAt: v.number(),
-    lastAccessedAt: v.number(),
-    metadata: v.optional(v.object({
-      sandboxState: v.optional(v.string()),
-      serverRunning: v.optional(v.boolean()),
-      error: v.optional(v.string()),
-    })),
-  })
-    .index("by_user", ["userId"])
-    .index("by_sandbox", ["sandboxId"])
-    .index("by_session", ["sessionId"])
-    .index("by_user_status", ["userId", "status"]),
 });

@@ -20,11 +20,6 @@ export const { auth, signIn, signOut, store } = convexAuth({
   callbacks: {
     async createOrUpdateUser(ctx, { existingUserId, profile }) {
       if (existingUserId) {
-        // Ensure user has a sandbox
-        await ctx.runMutation(internal.daytonaSandboxes.ensureUserHasSandbox, {
-          userId: existingUserId,
-        });
-
         // User already exists, just return the ID
         return existingUserId;
       }
@@ -62,11 +57,6 @@ export const { auth, signIn, signOut, store } = convexAuth({
         name: "VS Code Extension",
         createdAt: Date.now(),
         isActive: true,
-      });
-      
-      // Ensure new user has a sandbox
-      await ctx.runMutation(internal.daytonaSandboxes.ensureUserHasSandbox, {
-        userId,
       });
       
       return userId;
