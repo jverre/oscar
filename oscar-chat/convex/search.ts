@@ -18,7 +18,7 @@ export const searchCombined = query({
             };
         }
 
-        // Get the user to find their team
+        // Get the user to find their organization
         const user = await ctx.db.get(userId);
         if (!user) {
             return {
@@ -44,7 +44,6 @@ export const searchCombined = query({
             .query("files")
             .withSearchIndex("search_name", (q) =>
                 q.search("name", searchText)
-                 .eq("teamId", user.teamId)
                  .eq("organizationId", user.organizationId)
             )
             .take(Math.floor(limit / 2)); // Allocate half the limit to files
@@ -69,9 +68,9 @@ export const searchCombined = query({
             })
         );
 
-        // Filter out messages from files not in user's team
+        // Filter out messages from files not in user's organization
         const validMessageResults = messageResultsWithFiles.filter(
-            (result) => result.file && result.file.teamId === user.teamId
+            (result) => result.file && result.file.organizationId === user.organizationId
         );
 
         return {

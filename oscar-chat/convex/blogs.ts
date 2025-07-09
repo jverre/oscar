@@ -20,7 +20,7 @@ export const getOrCreate = mutation({
     }
 
     const user = await ctx.db.get(userId);
-    if (!user || file.teamId !== user.teamId) {
+    if (!user || file.organizationId !== user.organizationId) {
       throw new Error("Access denied");
     }
 
@@ -72,7 +72,7 @@ export const get = query({
     }
 
     const user = await ctx.db.get(userId);
-    if (!user || file.teamId !== user.teamId) {
+    if (!user || file.organizationId !== user.organizationId) {
       return null;
     }
 
@@ -109,7 +109,7 @@ export const update = mutation({
     }
 
     const user = await ctx.db.get(userId);
-    if (!user || file.teamId !== user.teamId) {
+    if (!user || file.organizationId !== user.organizationId) {
       throw new Error("Access denied");
     }
 
@@ -161,7 +161,7 @@ export const deleteByFileId = mutation({
     }
 
     const user = await ctx.db.get(userId);
-    if (!user || file.teamId !== user.teamId) {
+    if (!user || file.organizationId !== user.organizationId) {
       throw new Error("Access denied");
     }
 

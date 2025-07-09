@@ -17,7 +17,8 @@ Creates secure, isolated terminal environments with ttyd and Claude Code pre-ins
 uv add modal
 
 # Create authentication secret
-modal secret create auth-token AUTH_TOKEN=your-secure-token-here
+export AUTH_TOKEN=$(openssl rand -hex 32)  
+modal secret create auth-token AUTH_TOKEN=$AUTH_TOKEN
 
 # Deploy the service
 uv run modal deploy sandbox_manager.py

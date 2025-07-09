@@ -71,3 +71,55 @@ export const getByNamePublic = query({
     return organization;
   },
 });
+
+// Get organization by subdomain
+export const getBySubdomain = query({
+  args: {
+    subdomain: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return null;
+    }
+
+    // Get the user to verify access
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      return null;
+    }
+
+    // Find organization by subdomain
+    const organization = await ctx.db
+      .query("organizations")
+      .filter((q) => q.eq(q.field("subdomain"), args.subdomain))
+      .first();
+
+    if (!organization) {
+      return null;
+    }
+
+    // Verify user has access to this organization
+    if (organization._id !== user.organizationId) {
+      return null;
+    }
+
+    return organization;
+  },
+});
+
+// Get organization by subdomain (public access for public files)
+export const getBySubdomainPublic = query({
+  args: {
+    subdomain: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find organization by subdomain (no authentication required)
+    const organization = await ctx.db
+      .query("organizations")
+      .filter((q) => q.eq(q.field("subdomain"), args.subdomain))
+      .first();
+
+    return organization;
+  },
+});

@@ -22,7 +22,6 @@ import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as organizations from "../organizations.js";
 import type * as search from "../search.js";
-import type * as teams from "../teams.js";
 import type * as timeline from "../timeline.js";
 import type * as users from "../users.js";
 
@@ -44,7 +43,6 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   organizations: typeof organizations;
   search: typeof search;
-  teams: typeof teams;
   timeline: typeof timeline;
   users: typeof users;
 }>;

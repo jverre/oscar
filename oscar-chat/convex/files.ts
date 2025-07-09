@@ -32,29 +32,20 @@ export const create = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Get the user to find their organization and team
+    // Get the user to find their organization
     const user = await ctx.db.get(userId);
     if (!user) {
       throw new Error("User not found");
     }
 
-    // Find the user's team (assuming one team per organization for now)
-    const team = await ctx.db
-      .query("teams")
-      .withIndex("by_organization", (q) => q.eq("organizationId", user.organizationId))
-      .first();
-    
-    if (!team) {
-      throw new Error("Team not found for user's organization");
-    }
-
-    // Check if a file with this name already exists in the user's team
+    // Check if a file with this name already exists in the user's organization
     const existingFile = await ctx.db
       .query("files")
-      .withIndex("unique_name_in_team", (q) => 
-        q.eq("organizationId", user.organizationId)
-         .eq("teamId", team._id)
-         .eq("name", args.name)
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("organizationId"), user.organizationId),
+          q.eq(q.field("name"), args.name)
+        )
       )
       .first();
 
@@ -66,7 +57,6 @@ export const create = mutation({
 
     const fileId = await ctx.db.insert("files", {
       organizationId: user.organizationId,
-      teamId: team._id,
       name: args.name,
       lastMessageAt: now,
       createdAt: now,
@@ -88,29 +78,20 @@ export const internalCreate = internalMutation({
     metadata: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
-    // Get the user to find their organization and team
+    // Get the user to find their organization
     const user = await ctx.db.get(args.userId);
     if (!user) {
       throw new Error("User not found");
     }
 
-    // Find the user's team (assuming one team per organization for now)
-    const team = await ctx.db
-      .query("teams")
-      .withIndex("by_organization", (q) => q.eq("organizationId", user.organizationId))
-      .first();
-    
-    if (!team) {
-      throw new Error("Team not found for user's organization");
-    }
-
-    // Check if a file with this name already exists in the user's team
+    // Check if a file with this name already exists in the user's organization
     const existingFile = await ctx.db
       .query("files")
-      .withIndex("unique_name_in_team", (q) => 
-        q.eq("organizationId", user.organizationId)
-         .eq("teamId", team._id)
-         .eq("name", args.name)
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("organizationId"), user.organizationId),
+          q.eq(q.field("name"), args.name)
+        )
       )
       .first();
 
@@ -145,10 +126,11 @@ export const internalCreate = internalMutation({
         // Check if this unique name also exists
         const uniqueExisting = await ctx.db
           .query("files")
-          .withIndex("unique_name_in_team", (q) => 
-            q.eq("organizationId", user.organizationId)
-             .eq("teamId", team._id)
-             .eq("name", uniqueName)
+          .filter((q) => 
+            q.and(
+              q.eq(q.field("organizationId"), user.organizationId),
+              q.eq(q.field("name"), uniqueName)
+            )
           )
           .first();
           
@@ -166,7 +148,6 @@ export const internalCreate = internalMutation({
 
     const fileId = await ctx.db.insert("files", {
       organizationId: user.organizationId,
-      teamId: team._id,
       name: args.name,
       lastMessageAt: now,
       createdAt: now,
@@ -179,7 +160,7 @@ export const internalCreate = internalMutation({
   },
 });
 
-// List all files for the user's team
+// List all files for the user's organization
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -188,25 +169,15 @@ export const list = query({
       return [];
     }
 
-    // Get the user to find their team
+    // Get the user to find their organization
     const user = await ctx.db.get(userId);
     if (!user) {
       return [];
     }
 
-    // Find the user's team
-    const team = await ctx.db
-      .query("teams")
-      .withIndex("by_organization", (q) => q.eq("organizationId", user.organizationId))
-      .first();
-    
-    if (!team) {
-      return [];
-    }
-
     const files = await ctx.db
       .query("files")
-      .withIndex("by_team", (q) => q.eq("teamId", team._id))
+      .withIndex("by_organization", (q) => q.eq("organizationId", user.organizationId))
       .order("desc")
       .collect();
 
@@ -226,9 +197,9 @@ export const getFileInternal = internalQuery({
       return null;
     }
 
-    // Get the user to check team membership
+    // Get the user to check organization membership
     const user = await ctx.db.get(args.userId);
-    if (!user || file.teamId !== user.teamId) {
+    if (!user || file.organizationId !== user.organizationId) {
       return null;
     }
 
@@ -243,26 +214,16 @@ export const findByClaudeCodeSessionId = internalQuery({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Get the user to find their team
+    // Get the user to find their organization
     const user = await ctx.db.get(args.userId);
     if (!user) {
       return null;
     }
 
-    // Find the user's team
-    const team = await ctx.db
-      .query("teams")
-      .withIndex("by_organization", (q) => q.eq("organizationId", user.organizationId))
-      .first();
-    
-    if (!team) {
-      return null;
-    }
-
-    // Search for file with matching claudeCodeSessionId in the user's team
+    // Search for file with matching claudeCodeSessionId in the user's organization
     const files = await ctx.db
       .query("files")
-      .withIndex("by_team", (q) => q.eq("teamId", team._id))
+      .withIndex("by_organization", (q) => q.eq("organizationId", user.organizationId))
       .collect();
 
     // Find file with matching claudeCodeSessionId in metadata
@@ -288,9 +249,9 @@ export const get = query({
       return null;
     }
 
-    // Get the user to check team membership
+    // Get the user to check organization membership
     const user = await ctx.db.get(userId);
-    if (!user || file.teamId !== user.teamId) {
+    if (!user || file.organizationId !== user.organizationId) {
       throw new Error("File not found or access denied");
     }
 
@@ -298,8 +259,8 @@ export const get = query({
   },
 });
 
-// Get a file by filename within the user's team
-export const getByName = query({
+// Get a file by filename within the user's organization
+export const getByFileName = query({
   args: {
     fileName: v.string(),
   },
@@ -309,19 +270,20 @@ export const getByName = query({
       return null;
     }
 
-    // Get the user to find their team
+    // Get the user to find their organization
     const user = await ctx.db.get(userId);
     if (!user) {
       return null;
     }
 
-    // Find the file by name within the user's team
+    // Find the file by name within the user's organization
     const file = await ctx.db
       .query("files")
-      .withIndex("unique_name_in_team", (q) => 
-        q.eq("organizationId", user.organizationId)
-         .eq("teamId", user.teamId)
-         .eq("name", args.fileName)
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("organizationId"), user.organizationId),
+          q.eq(q.field("name"), args.fileName)
+        )
       )
       .first();
 
@@ -329,23 +291,23 @@ export const getByName = query({
   },
 });
 
-// Get a file by org/team/filename for URL-based access (supports public files)
-export const getByOrgTeamAndName = query({
+// Get a file by org/filename for URL-based access (supports public files)
+export const getByName = query({
   args: {
     organizationId: v.id("organizations"),
-    teamId: v.id("teams"),
-    fileName: v.string(),
+    name: v.string(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
 
-    // Find the file by name within the specified org/team
+    // Find the file by name within the specified organization
     const file = await ctx.db
       .query("files")
-      .withIndex("unique_name_in_team", (q) => 
-        q.eq("organizationId", args.organizationId)
-         .eq("teamId", args.teamId)
-         .eq("name", args.fileName)
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("organizationId"), args.organizationId),
+          q.eq(q.field("name"), args.name)
+        )
       )
       .first();
 
@@ -354,14 +316,14 @@ export const getByOrgTeamAndName = query({
     }
 
     if (userId) {
-      // Authenticated user: verify access to this org/team
+      // Authenticated user: verify access to this organization
       const user = await ctx.db.get(userId);
       if (!user) {
         return null;
       }
 
-      // Verify user has access to this org/team
-      if (user.organizationId !== args.organizationId || user.teamId !== args.teamId) {
+      // Verify user has access to this organization
+      if (user.organizationId !== args.organizationId) {
         return null;
       }
 
@@ -393,21 +355,22 @@ export const updateName = mutation({
       throw new Error("File not found");
     }
 
-    // Get the user to check team membership
+    // Get the user to check organization membership
     const user = await ctx.db.get(userId);
-    if (!user || file.teamId !== user.teamId) {
+    if (!user || file.organizationId !== user.organizationId) {
       throw new Error("File not found or access denied");
     }
 
     // Skip duplicate check if the name hasn't changed
     if (file.name !== args.name) {
-      // Check if another file with this name already exists in the user's team
+      // Check if another file with this name already exists in the user's organization
       const existingFile = await ctx.db
         .query("files")
-        .withIndex("unique_name_in_team", (q) => 
-          q.eq("organizationId", user.organizationId)
-           .eq("teamId", user.teamId)
-           .eq("name", args.name)
+        .filter((q) => 
+          q.and(
+            q.eq(q.field("organizationId"), user.organizationId),
+            q.eq(q.field("name"), args.name)
+          )
         )
         .first();
 
@@ -440,9 +403,9 @@ export const updateVisibility = mutation({
       throw new Error("File not found");
     }
 
-    // Get the user to check team membership
+    // Get the user to check organization membership
     const user = await ctx.db.get(userId);
-    if (!user || file.teamId !== user.teamId) {
+    if (!user || file.organizationId !== user.organizationId) {
       throw new Error("File not found or access denied");
     }
 
@@ -473,9 +436,9 @@ export const update = mutation({
       throw new Error("File not found");
     }
 
-    // Get the user to check team membership
+    // Get the user to check organization membership
     const user = await ctx.db.get(userId);
-    if (!user || file.teamId !== user.teamId) {
+    if (!user || file.organizationId !== user.organizationId) {
       throw new Error("File not found or access denied");
     }
 
@@ -507,9 +470,9 @@ export const remove = mutation({
       throw new Error("File not found");
     }
 
-    // Get the user to check team membership
+    // Get the user to check organization membership
     const user = await ctx.db.get(userId);
-    if (!user || file.teamId !== user.teamId) {
+    if (!user || file.organizationId !== user.organizationId) {
       throw new Error("File not found or access denied");
     }
 
@@ -568,32 +531,6 @@ export const listPublic = query({
   },
 });
 
-// Get a public file by org/team/filename (no authentication required)
-export const getPublicByOrgTeamAndName = query({
-  args: {
-    organizationId: v.id("organizations"),
-    teamId: v.id("teams"),
-    fileName: v.string(),
-  },
-  handler: async (ctx, args) => {
-    // Find the file by name within the specified org/team
-    const file = await ctx.db
-      .query("files")
-      .withIndex("unique_name_in_team", (q) => 
-        q.eq("organizationId", args.organizationId)
-         .eq("teamId", args.teamId)
-         .eq("name", args.fileName)
-      )
-      .first();
-
-    // Only return if the file is public
-    if (file && file.visibility === "public") {
-      return file;
-    }
-
-    return null;
-  },
-});
 
 // Get file by name for any visibility (supports both authenticated and unauthenticated users)
 export const getByNameOrPublic = query({
@@ -612,16 +549,17 @@ export const getByNameOrPublic = query({
 
       const file = await ctx.db
         .query("files")
-        .withIndex("unique_name_in_team", (q) => 
-          q.eq("organizationId", user.organizationId)
-           .eq("teamId", user.teamId)
-           .eq("name", args.fileName)
+        .filter((q) => 
+          q.and(
+            q.eq(q.field("organizationId"), user.organizationId),
+            q.eq(q.field("name"), args.fileName)
+          )
         )
         .first();
 
       return file;
     } else {
-      // Unauthenticated user: find public file across all teams
+      // Unauthenticated user: find public file across all organizations
       const files = await ctx.db
         .query("files")
         .filter((q) => 
@@ -647,18 +585,9 @@ export const getOrganizationById = query({
   },
 });
 
-// Helper: Get team by ID (public access)
-export const getTeamById = query({
-  args: {
-    teamId: v.id("teams"),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.teamId);
-  },
-});
 
-// Helper: Get file with org/team data for URL construction
-export const getFileWithOrgTeamData = query({
+// Helper: Get file with org data for URL construction
+export const getFileWithOrgData = query({
   args: {
     fileId: v.id("files"),
   },
@@ -670,10 +599,10 @@ export const getFileWithOrgTeamData = query({
       return null;
     }
 
-    // For authenticated users, check team membership
+    // For authenticated users, check organization membership
     if (userId) {
       const user = await ctx.db.get(userId);
-      if (!user || file.teamId !== user.teamId) {
+      if (!user || file.organizationId !== user.organizationId) {
         return null;
       }
     } else {
@@ -683,18 +612,16 @@ export const getFileWithOrgTeamData = query({
       }
     }
 
-    // Get org and team data
+    // Get organization data
     const organization = await ctx.db.get(file.organizationId);
-    const team = await ctx.db.get(file.teamId);
 
-    if (!organization || !team) {
+    if (!organization) {
       return null;
     }
 
     return {
       file,
       organization,
-      team,
     };
   },
 });
@@ -716,9 +643,9 @@ export const regenerateTitle = mutation({
       throw new Error("File not found");
     }
 
-    // Get the user to check team membership
+    // Get the user to check organization membership
     const user = await ctx.db.get(userId);
-    if (!user || file.teamId !== user.teamId) {
+    if (!user || file.organizationId !== user.organizationId) {
       throw new Error("File not found or access denied");
     }
 

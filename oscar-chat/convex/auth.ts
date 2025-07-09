@@ -24,32 +24,49 @@ export const { auth, signIn, signOut, store } = convexAuth({
         return existingUserId;
       }
       
+      // Generate a unique subdomain for the user
+      const baseName = (profile.name || profile.email!.split("@")[0])
+        .toString()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+      
+      let subdomain = baseName;
+      let counter = 1;
+      
+      // Ensure subdomain is unique
+      while (true) {
+        const existingOrg = await ctx.db
+          .query("organizations")
+          .filter((q) => q.eq(q.field("subdomain"), subdomain))
+          .first();
+        
+        if (!existingOrg) {
+          break;
+        }
+        
+        subdomain = `${baseName}${counter}`;
+        counter++;
+      }
+      
       // Create a personal organization for the new user
       const organizationId = await ctx.db.insert("organizations", {
         name: `${profile.name || profile.email!.split("@")[0]}`,
         domain: profile.email!.split("@")[1],
+        subdomain,
         type: "personal",
         createdAt: Date.now(),
       });
       
-      // Create a default team within the organization
-      const teamId = await ctx.db.insert("teams", {
-        name: `${profile.name || profile.email!.split("@")[0]}`,
-        organizationId,
-        createdAt: Date.now(),
-      });
-      
-      // Create the user with the organization and team
+      // Create the user with the organization
       const userId = await ctx.db.insert("users", {
         email: profile.email!,
         name: profile.name || profile.email!.split("@")[0],
         image: profile.image,
         organizationId,
-        teamId,
         createdAt: Date.now(),
       });
       
-          // Create API key if user doesn't have one
+      // Create API key if user doesn't have one
       const apiKey = generateApiKey();
       await ctx.db.insert("apiKeys", {
         userId,

@@ -10,8 +10,9 @@ export default defineSchema({
     email: v.string(),
     image: v.optional(v.string()),
     organizationId: v.id("organizations"),
-    teamId: v.id("teams"),
     createdAt: v.number(),
+    // Legacy field - will be removed in migration
+    teamId: v.optional(v.string()),
   })
     .index("by_email", ["email"])
     .index("by_organization", ["organizationId"]),
@@ -19,21 +20,23 @@ export default defineSchema({
   organizations: defineTable({
     name: v.string(),
     domain: v.string(),
+    subdomain: v.optional(v.string()),
+    customDomain: v.optional(v.string()),
     type: v.union(v.literal("personal"), v.literal("company")),
     createdAt: v.number(),
   })
     .index("by_domain", ["domain"]),
   
+  // Deprecated table - kept for migration compatibility
   teams: defineTable({
     name: v.string(),
     organizationId: v.id("organizations"),
     createdAt: v.number(),
   })
     .index("by_organization", ["organizationId"]),
-
+  
   files: defineTable({
     organizationId: v.id("organizations"),
-    teamId: v.id("teams"),
     name: v.string(),
     lastMessageAt: v.number(),
     createdAt: v.number(),
@@ -41,17 +44,17 @@ export default defineSchema({
     isRegeneratingTitle: v.optional(v.boolean()), // Track if title is being regenerated
     visibility: v.union(v.literal("public"), v.literal("private")), // File visibility for unauthenticated access
     metadata: v.optional(v.any()),
+    // Legacy field - will be removed in migration
+    teamId: v.optional(v.string()),
   })
     .index("by_organization", ["organizationId"])
-    .index("by_team", ["teamId"])
     .index("by_organization_last_message", ["organizationId", "lastMessageAt"])
-    .index("by_team_last_message", ["teamId", "lastMessageAt"])
-    .index("unique_name_in_team", ["organizationId", "teamId", "name"])
+    .index("unique_name_in_org", ["organizationId", "name"])
     .index("by_visibility", ["visibility"])
-    .index("by_team_and_visibility", ["teamId", "visibility"])
+    .index("by_organization_and_visibility", ["organizationId", "visibility"])
     .searchIndex("search_name", {
       searchField: "name",
-      filterFields: ["teamId", "organizationId"]
+      filterFields: ["organizationId"]
     }),
 
   messages: defineTable({

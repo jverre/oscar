@@ -8,15 +8,26 @@ import { useEffect } from "react";
 export default function Home() {
   const user = useQuery(api.users.current);
   const userOrg = useQuery(api.organizations.getCurrentUserOrg);
-  const userTeam = useQuery(api.teams.getCurrentUserTeam);
   const router = useRouter();
 
   useEffect(() => {
-    // If user is authenticated and we have their org/team, redirect to their workspace
-    if (user && userOrg && userTeam) {
-      router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
+    // If user is authenticated and we have their org with subdomain, redirect to their subdomain
+    if (user && userOrg && userOrg.subdomain) {
+      // Redirect to their subdomain
+      const protocol = window.location.protocol;
+      const host = window.location.host;
+      
+      if (host.includes('localhost')) {
+        // For development, redirect to subdomain.localhost:port
+        const port = window.location.port ? `:${window.location.port}` : '';
+        window.location.href = `${protocol}//${userOrg.subdomain}.localhost${port}/`;
+      } else {
+        // For production, redirect to subdomain.domain.com
+        const baseDomain = host.replace(/^[^.]+\./, ''); // Remove any existing subdomain
+        window.location.href = `${protocol}//${userOrg.subdomain}.${baseDomain}/`;
+      }
     }
-  }, [user, userOrg, userTeam, router]);
+  }, [user, userOrg, router]);
 
   // Show loading while checking authentication
   if (user === undefined) {
