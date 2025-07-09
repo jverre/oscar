@@ -1,6 +1,9 @@
 "use client";
 
 import React from 'react';
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 import { cn } from '@/lib/utils';
 import { UserMessage } from './UserMessage';
 import { AssistantMessage } from './AssistantMessage';
@@ -32,7 +35,8 @@ interface Message {
 }
 
 interface MessageListProps {
-  messages: Message[];
+  fileId?: Id<"files">;
+  messages?: Message[];
   isSubmitting?: boolean;
   className?: string;
 }
@@ -47,7 +51,26 @@ function processMessages(messages: Message[]): Message[] {
 }
 
 
-export function MessageList({ messages, isSubmitting, className }: MessageListProps) {
+export function MessageList({ fileId, messages: propMessages, isSubmitting, className }: MessageListProps) {
+  // Fetch messages if fileId is provided
+  const messagesResult = useQuery(
+    api.messages.list,
+    fileId ? { fileId, paginationOpts: { numItems: 100, cursor: null } } : "skip"
+  );
+  
+  const messages = propMessages || messagesResult?.page || [];
+  
+  // Show loading state if we're waiting for messages
+  if (fileId && messagesResult === undefined) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <div className="text-muted-foreground">Loading messages...</div>
+        </div>
+      </div>
+    );
+  }
+  
   // Process messages to normalize content and extract tool interactions across all messages
   const processedMessages = processMessages(messages);
   

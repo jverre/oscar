@@ -4,7 +4,11 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
-export function FileNotFound() {
+interface FileNotFoundProps {
+    fileName?: string;
+}
+
+export function FileNotFound({ fileName }: FileNotFoundProps = {}) {
     const router = useRouter();
     
     // Get user's organization for URL generation
@@ -20,7 +24,10 @@ export function FileNotFound() {
                 <div className="space-y-2">
                     <h1 className="text-2xl font-bold text-foreground">File Not Found</h1>
                     <p className="text-muted-foreground">
-                        The file you're looking for doesn't exist or has been deleted.
+                        {fileName 
+                            ? `The file "${fileName}" doesn't exist or has been deleted.`
+                            : "The file you're looking for doesn't exist or has been deleted."
+                        }
                     </p>
                 </div>
                 <div className="space-y-4">

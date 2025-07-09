@@ -351,7 +351,7 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
         // Navigate based on whether the next tab has a file ID
         if (nextTab.fileId && files) {
           const file = files.find(f => f._id === nextTab.fileId);
-          if (file) {
+          if (file && userOrg) {
             const url = buildFileUrl(file, userOrg);
             router.push(url);
           } else {
@@ -388,7 +388,7 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
         // Navigate based on whether the next tab has a file ID
         if (nextTab.fileId && files) {
           const file = files.find(f => f._id === nextTab.fileId);
-          if (file) {
+          if (file && userOrg) {
             const url = buildFileUrl(file, userOrg);
             router.push(url);
           } else {
@@ -424,7 +424,7 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
     // Navigate based on whether the tab has a file ID
     if (tab.fileId && files) {
       const file = files.find(f => f._id === tab.fileId);
-      if (file) {
+      if (file && userOrg) {
         const url = buildFileUrl(file, userOrg);
         router.push(url);
       } else {

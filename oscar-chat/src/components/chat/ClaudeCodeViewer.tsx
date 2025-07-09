@@ -7,11 +7,10 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { Loader2, Terminal, AlertCircle } from 'lucide-react';
 
 interface ClaudeCodeViewerProps {
-  userId: string;
   fileId: Id<"files">;
 }
 
-export function ClaudeCodeViewer({ userId, fileId }: ClaudeCodeViewerProps) {
+export function ClaudeCodeViewer({ fileId }: ClaudeCodeViewerProps) {
   const fileData = useQuery(api.files.get, { fileId });
   const [terminalLoaded, setTerminalLoaded] = useState(false);
 

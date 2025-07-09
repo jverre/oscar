@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 import { MessageList } from './MessageList';
 
 interface Message {
@@ -27,16 +30,24 @@ interface Message {
 }
 
 interface ClaudeSessionViewerProps {
-  messages: Message[];
+  fileId: Id<"files">;
   className?: string;
 }
 
-export function ClaudeSessionViewer({ messages, className }: ClaudeSessionViewerProps) {
+export function ClaudeSessionViewer({ fileId, className }: ClaudeSessionViewerProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const topObserverRef = useRef<HTMLDivElement>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
   const isAutoScrollingRef = useRef(false);
+  
+  // Fetch messages for the file
+  const messagesResult = useQuery(api.messages.list, {
+    fileId,
+    paginationOpts: { numItems: 100, cursor: null }
+  });
+  
+  const messages = messagesResult?.page || [];
 
   // Check if user is at bottom of scroll container
   const checkIfUserAtBottom = useCallback(() => {
@@ -78,6 +89,17 @@ export function ClaudeSessionViewer({ messages, className }: ClaudeSessionViewer
       });
     }
   }, [messages, isUserAtBottom]);
+  
+  // Show loading state
+  if (messagesResult === undefined) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <div className="text-muted-foreground">Loading messages...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full w-full">

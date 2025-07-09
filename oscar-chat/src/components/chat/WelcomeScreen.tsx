@@ -35,7 +35,7 @@ export function WelcomeScreen() {
 
     const handleFileClick = (fileId: string) => {
         const file = files?.find(f => f._id === fileId);
-        if (file) {
+        if (file && userOrg) {
             router.push(buildFileUrl(file, userOrg));
         } else {
             // If file not found or org/team not loaded, go to home
