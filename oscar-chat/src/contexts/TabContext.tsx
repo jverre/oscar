@@ -267,9 +267,8 @@ function tabReducer(state: TabState, action: TabAction): TabState {
 export function TabProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   
-  // Get user's organization and team for URL generation
+  // Get user's organization for URL generation
   const userOrg = useQuery(api.organizations.getCurrentUserOrg);
-  const userTeam = useQuery(api.teams.getCurrentUserTeam);
   const files = useQuery(api.files.list);
   
   const [state, dispatch] = useReducer(tabReducer, {
@@ -352,30 +351,22 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
         // Navigate based on whether the next tab has a file ID
         if (nextTab.fileId && files) {
           const file = files.find(f => f._id === nextTab.fileId);
-          if (file && userOrg && userTeam) {
-            const url = buildFileUrl(file, userOrg, userTeam);
-            if (url) {
-              router.push(url);
-            } else {
-              console.error('Failed to build file URL for closeTab', file, userOrg, userTeam);
-              router.push('/');
-            }
+          if (file) {
+            const url = buildFileUrl(file, userOrg);
+            router.push(url);
           } else {
-            // If file exists but org/team not loaded, or file not found, go to home
+            // File not found, go to home
             router.push('/');
           }
-        } else if (userOrg && userTeam) {
-          router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
         } else {
+          // Navigate to organization home
           router.push('/');
         }
-      } else if (userOrg && userTeam) {
-        router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
       } else {
         router.push('/');
       }
     }
-  }, [state.activeTabId, state.openTabs, router, userOrg, userTeam, files]);
+  }, [state.activeTabId, state.openTabs, router, userOrg, files]);
 
   const closeTabs = useCallback((tabIds: string[]) => {
     if (!tabIds || tabIds.length === 0) {
@@ -397,30 +388,22 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
         // Navigate based on whether the next tab has a file ID
         if (nextTab.fileId && files) {
           const file = files.find(f => f._id === nextTab.fileId);
-          if (file && userOrg && userTeam) {
-            const url = buildFileUrl(file, userOrg, userTeam);
-            if (url) {
-              router.push(url);
-            } else {
-              console.error('Failed to build file URL for closeTab', file, userOrg, userTeam);
-              router.push('/');
-            }
+          if (file) {
+            const url = buildFileUrl(file, userOrg);
+            router.push(url);
           } else {
-            // If file exists but org/team not loaded, or file not found, go to home
+            // File not found, go to home
             router.push('/');
           }
-        } else if (userOrg && userTeam) {
-          router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
         } else {
+          // Navigate to organization home
           router.push('/');
         }
-      } else if (userOrg && userTeam) {
-        router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
       } else {
         router.push('/');
       }
     }
-  }, [state.activeTabId, state.openTabs, router, userOrg, userTeam, files]);
+  }, [state.activeTabId, state.openTabs, router, userOrg, files]);
 
   const switchToTab = useCallback((tabId: string) => {
     console.log("switching to tab", tabId);
@@ -441,25 +424,18 @@ export function TabProvider({ children }: { children: React.ReactNode }) {
     // Navigate based on whether the tab has a file ID
     if (tab.fileId && files) {
       const file = files.find(f => f._id === tab.fileId);
-      if (file && userOrg && userTeam) {
-        const url = buildFileUrl(file, userOrg, userTeam);
-        if (url) {
-          router.push(url);
-        } else {
-          console.error('Failed to build file URL', file, userOrg, userTeam);
-          router.push('/');
-        }
+      if (file) {
+        const url = buildFileUrl(file, userOrg);
+        router.push(url);
       } else {
-        // If file not found or org/team not loaded, go to home
+        // If file not found, go to home
         router.push('/');
       }
-    } else if (userOrg && userTeam) {
-      router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
     } else {
-      // Navigate to home for tabs without file IDs
+      // Navigate to organization home for tabs without file IDs
       router.push('/');
     }
-  }, [router, state.openTabs, userOrg, userTeam, files]);
+  }, [router, state.openTabs, userOrg, files]);
 
   const isTabOpenByFile = useCallback((fileId: Id<"files">) => {
     if (!fileId) return false;

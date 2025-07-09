@@ -34,9 +34,8 @@ export function useFileCreation(): UseFileCreationReturn {
   // Get existing files for duplicate checking
   const existingFiles = useQuery(api.files.list);
   
-  // Get user's organization and team for URL generation
+  // Get user's organization for URL generation
   const userOrg = useQuery(api.organizations.getCurrentUserOrg);
-  const userTeam = useQuery(api.teams.getCurrentUserTeam);
 
   const createFile = useCallback(async (options: CreateFileOptions = {}): Promise<Id<"files"> | null> => {
     const { 
@@ -126,13 +125,8 @@ export function useFileCreation(): UseFileCreationReturn {
 
         // Navigate if requested (addTab already sets it as active)
         if (navigate) {
-          // Use new URL format: /{org}/{team}/{filename}
-          if (userOrg && userTeam) {
-            router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/${encodeURIComponent(normalizedName)}`);
-          } else {
-            // Fallback to old format if org/team not loaded yet
-            router.push(`/chat?file=${fileId}`);
-          }
+          // Use new URL format: /{filename}
+          router.push(`/${encodeURIComponent(normalizedName)}`);
         }
       }
 
@@ -148,7 +142,7 @@ export function useFileCreation(): UseFileCreationReturn {
     } finally {
       setIsCreating(false);
     }
-  }, [isCreating, createFileMutation, getTabByFile, switchToTab, addTab, router, existingFiles, userOrg, userTeam]);
+  }, [isCreating, createFileMutation, getTabByFile, switchToTab, addTab, router, existingFiles, userOrg]);
 
   return {
     createFile,

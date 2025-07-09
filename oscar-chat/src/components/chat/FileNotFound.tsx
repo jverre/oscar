@@ -7,16 +7,11 @@ import { api } from "../../../convex/_generated/api";
 export function FileNotFound() {
     const router = useRouter();
     
-    // Get user's organization and team for URL generation
+    // Get user's organization for URL generation
     const userOrg = useQuery(api.organizations.getCurrentUserOrg);
-    const userTeam = useQuery(api.teams.getCurrentUserTeam);
 
     const handleGoHome = () => {
-        if (userOrg && userTeam) {
-            router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/`);
-        } else {
-            router.push("/chat");
-        }
+        router.push('/');
     };
 
     return (

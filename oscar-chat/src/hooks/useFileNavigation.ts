@@ -7,7 +7,6 @@ import { useSidebar } from "@/components/ui/sidebar";
 
 interface NavigationOptions {
   userOrg?: Doc<"organizations">;
-  userTeam?: Doc<"teams">;
 }
 
 export function useFileNavigation(options: NavigationOptions = {}) {
@@ -18,8 +17,7 @@ export function useFileNavigation(options: NavigationOptions = {}) {
   const openFile = useCallback((file: Doc<"files">) => {
     const url = buildFileUrl(
       file,
-      options.userOrg ? { name: options.userOrg.name } : undefined,
-      options.userTeam ? { name: options.userTeam.name } : undefined
+      options.userOrg ? { name: options.userOrg.name, subdomain: options.userOrg.subdomain } : undefined
     );
     
     const existingTab = getTabByFile(file._id);
@@ -41,7 +39,7 @@ export function useFileNavigation(options: NavigationOptions = {}) {
     if (isMobile) {
       setOpenMobile(false);
     }
-  }, [router, addTab, getTabByFile, switchToTab, options.userOrg, options.userTeam, isMobile, setOpenMobile]);
+  }, [router, addTab, getTabByFile, switchToTab, options.userOrg, isMobile, setOpenMobile]);
   
   const closeFile = useCallback((fileId: Id<"files">) => {
     const tab = getTabByFile(fileId);

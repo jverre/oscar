@@ -12,9 +12,8 @@ export function WelcomeScreen() {
     const router = useRouter();
     const files = useQuery(api.files.list);
     
-    // Get user's organization and team for URL generation
+    // Get user's organization for URL generation
     const userOrg = useQuery(api.organizations.getCurrentUserOrg);
-    const userTeam = useQuery(api.teams.getCurrentUserTeam);
 
     const recentFiles = files?.slice(0, 5) || [];
 
@@ -36,8 +35,8 @@ export function WelcomeScreen() {
 
     const handleFileClick = (fileId: string) => {
         const file = files?.find(f => f._id === fileId);
-        if (file && userOrg && userTeam) {
-            router.push(buildFileUrl(file, userOrg, userTeam));
+        if (file) {
+            router.push(buildFileUrl(file, userOrg));
         } else {
             // If file not found or org/team not loaded, go to home
             router.push('/');

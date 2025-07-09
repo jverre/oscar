@@ -31,10 +31,9 @@ export function TopNav() {
   const createSession = useMutation(api.claudeCodeSession.createSession);
   const router = useRouter();
   
-  // Get current user and organization/team info
+  // Get current user and organization info
   const currentUser = useQuery(api.users.current);
   const userOrg = useQuery(api.organizations.getCurrentUserOrg);
-  const userTeam = useQuery(api.teams.getCurrentUserTeam);
   
   
   // Search query
@@ -186,9 +185,9 @@ export function TopNav() {
       });
 
       // Navigate to the file
-      if (userOrg && userTeam && result.fileName) {
+      if (result.fileName) {
         const encodedFileName = encodeURIComponent(result.fileName);
-        router.push(`/${encodeURIComponent(userOrg.name)}/${encodeURIComponent(userTeam.name)}/${encodedFileName}`);
+        router.push(`/${encodedFileName}`);
       }
     }
     
@@ -347,9 +346,9 @@ export function TopNav() {
           // Create a new Claude Code session
           const sessionResult = await createSession({});
           
-          if (sessionResult && currentUser && userOrg && userTeam) {
+          if (sessionResult && currentUser) {
             // Navigate to the new session file
-            const sessionPath = `/${userOrg.name}/${userTeam.name}/${sessionResult.sessionName}`;
+            const sessionPath = `/${sessionResult.sessionName}`;
             router.push(sessionPath);
             
             // Add tab for the session

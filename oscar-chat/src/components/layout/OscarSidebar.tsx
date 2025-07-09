@@ -37,9 +37,8 @@ export function OscarSidebar() {
   // Use appropriate files based on authentication
   const files = currentUser ? authenticatedFiles : publicFiles;
   
-  // Get user's organization and team for URL generation
+  // Get user's organization for URL generation
   const userOrg = useQuery(api.organizations.getCurrentUserOrg);
-  const userTeam = useQuery(api.teams.getCurrentUserTeam);
   
   const handleCreateFile = async () => {
     setShouldCreateFile(true);
@@ -143,7 +142,6 @@ export function OscarSidebar() {
                 <FileTree
                   files={files}
                   userOrg={userOrg || undefined}
-                  userTeam={userTeam || undefined}
                   onCreateFile={currentUser && shouldCreateFile ? () => setShouldCreateFile(false) : undefined}
                   onCreateBlog={currentUser && shouldCreateBlog ? () => setShouldCreateBlog(false) : undefined}
                 />

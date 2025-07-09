@@ -1,24 +1,17 @@
 import { Doc } from "../../convex/_generated/dataModel";
 
 /**
- * Generate the proper file URL using /{org}/{team}/{filename} format
+ * Generate the proper file URL using subdomain-based routing
  * @param file - The file document
- * @param organization - The organization document (optional, will be fetched if not provided)
- * @param team - The team document (optional, will be fetched if not provided)
+ * @param organization - The organization document (optional, for subdomain-based routing)
  * @returns URL string for the file
  */
 export function buildFileUrl(
   file: Doc<"files">,
-  organization?: { name: string },
-  team?: { name: string }
+  organization?: { subdomain?: string; name: string }
 ): string {
-  if (organization && team) {
-    return `/${encodeURIComponent(organization.name)}/${encodeURIComponent(team.name)}/${encodeURIComponent(file.name)}`;
-  }
-  
-  // Fallback for when org/team data is not available
-  // This shouldn't happen with the new approach, but keeping for safety
-  console.warn("buildFileUrl called without org/team data, falling back to file ID");
-  return `/chat?file=${file._id}`;
+  // For subdomain-based routing, we just use the filename as the path
+  // The subdomain routing is handled by middleware
+  return `/${encodeURIComponent(file.name)}`;
 }
 

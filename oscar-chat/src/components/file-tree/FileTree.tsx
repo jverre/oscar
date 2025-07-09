@@ -14,7 +14,6 @@ import { DeleteFileDialog } from "../chat/DeleteFileDialog";
 interface FileTreeProps {
   files: Doc<"files">[] | undefined;
   userOrg?: Doc<"organizations">;
-  userTeam?: Doc<"teams">;
   onCreateFile?: () => void;
   onCreateBlog?: () => void;
 }
@@ -37,7 +36,6 @@ interface DeleteDialogState {
 export function FileTree({ 
   files, 
   userOrg, 
-  userTeam,
   onCreateFile,
   onCreateBlog 
 }: FileTreeProps) {
@@ -48,7 +46,7 @@ export function FileTree({
   const selection = useFileSelection(files);
   const fileOps = useFileOperations();
   const folderExpansion = useFolderExpansion();
-  const navigation = useFileNavigation({ userOrg, userTeam });
+  const navigation = useFileNavigation({ userOrg });
   
   useEffect(() => {
     if (!files) return;
