@@ -1,0 +1,8 @@
+{
+  "name": "Plugin Template",
+  "version": "1.0.0",
+  "description": "A simple plugin template",
+  "author": "Oscar",
+  "permissions": [],
+  "icon": "/icon.png"
+}
