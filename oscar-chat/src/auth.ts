@@ -76,7 +76,40 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         .setAudience("convex")
         .setExpirationTime("1h")
         .sign(privateKey);
-      return { ...session, convexToken, user: { ...session.user, id: token.userId } };
+      return { 
+        ...session, 
+        convexToken, 
+        user: { 
+          ...session.user, 
+          id: typeof token.userId === 'string' ? token.userId : token.userId?.toString() 
+        } 
+      };
+    },
+    async redirect({ url, baseUrl }) {
+      // Parse the URL to check for workspace parameter
+      try {
+        const urlObj = new URL(url);
+        const workspace = urlObj.searchParams.get('workspace');
+        
+        if (workspace) {
+          // Extract base domain from baseUrl
+          const baseUrlObj = new URL(baseUrl);
+          const hostname = baseUrlObj.hostname;
+          const port = baseUrlObj.port ? `:${baseUrlObj.port}` : "";
+          const protocol = baseUrlObj.protocol;
+          
+          // Redirect to tenant subdomain
+          return `${protocol}//${workspace}.${hostname}${port}`;
+        }
+      } catch (error) {
+        // If URL parsing fails, fall back to default behavior
+        console.error('Error parsing redirect URL:', error);
+      }
+      
+      // Default redirect behavior
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
   },
 });

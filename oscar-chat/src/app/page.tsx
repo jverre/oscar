@@ -1,6 +1,7 @@
-import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { auth } from "@/auth";
+import { TenantAccessGuard } from "@/components/tenant/TenantAccessGuard";
+import { AppLayout } from "@/components/layout/app-layout";
+import { ContentRenderer } from "@/components/editor/ContentRenderer";
 
 export default async function Home() {
   const headersList = await headers();
@@ -22,29 +23,12 @@ export default async function Home() {
     subdomain = parts[0];
   }
   
-  // If we have a subdomain, show the org page
-  if (subdomain) {
-    const session = await auth();
-    
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-2">
-            Welcome to {subdomain}
-          </h2>
-          <p className="text-muted-foreground mb-2">
-            Select or create a file to get started
-          </p>
-          {session?.user?.email && (
-            <p className="text-xs text-muted-foreground">
-              Logged in as: {session.user.email}
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-  
-  // No subdomain - redirect to auth
-  redirect("/auth/signin");
+  // Use TenantAccessGuard for both subdomain and base domain
+  return (
+    <TenantAccessGuard tenant={subdomain || ""}>
+      <AppLayout>
+        <ContentRenderer />
+      </AppLayout>
+    </TenantAccessGuard>
+  );
 }

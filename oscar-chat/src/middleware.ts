@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { auth } from "@/auth";
 
 const RESERVED_SUBDOMAINS = ["www", "app", "api", "admin"];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get("host") || "";
   
@@ -19,22 +20,11 @@ export function middleware(request: NextRequest) {
   let subdomain: string | null = null;
   
   if (isDevelopment && parts.length >= 3) {
-    // Development: subdomain.oscar-chat.localtest.me or subdomain.oscar-chat.local
+    // Development: subdomain.localtest.me
     subdomain = parts[0];
   } else if (isProduction && parts.length >= 3) {
-    // Production: subdomain.oscar-chat.com
+    // Production: subdomain.getoscar.ai
     subdomain = parts[0];
-  }
-  
-  // Check if it's a valid subdomain (not reserved)
-  if (subdomain && !RESERVED_SUBDOMAINS.includes(subdomain)) {
-    // Subdomain detected - let it pass through to serve org content directly
-    return NextResponse.next();
-  }
-  
-  // Auth pages should be accessible on base domain
-  if (url.pathname.startsWith("/auth/")) {
-    return NextResponse.next();
   }
   
   // API routes should pass through
@@ -42,11 +32,43 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // No subdomain and not an allowed path? Redirect to auth
-  if (!subdomain && !url.pathname.startsWith("/auth/")) {
-    return NextResponse.redirect(new URL("/auth/signin", request.url));
+  // Auth pages should be accessible on base domain only
+  if (url.pathname.startsWith("/auth/") || url.pathname.startsWith("/signin")) {
+    if (subdomain && !RESERVED_SUBDOMAINS.includes(subdomain)) {
+      // Redirect tenant subdomain auth requests to base domain with workspace param
+      const baseUrl = isDevelopment ? "http://localtest.me:3000" : "https://getoscar.ai";
+      return NextResponse.redirect(new URL(`/signin?workspace=${subdomain}`, baseUrl));
+    }
+    return NextResponse.next();
   }
   
+  // Handle tenant subdomains
+  if (subdomain && !RESERVED_SUBDOMAINS.includes(subdomain)) {
+    // Get session to check authentication and access
+    const session = await auth();
+    
+    // Store tenant info in headers for the page to access
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-tenant', subdomain);
+    
+    if (!session) {
+      // User not authenticated - show signin option on tenant page
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
+    }
+    
+    // User is authenticated - the page component will validate tenant access
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  }
+  
+  // Base domain routing - let it pass through to the page component
   return NextResponse.next();
 }
 

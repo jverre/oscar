@@ -18,7 +18,11 @@ import type {
   
   export const ConvexAdapter: Adapter = {
     async createAuthenticator(authenticator: Authenticator) {
-      await callMutation(api.authAdapter.createAuthenticator, { authenticator });
+      const authenticatorData = {
+        ...authenticator,
+        transports: authenticator.transports || undefined
+      };
+      await callMutation(api.authAdapter.createAuthenticator, { authenticator: authenticatorData });
       return authenticator;
     },
     async createSession(session: Session) {
@@ -162,7 +166,7 @@ import type {
     return {
       ...user,
       id: user._id,
-      emailVerified: maybeDate(user.emailVerified),
+      emailVerified: null,
     };
   }
   

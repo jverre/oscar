@@ -1,108 +1,95 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  :root {
-    /* Convert hex to HSL for shadcn compatibility */
-    --background: 0 0% 8%;          /* #141414 */
-    --foreground: 0 0% 82%;         /* #D0D0D0 */
+@custom-variant dark (&:is(.dark *));
 
-    --card: 0 0% 13%;               /* #202020 */
-    --card-foreground: 0 0% 82%;    /* #D0D0D0 */
+@theme {
+  --color-background: hsl(0 0% 8%);
+  --color-foreground: hsl(216 13% 87%);
+  --color-border: hsl(0 0% 20%);
+  --color-input: hsl(0 0% 16%);
+  --color-ring: hsl(199 78% 69%);
 
-    --popover: 0 0% 13%;            /* #202020 */
-    --popover-foreground: 0 0% 82%; /* #D0D0D0 */
+  --color-card: hsl(0 0% 10.2%);
+  --color-card-foreground: hsl(216 13% 87%);
 
-    --primary: 0 0% 82%;            /* #D0D0D0 for text/accents */
-    --primary-foreground: 0 0% 8%;  /* #141414 */
+  --color-popover: hsl(0 0% 10%);
+  --color-popover-foreground: hsl(216 13% 87%);
 
-    --secondary: 0 0% 10%;          /* #1A1A1A */
-    --secondary-foreground: 0 0% 82%; /* #D0D0D0 */
+  --color-primary: hsl(199 78% 69%);
+  --color-primary-foreground: hsl(0 0% 8%);
 
-    --muted: 0 0% 10%;              /* #1A1A1A */
-    --muted-foreground: 0 0% 51%;   /* #838383 */
+  --color-secondary: hsl(0 0% 16%);
+  --color-secondary-foreground: hsl(216 13% 87%);
 
-    --accent: 0 0% 13%;             /* #202020 for interactive */
-    --accent-foreground: 0 0% 82%;  /* #D0D0D0 */
+  --color-muted: hsl(0 0% 31%);
+  --color-muted-foreground: hsl(0 0% 80%);
 
-    --destructive: 11 60% 48%;      /* #CC4125 */
-    --destructive-foreground: 0 0% 98%;
+  --color-accent: hsl(213 26% 68%);
+  --color-accent-foreground: hsl(218 10% 14%);
 
-    --success: 95 38% 62%;          /* #98C379 */
-    --warning: 42 64% 66%;          /* #E5C07B */
+  --color-destructive: hsl(354 55% 59%);
+  --color-destructive-foreground: hsl(0 0% 98%);
 
-    --border: 0 0% 60%;             /* #999999 */
-    --input: 0 0% 60%;              /* #999999 */
-    --ring: 0 0% 82%;               /* #D0D0D0 for focus rings */
+  --color-success: hsl(92 28% 65%);
+  --color-warning: hsl(40 71% 70%);
 
-    --radius: 0.25rem;              /* Minimal rounding for terminal aesthetic */
-  }
+  --radius: 0.25rem;
+}
 
-  .dark {
-    /* Dark mode is the default, same values */
-    --background: 0 0% 8%;
-    --foreground: 0 0% 82%;
+html {
+  background-color: theme(colors.background);
+  color: theme(colors.foreground);
+}
 
-    --card: 0 0% 13%;
-    --card-foreground: 0 0% 82%;
+body {
+  background-color: theme(colors.background);
+  color: theme(colors.foreground);
+  min-height: 100vh;
+  font-feature-settings: "rlig" 1, "calt" 1;
+  font-size: 13px;
+}
 
-    --popover: 0 0% 13%;
-    --popover-foreground: 0 0% 82%;
+:root {
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-accent-hover: hsl(240 4.8% 92%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
 
-    --primary: 0 0% 82%;
-    --primary-foreground: 0 0% 8%;
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-accent-hover: hsl(240 3.7% 18%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
 
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 82%;
-
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 51%;
-
-    --accent: 0 0% 13%;
-    --accent-foreground: 0 0% 82%;
-
-    --destructive: 11 60% 48%;
-    --destructive-foreground: 0 0% 98%;
-
-    --success: 95 38% 62%;
-    --warning: 42 64% 66%;
-
-    --border: 0 0% 60%;
-    --input: 0 0% 60%;
-    --ring: 0 0% 82%;
-  }
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent-hover: var(--sidebar-accent-hover);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 @layer base {
   * {
-    @apply border-[hsl(var(--border))];
+    @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-}
-
-/* Terminal-style customizations */
-@layer components {
-  /* Buttons with terminal aesthetic */
-  .btn-terminal {
-    @apply bg-accent text-accent-foreground hover:bg-[hsl(0_0%_16%)] 
-           border border-border rounded-sm transition-colors
-           font-mono text-sm;
-  }
-  
-  /* Input fields */
-  .input-terminal {
-    @apply bg-background border-border text-foreground 
-           placeholder:text-muted-foreground
-           focus:ring-1 focus:ring-ring rounded-sm;
-  }
-  
-  /* Cards and panels */
-  .card-terminal {
-    @apply bg-card text-card-foreground border border-border 
-           rounded-sm shadow-sm;
   }
 }
