@@ -118,6 +118,7 @@ export const updatePlugin = mutation({
     isActive: v.optional(v.boolean()),
     port: v.optional(v.number()),
     startCommand: v.optional(v.string()),
+    fileExtension: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { pluginId, ...updates } = args;

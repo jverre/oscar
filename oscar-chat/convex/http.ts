@@ -2,7 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
 import { openai } from '@ai-sdk/openai';
-import { streamText } from 'ai';
+import { streamText, convertToModelMessages, stepCountIs } from 'ai';
 import { getToolsForAI, ToolContext, systemPrompt } from './tools';
 
 const http = httpRouter();
@@ -62,7 +62,7 @@ export const chat = httpAction(async (ctx, request) => {
   }
 
   try {
-    const { messages, pluginId, chatId } = await request.json();
+    const { messages, pluginId } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response('Invalid request', { status: 400 });
@@ -108,79 +108,58 @@ export const chat = httpAction(async (ctx, request) => {
 
     const aiTools = getToolsForAI(toolContext);
 
-    // Add system message
+    // Save new user messages to database - AI SDK format, no transformation
+    await ctx.runMutation(api.chats.addMessages, {
+      pluginId: pluginId as any,
+      messages: [messages[messages.length - 1]],
+    });
+
+    // Add system message at the beginning
     const systemMessage = {
       role: 'system' as const,
-      content: systemPrompt
+      parts: [{ type: 'text', text: systemPrompt }]
     };
-
     const messagesWithSystem = [systemMessage, ...messages];
-    const conversationId = chatId || `plugin-${pluginId}`;
+    
+    // Convert UI messages to model format for AI SDK v5
+    const modelMessages = convertToModelMessages(messagesWithSystem);
 
-    // Save user messages to database - AI SDK format, no transformation
-    const userMessages = messages.filter(msg => msg.role !== 'system');
-    if (userMessages.length > 0 && pluginId) {
-      await ctx.runMutation(api.chats.addMessages, {
-        chatId: conversationId,
-        pluginId: pluginId as any,
-        messages: userMessages, // Pass messages directly, no transformation
-      });
-    }
+    // Debug logging to see what messages are being sent
+    console.log('Messages being sent to streamText:', JSON.stringify(modelMessages, null, 2));
 
     const result = streamText({
       model: openai('gpt-4o'),
-      messages: messagesWithSystem,
+      messages: modelMessages,
       tools: aiTools,
       toolChoice: 'auto',
-      maxSteps: 20,
+      stopWhen: stepCountIs(5),
       onStepFinish: async (step) => {
-        // Save assistant messages with tool calls immediately when step completes
-        if (pluginId && step.response?.messages) {
-          const newMessages = step.response.messages.filter(msg => 
-            msg.role === 'assistant' || msg.role === 'tool'
-          );
-          
-          for (const message of newMessages) {
-            await ctx.runMutation(api.chats.addMessage, {
-              chatId: conversationId,
-              pluginId: pluginId as any,
-              message: message, // Save exact AI SDK message format
-            });
-          }
+        // Stream tool call states in real-time for immediate UI feedback
+        if (step.toolCalls) {
+          step.toolCalls.forEach(toolCall => {
+            console.log('Tool call:', toolCall.toolName);
+          });
         }
-      },
-      onFinish: async (result) => {
-        // Save any remaining messages that weren't caught in onStepFinish
-        if (pluginId && result.response.messages) {
-          const allMessages = result.response.messages.filter(msg => 
-            msg.role === 'assistant' || msg.role === 'tool'
-          );
-          
-          for (const message of allMessages) {
-            // Check if message already exists to avoid duplicates
-            const existingMessages = await ctx.runQuery(api.chats.loadMessages, {
-              chatId: conversationId,
-            });
-            
-            const messageExists = existingMessages.some(existing => existing.id === message.id);
-            
-            if (!messageExists) {
-              await ctx.runMutation(api.chats.addMessage, {
-                chatId: conversationId,
-                pluginId: pluginId as any,
-                message: message,
-              });
-            }
-          }
+        if (step.toolResults) {
+          step.toolResults.forEach(result => {
+            console.log('Tool result:', result);
+          });
         }
       },
     });
 
-    return result.toDataStreamResponse({
+    return result.toUIMessageStreamResponse({
+      originalMessages: messages,
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+      onFinish: async ({messages}) => {
+        await ctx.runMutation(api.chats.addMessages, {
+          pluginId: pluginId as any,
+          messages: messages,
+        });
       },
     });
 

@@ -88,7 +88,7 @@ export function getToolsForAI(toolContext: ToolContext) {
   return Object.entries(toolRegistry).reduce((acc, [name, toolDef]) => {
     acc[name] = tool({
       description: toolDef.description,
-      parameters: toolDef.parameters,
+      inputSchema: toolDef.parameters,
       execute: async (params: any) => {
         console.log(`Executing tool: ${name}`, params);
         

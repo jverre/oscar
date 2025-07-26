@@ -2,20 +2,46 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import { useSandbox } from '@/hooks/useSandbox';
+import { useFileMessages } from '@/hooks/useFileMessages';
 import { PluginHost } from './PluginHost';
+import { Id } from '../../../convex/_generated/dataModel';
 
 interface SandboxIframeProps {
   pluginId: string | undefined;
+  fileId?: string;
+  organizationId?: string;
   className?: string;
 }
 
-export function SandboxIframe({ pluginId, className = '' }: SandboxIframeProps) {
+export function SandboxIframe({ pluginId, fileId, organizationId, className = '' }: SandboxIframeProps) {
   const { status, url, error } = useSandbox(pluginId);
+  const {
+    messages,
+    createMessage,
+    updateMessage,
+    serializeMessage
+  } = useFileMessages(
+    fileId as Id<"files"> | undefined, 
+    organizationId as Id<"organizations"> | undefined
+  );
 
   const handlePluginMessage = (message: any) => {
     console.log('Plugin message:', message);
     // Handle plugin events here if needed
   };
+
+  const handleSaveMessage = async (messageData: any) => {
+    console.log('Saving message:', messageData);
+    await createMessage(messageData);
+  };
+
+  const handleUpdateMessage = async (messageId: string, messageData: any) => {
+    console.log('Updating message:', messageId, messageData);
+    await updateMessage(messageId as Id<"fileMessages">, messageData);
+  };
+
+  // Convert messages to ArrayBuffer format for PluginHost
+  const fileMessages = messages?.map(msg => msg.message) ?? [];
 
   if (status === 'creating') {
     return (
@@ -56,7 +82,11 @@ export function SandboxIframe({ pluginId, className = '' }: SandboxIframeProps) 
         <PluginHost 
           url={url}
           pluginId={pluginId}
+          fileId={fileId}
+          fileMessages={fileMessages}
           onMessage={handlePluginMessage}
+          onSaveMessage={handleSaveMessage}
+          onUpdateMessage={handleUpdateMessage}
           className="w-full h-full"
         />
       </div>

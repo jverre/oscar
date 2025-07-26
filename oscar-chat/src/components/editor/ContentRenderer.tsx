@@ -24,7 +24,8 @@ export const ContentRenderer = () => {
     return (
       <PluginComponent 
         pluginId={activeTab.pluginId!} 
-        pluginName={activeTab.title} 
+        pluginName={activeTab.title}
+        organizationId={activeTab.organizationId} 
       />
     );
   }

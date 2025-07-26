@@ -156,6 +156,7 @@ async def execute_command(request: Request):
         body = await request.json()
         sandbox_id = body.get("sandbox_id")
         command = body.get("command")
+        workdir = body.get("workdir")
         
         if not sandbox_id or not command:
             raise HTTPException(status_code=400, detail="sandbox_id and command are required")
@@ -164,6 +165,12 @@ async def execute_command(request: Request):
             sb = modal.Sandbox.from_id(sandbox_id)
         except Exception as e:
             raise HTTPException(status_code=404, detail=f"Sandbox not found: {str(e)}")
+        
+        # Handle workdir parameter similar to Convex tool
+        if workdir:
+            # Convert absolute paths to relative paths (remove leading slash)
+            workdir_processed = workdir[1:] if workdir.startswith('/') else workdir
+            command = f'cd "{workdir_processed}" && {command}'
         
         if isinstance(command, list):
             process = sb.exec(*command)

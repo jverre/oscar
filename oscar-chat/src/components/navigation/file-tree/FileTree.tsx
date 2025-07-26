@@ -137,7 +137,11 @@ export const FileTree = ({ organizationId }: FileTreeProps) => {
 
   const { publicFiles, privateFiles } = filesData;
 
-  if (publicFiles.length === 0 && privateFiles.length === 0 && pendingItems.length === 0) {
+  // Filter out plugins/data/ files from navigation
+  const filteredPublicFiles = publicFiles.filter(file => !file.path.startsWith('plugins/data/'));
+  const filteredPrivateFiles = privateFiles.filter(file => !file.path.startsWith('plugins/data/'));
+
+  if (filteredPublicFiles.length === 0 && filteredPrivateFiles.length === 0 && pendingItems.length === 0) {
     return (
       <div className="w-full bg-background font-mono text-xs">
         <FilesHeader 
@@ -161,10 +165,10 @@ export const FileTree = ({ organizationId }: FileTreeProps) => {
       />
       
       {/* Private Files Section */}
-      {(privateFiles.length > 0 || pendingItems.some(item => !item.isPublic)) && (
+      {(filteredPrivateFiles.length > 0 || pendingItems.some(item => !item.isPublic)) && (
         <FileGroupSection
           title="Private"
-          files={privateFiles}
+          files={filteredPrivateFiles}
           icon={<Lock className="h-3 w-3 text-muted-foreground/60" />}
           isPublic={false}
           pendingItems={pendingItems}
@@ -177,10 +181,10 @@ export const FileTree = ({ organizationId }: FileTreeProps) => {
       )}
       
       {/* Public Files Section */}
-      {(publicFiles.length > 0 || pendingItems.some(item => item.isPublic)) && (
+      {(filteredPublicFiles.length > 0 || pendingItems.some(item => item.isPublic)) && (
         <FileGroupSection
           title="Public"
-          files={publicFiles}
+          files={filteredPublicFiles}
           icon={<Globe className="h-3 w-3 text-green-500" />}
           isPublic={true}
           pendingItems={pendingItems}

@@ -45,6 +45,18 @@ export const validateTenantAccess = query({
       };
     }
     
+    // Special case: Allow user "jverre" to access base domain
+    if (args.tenant === "" && "email" in user && user.email === "jverre@gmail.com") {
+      return {
+        hasAccess: true,
+        reason: null,
+        user: {
+          ...user,
+          organization: null,
+        },
+      };
+    }
+    
     // Check if user has an organization
     if (!("organizationId" in user) || !user.organizationId) {
       return {

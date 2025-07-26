@@ -106,6 +106,7 @@ export default defineSchema({
     isActive: v.boolean(),
     port: v.optional(v.number()),
     startCommand: v.optional(v.string()),
+    fileExtension: v.optional(v.string()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -120,36 +121,14 @@ export default defineSchema({
     .index("by_org", ["organizationId"])
     .index("by_org_visibility", ["organizationId", "visibility"]),
 
-  // Chat tables for AI SDK integration
-  chats: defineTable({
-    chatId: v.string(), // Custom chat ID (using AI SDK's generateId)
-    title: v.string(),
-    organizationId: v.id("organizations"),
-    userId: v.id("users"),
-    pluginId: v.optional(v.id("plugins")),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_chatId", ["chatId"])
-    .index("by_org_user", ["organizationId", "userId"])
-    .index("by_plugin", ["pluginId"]),
-  
-  // Store individual messages - AI SDK compatible format
+  // Store individual messages - simplified schema
   messages: defineTable({
-    id: v.string(), // AI SDK message ID
-    chatId: v.string(), // Which chat this belongs to  
-    pluginId: v.optional(v.id("plugins")), // Optional plugin context
-    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system"), v.literal("tool")),
-    content: v.any(), // AI SDK content - can be string or array of parts (ToolCallPart, ToolResultPart, etc.)
-    // AI SDK timestamp
-    createdAt: v.optional(v.number()),
-    // Any other AI SDK fields
-    experimental_attachments: v.optional(v.any()),
-    experimental_providerMetadata: v.optional(v.any()),
+    pluginId: v.id("plugins"), // Plugin identifier
+    msgId: v.string(), // AI SDK message ID for deduplication/updates
+    aiSDKMessage: v.any(), // Complete raw AI SDK message
   })
-    .index("by_chat", ["chatId"])
     .index("by_plugin", ["pluginId"])
-    .index("by_chat_created", ["chatId", "createdAt"]),
+    .index("by_plugin_msgId", ["pluginId", "msgId"]),
   
   // Sandbox management
   sandboxes: defineTable({
@@ -181,4 +160,17 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_service_status", ["serviceStatus"])
     .index("by_health_check", ["lastHealthCheck"]),
+  
+  // File messages - stores messages as byte arrays for each file
+  fileMessages: defineTable({
+    fileId: v.id("files"),
+    organizationId: v.id("organizations"),
+    message: v.bytes(), // Store messages as byte arrays
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_file", ["fileId"])
+    .index("by_file_created", ["fileId", "createdAt"])
+    .index("by_org", ["organizationId"]),
 });

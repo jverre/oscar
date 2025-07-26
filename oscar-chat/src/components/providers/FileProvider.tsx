@@ -17,6 +17,7 @@ interface FileContextType {
   openFile: (filePath: string) => void;
   openPlugin: (pluginId: string, pluginName: string) => void;
   openPluginFile: (pluginId: string, fileName: string, filePath: string, organizationId: string) => void;
+  updatePluginTabTitle: (pluginId: string, newTitle: string) => void;
   openTabs: string[];
   tabs: Tab[];
   closeTab: (filePath: string) => void;
@@ -132,6 +133,15 @@ export const FileProvider = ({ children }: FileProviderProps) => {
     }
   };
 
+  const updatePluginTabTitle = (pluginId: string, newTitle: string) => {
+    setTabs(prev => prev.map(tab => {
+      if (tab.type === 'plugin' && tab.pluginId === pluginId) {
+        return { ...tab, title: newTitle };
+      }
+      return tab;
+    }));
+  };
+
   const getActiveTab = () => {
     return tabs.find(tab => tab.id === activeFile);
   };
@@ -142,6 +152,7 @@ export const FileProvider = ({ children }: FileProviderProps) => {
     openFile,
     openPlugin,
     openPluginFile,
+    updatePluginTabTitle,
     openTabs,
     tabs,
     closeTab,

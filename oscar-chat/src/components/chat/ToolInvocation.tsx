@@ -30,7 +30,7 @@ interface ToolInvocationProps {
     toolCallId: string;
     toolName: string;
     args?: any;
-    state: 'call' | 'result';
+    state: 'partial-call' | 'call' | 'result';
     result?: any;
     timestamp?: number;
   };
@@ -50,8 +50,9 @@ export function ToolInvocationComponent({ toolInvocation }: ToolInvocationProps)
   };
 
   const isComplete = toolInvocation.state === 'result';
-  const isSuccess = isComplete && toolInvocation.result?.success !== false;
+  const isSuccess = isComplete && toolInvocation.result?.success !== false && !toolInvocation.result?.error;
   const hasOutput = isComplete && (toolInvocation.result?.data || toolInvocation.result?.error);
+  const hasError = isComplete && toolInvocation.result?.error;
 
   const getCommandDetails = () => {
     if (!toolInvocation.args) return null;
@@ -113,6 +114,7 @@ export function ToolInvocationComponent({ toolInvocation }: ToolInvocationProps)
         ? <CheckCircle className="w-3 h-3" style={{ color: COLORS.muted }} />
         : <XCircle className="w-3 h-3 text-red-500" />;
     }
+    // Show loading for both partial-call and call states
     return <Loader2 className="w-3 h-3 animate-spin" />;
   };
 
@@ -126,8 +128,15 @@ export function ToolInvocationComponent({ toolInvocation }: ToolInvocationProps)
         <div className="flex-shrink-0">{renderStatusIcon()}</div>
         
         <span className="font-medium">{toolConfig.name}</span>
+        
+        {/* Show "Executing tool" for partial-call state */}
+        {toolInvocation.state === 'partial-call' && (
+          <span className="text-xs font-medium" style={{ color: COLORS.mutedLight }}>
+            Executing...
+          </span>
+        )}
 
-        {commandDetails && !isComplete && (
+        {commandDetails && !isComplete && toolInvocation.state !== 'partial-call' && (
           <span className="font-mono truncate flex-1" style={{ color: COLORS.mutedLight }}>
             {commandDetails}
           </span>
