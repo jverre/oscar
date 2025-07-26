@@ -14,7 +14,8 @@ export async function middleware(request: NextRequest) {
   
   // Determine environment dynamically
   const isDevelopment = hostWithoutPort.endsWith(".localtest.me") || hostWithoutPort.endsWith(".local");
-  const isProduction = hostWithoutPort.endsWith(".com") || hostWithoutPort.endsWith(".app");
+  const isProduction = hostWithoutPort.endsWith(".com") || hostWithoutPort.endsWith(".app") || hostWithoutPort.endsWith(".ai");
+  const isVercelPreview = hostWithoutPort.endsWith(".vercel.app");
   
   // Extract subdomain based on environment
   let subdomain: string | null = null;
@@ -24,6 +25,10 @@ export async function middleware(request: NextRequest) {
     subdomain = parts[0];
   } else if (isProduction && parts.length >= 3) {
     // Production: subdomain.getoscar.ai
+    subdomain = parts[0];
+  } else if (isVercelPreview && parts.length >= 3) {
+    // Vercel preview: subdomain.preview-name.vercel.app
+    // Skip the preview deployment name and get the actual subdomain
     subdomain = parts[0];
   }
   
@@ -36,7 +41,16 @@ export async function middleware(request: NextRequest) {
   if (url.pathname.startsWith("/auth/") || url.pathname.startsWith("/signin")) {
     if (subdomain && !RESERVED_SUBDOMAINS.includes(subdomain)) {
       // Redirect tenant subdomain auth requests to base domain with workspace param
-      const baseUrl = isDevelopment ? "http://localtest.me:3000" : "https://getoscar.ai";
+      let baseUrl: string;
+      if (isDevelopment) {
+        baseUrl = "http://localtest.me:3000";
+      } else if (isVercelPreview) {
+        // For Vercel preview, reconstruct the base URL without subdomain
+        const baseParts = parts.slice(1);
+        baseUrl = `https://${baseParts.join('.')}`;
+      } else {
+        baseUrl = "https://getoscar.ai";
+      }
       return NextResponse.redirect(new URL(`/signin?workspace=${subdomain}`, baseUrl));
     }
     return NextResponse.next();

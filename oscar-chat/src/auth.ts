@@ -11,12 +11,21 @@ const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_URL!.replace(
 
 // Helper function to get root domain for cookie sharing
 const getRootDomain = () => {
-  const authUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || '';
+  // Use Vercel URL if available (for preview deployments)
+  const vercelUrl = process.env.VERCEL_URL;
+  const authUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 
+    (vercelUrl ? `https://${vercelUrl}` : '');
+  
   if (!authUrl) return '';
   
   try {
     const { hostname } = new URL(authUrl);
     const parts = hostname.split('.');
+    
+    // For Vercel preview deployments (*.vercel.app)
+    if (hostname.endsWith('.vercel.app')) {
+      return 'vercel.app';
+    }
     
     // For development (localtest.me) or production (getoscar.ai)
     if (parts.length >= 2) {
@@ -31,8 +40,23 @@ const getRootDomain = () => {
 const useSecureCookies = process.env.NODE_ENV === 'production';
 const rootDomain = getRootDomain();
 
+// Dynamically determine the URL for NextAuth
+const getAuthUrl = () => {
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  return undefined;
+};
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   debug: true,
+  ...(getAuthUrl() && { url: getAuthUrl() }),
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
