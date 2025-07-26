@@ -1,24 +1,107 @@
-import { v } from "convex/values";
 import { query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { v } from "convex/values";
 
-export const current = query({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+export const currentUser = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const userId = args.userId as any;
     
-    if (!userId) {
+    const user = await ctx.db.get(userId);
+    if (!user) {
       return null;
     }
-    const user = await ctx.db.get(userId);
     
-    return user;
+    // If user has an organization, fetch it too
+    if ("organizationId" in user && user.organizationId) {
+      const organization = await ctx.db.get(user.organizationId);
+      return {
+        ...user,
+        organization,
+      };
+    }
+    
+    // Return user without organization
+    return {
+      ...user,
+      organization: null,
+    };
   },
 });
 
-export const getUser = query({
-  args: { userId: v.id("users") },
+export const validateTenantAccess = query({
+  args: { 
+    userId: v.string(),
+    tenant: v.string(),
+  },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.userId);
+    const userId = args.userId as any;
+    
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      return {
+        hasAccess: false,
+        reason: "not_authenticated",
+        user: null,
+      };
+    }
+    
+    // Special case: Allow user "jverre" to access base domain
+    if (args.tenant === "" && "email" in user && user.email === "jverre@gmail.com") {
+      return {
+        hasAccess: true,
+        reason: null,
+        user: {
+          ...user,
+          organization: null,
+        },
+      };
+    }
+    
+    // Check if user has an organization
+    if (!("organizationId" in user) || !user.organizationId) {
+      return {
+        hasAccess: false,
+        reason: "no_organization",
+        user: {
+          ...user,
+          organization: null,
+        },
+      };
+    }
+    
+    // Fetch the organization
+    const organization = await ctx.db.get(user.organizationId);
+    if (!organization) {
+      return {
+        hasAccess: false,
+        reason: "organization_not_found",
+        user: {
+          ...user,
+          organization: null,
+        },
+      };
+    }
+    
+    // Check if organization subdomain matches the requested tenant
+    if (organization.subdomain !== args.tenant) {
+      return {
+        hasAccess: false,
+        reason: "wrong_organization",
+        user: {
+          ...user,
+          organization,
+        },
+      };
+    }
+    
+    // User has access
+    return {
+      hasAccess: true,
+      reason: null,
+      user: {
+        ...user,
+        organization,
+      },
+    };
   },
 });

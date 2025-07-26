@@ -1,46 +1,18 @@
-import React from 'react';
-import { extractTextContent, type StructuredContent } from '@/utils/contentUtils';
-
 interface UserMessageProps {
-  content: StructuredContent;
-  showStatus?: boolean;
-  status?: 'pending' | 'streaming' | 'done' | 'error' | 'timeout';
+  content: string;
 }
 
-export function UserMessage({ content, showStatus, status }: UserMessageProps) {
+export function UserMessage({ content }: UserMessageProps) {
   return (
-    <div className="w-full">
-      <div className="flex w-full justify-start">
-        <div
-          className="font-mono w-full px-2 py-2 rounded-lg inline select-text break-words text-sm"
-          style={{
-            border: '1px solid var(--border-subtle)',
-            backgroundColor: 'var(--surface-secondary)',
-            color: 'var(--text-primary)',
-            cursor: 'text',
-            fontFamily: '-apple-system, "system-ui", sans-serif',
-            fontSize: '12px',
-            height: 'auto',
-            lineHeight: '18px',
-            overflowWrap: 'break-word',
-            whiteSpace: 'preserve',
-            width: '100%',
-            wordBreak: 'break-word'
-          }}
-        >
-          <div className="whitespace-pre-wrap break-words">
-            {extractTextContent(content)}
-          </div>
-        </div>
-      </div>
-      {showStatus && (
-        <div className="flex items-center text-xs font-mono mt-1 mb-1" style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>
-          <div className="animate-pulse mr-2">●</div>
-          {status === 'pending' && "Connecting..."}
-          {status === 'streaming' && "Streaming response..."}
-          {status === 'error' && "Error occurred"}
-        </div>
-      )}
+    <div 
+      className="text-xs text-foreground border border-border rounded-lg p-2 break-words overflow-hidden"
+      style={{
+        background: 'color-mix(in srgb, var(--color-input) 90%, transparent)',
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word'
+      }}
+    >
+      {content}
     </div>
   );
 }
