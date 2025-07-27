@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useFileContext } from '@/components/providers/FileProvider';
-import { PluginComponent } from '@/components/plugins/PluginComponent';
+import { PluginBuilder } from '@/components/plugins/PluginBuilder';
 import { PluginFileComponent } from '@/components/plugins/PluginFileComponent';
 
 export const ContentRenderer = () => {
@@ -22,21 +22,8 @@ export const ContentRenderer = () => {
 
   if (activeTab.type === 'plugin') {
     return (
-      <PluginComponent 
-        pluginId={activeTab.pluginId!} 
-        pluginName={activeTab.title}
-        organizationId={activeTab.organizationId} 
-      />
-    );
-  }
-
-  if (activeTab.type === 'plugin-file') {
-    return (
-      <PluginFileComponent 
-        pluginId={activeTab.pluginId!}
-        filePath={activeTab.filePath!}
-        fileName={activeTab.title}
-        organizationId={activeTab.organizationId!}
+      <PluginBuilder
+        fileId={activeTab.id}
       />
     );
   }

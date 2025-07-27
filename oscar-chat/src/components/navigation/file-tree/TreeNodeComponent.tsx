@@ -32,7 +32,7 @@ export const TreeNodeComponent = ({
     if (node.isPending || node.isEditing || isRenaming) return;
     
     if (node.isFile) {
-      openFile(node.path);
+      openFile(node.fileId, node.name, node.type);
     } else {
       setIsExpanded(!isExpanded);
     }

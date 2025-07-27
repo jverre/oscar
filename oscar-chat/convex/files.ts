@@ -116,11 +116,16 @@ export const getAllFiles = query({
     organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    // Get ALL files for the organization
+    // Get ALL files for the organization, excluding hidden files
     const allFiles = await ctx.db
       .query("files")
       .withIndex("by_org_path")
-      .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("organizationId"), args.organizationId),
+          q.neq(q.field("isHidden"), true)
+        )
+      )
       .collect();
 
     // Group files by public/private status
@@ -140,11 +145,16 @@ export const getFiles = query({
     parentPath: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Get all files for the organization
+    // Get all files for the organization, excluding hidden files
     const allFiles = await ctx.db
       .query("files")
       .withIndex("by_org_path")
-      .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("organizationId"), args.organizationId),
+          q.neq(q.field("isHidden"), true)
+        )
+      )
       .collect();
 
     if (!args.parentPath) {
@@ -229,8 +239,9 @@ export const createFile = mutation({
     organizationId: v.id("organizations"),
     path: v.string(),
     content: v.optional(v.string()),
-    type: v.string(),
+    type: v.union(v.literal("user"),v.literal("plugin")),
     isPublic: v.optional(v.boolean()),
+    isHidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // Sanitize the file path
@@ -261,6 +272,7 @@ export const createFile = mutation({
       content: args.content || "",
       type: args.type,
       isPublic: args.isPublic ?? false, // Default to private
+      isHidden: args.isHidden ?? false, // Default to visible
       createdBy: args.userId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -304,7 +316,7 @@ export const createFolder = mutation({
       organizationId: args.organizationId,
       path: availablePath,
       content: "",
-      type: "directory",
+      type: "folder",
       isPublic: args.isPublic ?? false, // Default to private
       createdBy: args.userId,
       createdAt: Date.now(),
@@ -444,5 +456,73 @@ export const deleteFolder = mutation({
     }
 
     return { success: true, deletedCount: filteredFiles.length };
+  },
+});
+
+// Create hidden plugin demo file
+export const createPluginDemoFile = mutation({
+  args: {
+    userId: v.id("users"),
+    organizationId: v.id("organizations"),
+    pluginId: v.union(v.id("plugins"), v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Get user from database
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Verify user belongs to the organization
+    if (!("organizationId" in user) || user.organizationId !== args.organizationId) {
+      throw new Error("User does not belong to this organization");
+    }
+
+    // Create the hidden plugin demo file
+    const fileId = await ctx.db.insert("files", {
+      organizationId: args.organizationId,
+      path: `${args.pluginId}`,
+      content: "", // Empty content initially
+      type: "plugin",
+      isPublic: false, // Private by default
+      isHidden: true, // Mark as hidden
+      createdBy: args.userId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return fileId;
+  },
+});
+
+// Get plugin demo file
+export const getFileByPath = query({
+  args: {
+    path: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const file = await ctx.db
+      .query("files")
+      .filter((q) => 
+        q.eq(q.field("path"), `${args.path}`)
+      )
+      .unique();
+
+    return file;
+  },
+});
+
+export const getFileById = query({
+  args: {
+    fileId: v.id("files"),
+  },
+  handler: async (ctx, args) => {
+    const file = await ctx.db.get(args.fileId);
+
+    if (!file) {
+      throw new Error("File not found");
+    }
+
+    return file;
   },
 });

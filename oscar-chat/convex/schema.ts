@@ -90,8 +90,9 @@ export default defineSchema({
     organizationId: v.id("organizations"),
     path: v.string(),
     content: v.string(),
-    type: v.string(),
+    type: v.union(v.literal("user"),v.literal("plugin"),v.literal("folder")),
     isPublic: v.boolean(),
+    isHidden: v.optional(v.boolean()),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -100,30 +101,22 @@ export default defineSchema({
   
   plugins: defineTable({
     name: v.string(),
-    description: v.optional(v.string()),
     organizationId: v.id("organizations"),
     visibility: v.union(v.literal("private"), v.literal("public")),
+    snapshotId: v.string(),
     isActive: v.boolean(),
-    port: v.optional(v.number()),
-    startCommand: v.optional(v.string()),
     fileExtension: v.optional(v.string()),
+    fileId: v.optional(v.id("files")),
     createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
-    // Plugin manifest data
-    manifest: v.optional(v.object({
-      version: v.optional(v.string()),
-      author: v.optional(v.string()),
-      permissions: v.optional(v.array(v.string())),
-      icon: v.optional(v.string()),
-    })),
   })
     .index("by_org", ["organizationId"])
     .index("by_org_visibility", ["organizationId", "visibility"]),
 
   // Store individual messages - simplified schema
   messages: defineTable({
-    pluginId: v.id("plugins"), // Plugin identifier
+    pluginId: v.string(), // Plugin identifier (can be regular ID or marketplace_<id>)
     msgId: v.string(), // AI SDK message ID for deduplication/updates
     aiSDKMessage: v.any(), // Complete raw AI SDK message
   })
@@ -132,9 +125,8 @@ export default defineSchema({
   
   // Sandbox management
   sandboxes: defineTable({
-    pluginId: v.id("plugins"),
-    organizationId: v.id("organizations"),
-    createdBy: v.id("users"),
+    fileId: v.id("files"),
+    snapshotId: v.optional(v.string()),
     modalSandboxId: v.optional(v.string()),
     status: v.union(
       v.literal("creating"),
@@ -142,25 +134,10 @@ export default defineSchema({
       v.literal("terminated"),
       v.literal("error")
     ),
-    serviceStatus: v.optional(v.union(
-      v.literal("running"),
-      v.literal("stopped"),
-      v.literal("unknown")
-    )),
     sandboxUrl: v.optional(v.string()),
-    createdAt: v.number(),
-    expiresAt: v.optional(v.number()),
-    lastAccessedAt: v.optional(v.number()),
-    lastHealthCheck: v.optional(v.number()),
-    restartCount: v.optional(v.number()),
-    lastSnapshot: v.optional(v.string()),
-  })
-    .index("by_plugin", ["pluginId"])
-    .index("by_org", ["organizationId"])
-    .index("by_status", ["status"])
-    .index("by_service_status", ["serviceStatus"])
-    .index("by_health_check", ["lastHealthCheck"]),
-  
+    expiresAt: v.optional(v.number())
+  }),
+
   // File messages - stores messages as byte arrays for each file
   fileMessages: defineTable({
     fileId: v.id("files"),
@@ -173,4 +150,25 @@ export default defineSchema({
     .index("by_file", ["fileId"])
     .index("by_file_created", ["fileId", "createdAt"])
     .index("by_org", ["organizationId"]),
+
+  // Plugin marketplace - default plugins available to all organizations
+  pluginMarketplace: defineTable({
+    name: v.string(),
+    fileExtension: v.string(),
+    snapshotId: v.string(),
+    isActive: v.boolean(), // Global enable/disable
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
+
+  // Organization's activated marketplace plugins
+  organizationMarketplacePlugins: defineTable({
+    organizationId: v.id("organizations"),
+    marketplacePluginId: v.id("pluginMarketplace"),
+    fileId: v.optional(v.id("files")),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_marketplace", ["organizationId", "marketplacePluginId"]),
 });

@@ -1,0 +1,9 @@
+{
+  "name": "Blog Editor",
+  "version": "1.0.0",
+  "description": "Rich text blog post editor",
+  "author": "Oscar",
+  "permissions": [],
+  "icon": "/icon.png",
+  "fileExtension": ".blog"
+}

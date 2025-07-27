@@ -99,7 +99,7 @@ export function useFileMessages(fileId?: Id<"files">, organizationId?: Id<"organ
   };
   
   // Convert messages to usable format
-  const deserializedMessages = messages?.map(msg => ({
+  const deserializedMessages = messages?.map((msg: any) => ({
     ...msg,
     data: deserializeMessage(msg.message)
   }));

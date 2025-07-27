@@ -15,10 +15,13 @@ import { AssistantMessage } from "@/components/chat/AssistantMessage";
 export function ChatSidebar({ pluginId }: { pluginId?: string }) {
   const { data: session } = useSession();
   
-  // Load messages using useQuery hook
+  // Check if this is a marketplace plugin (chat should be disabled)
+  const isMarketplacePlugin = pluginId?.startsWith("marketplace_");
+  
+  // Load messages using useQuery hook - skip for marketplace plugins
   const queryMessages = useQuery(
     api.chats.loadMessagesByPlugin,
-    pluginId ? { pluginId: pluginId as any } : "skip"
+    pluginId && !isMarketplacePlugin ? { pluginId: pluginId } : "skip"
   );
   
   // Track initialization state
@@ -60,7 +63,7 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || isMarketplacePlugin) return;
     
     sendMessage({ text: input });
     setInput('');
@@ -70,6 +73,7 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
   };
+
 
   // Show setup message if no auth or organization
   if (!session) {
@@ -234,10 +238,10 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
             {/* Input Area */}
             <div className="min-h-[18px]">
               <textarea
-                placeholder="Ask about your plugin..."
+                placeholder={isMarketplacePlugin ? "Chat is disabled for marketplace plugins" : "Ask about your plugin..."}
                 value={input}
                 onChange={handleInputChange}
-                disabled={isLoading}
+                disabled={isLoading || isMarketplacePlugin}
                 className="w-full bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground resize-none overflow-hidden disabled:opacity-50"
                 style={{ fontSize: '12px', lineHeight: '1.5' }}
                 rows={1}
@@ -247,7 +251,7 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
                   target.style.height = target.scrollHeight + 'px';
                 }}
                 onKeyDown={async (e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && input.trim() && !isLoading) {
+                  if (e.key === 'Enter' && !e.shiftKey && input.trim() && !isLoading && !isMarketplacePlugin) {
                     e.preventDefault();
                     handleSubmit(e);
                   }
@@ -262,7 +266,7 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={!input.trim() || isLoading}
+                  disabled={!input.trim() || isLoading || isMarketplacePlugin}
                   className="h-6 w-6 p-0 rounded-md bg-transparent border-none text-muted-foreground hover:text-foreground hover:bg-muted/20 hover:shadow-sm flex items-center justify-center transition-all duration-200 ease-in-out disabled:opacity-50"
                 >
                   {isLoading ? (

@@ -13,6 +13,7 @@ export type TreeNode = {
   isPending?: boolean;
   isEditing?: boolean;
   fileId?: Id<"files">;
+  type: 'user';
 };
 
 export type PendingItem = {

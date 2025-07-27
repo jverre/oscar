@@ -4,20 +4,15 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface Tab {
   id: string;
-  type: 'file' | 'plugin' | 'plugin-file';
+  type: 'user' | 'plugin';
   title: string;
-  pluginId?: string;
-  filePath?: string; // For plugin files
-  organizationId?: string; // For plugin and plugin-file tabs
 }
 
 interface FileContextType {
   activeFile: string | undefined;
-  setActiveFile: (filePath: string | undefined) => void;
-  openFile: (filePath: string) => void;
-  openPlugin: (pluginId: string, pluginName: string) => void;
-  openPluginFile: (pluginId: string, fileName: string, filePath: string, organizationId: string) => void;
-  updatePluginTabTitle: (pluginId: string, newTitle: string) => void;
+  setActiveFile: (fileId: string | undefined) => void;
+  openFile: (fileId: string, title: string, type: 'user' | 'plugin') => void;
+  updateTabTitle: (fileId: string, newTitle: string) => void;
   openTabs: string[];
   tabs: Tab[];
   closeTab: (filePath: string) => void;
@@ -43,99 +38,34 @@ export const FileProvider = ({ children }: FileProviderProps) => {
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([]);
 
-  const openFile = (filePath: string) => {
-    setActiveFile(filePath);
+  const openFile = (fileId: string, title: string, type: 'user' | 'plugin') => {
+    setActiveFile(fileId);
     // Add to tabs if not already open
-    if (!openTabs.includes(filePath)) {
-      setOpenTabs(prev => [...prev, filePath]);
+    if (!openTabs.includes(fileId)) {
+      setOpenTabs(prev => [...prev, fileId]);
       // Add to tabs array
-      const fileName = filePath.split('/').pop() || filePath;
       setTabs(prev => [...prev, {
-        id: filePath,
-        type: 'file',
-        title: fileName
+        id: fileId,
+        type: type,
+        title: title
       }]);
     }
-    console.log('Opening file:', filePath);
+    console.log('Opening file:', fileId);
   };
 
-  const openPlugin = (pluginId: string, pluginName: string) => {
-    console.log('openPlugin called with:', { pluginId, pluginName });
-    const tabId = `plugin:${pluginId}`;
-    console.log('Setting active file to:', tabId);
-    setActiveFile(tabId);
-    
-    // Add to tabs if not already open
-    if (!openTabs.includes(tabId)) {
-      console.log('Adding new tab:', tabId);
-      setOpenTabs(prev => {
-        const newTabs = [...prev, tabId];
-        console.log('New openTabs:', newTabs);
-        return newTabs;
-      });
-             setTabs(prev => {
-         const newTab: Tab = {
-           id: tabId,
-           type: 'plugin',
-           title: pluginName,
-           pluginId: pluginId
-         };
-         const newTabs = [...prev, newTab];
-         console.log('New tabs:', newTabs);
-         return newTabs;
-       });
-    } else {
-      console.log('Tab already exists:', tabId);
-    }
-    console.log('Opening plugin:', pluginName, pluginId);
-  };
-
-  const openPluginFile = (pluginId: string, fileName: string, filePath: string, organizationId: string) => {
-    console.log('[OPEN_PLUGIN_FILE] Called with:', { pluginId, fileName, filePath, organizationId });
-    const tabId = `plugin-file:${pluginId}:${filePath}`;
-    console.log('[OPEN_PLUGIN_FILE] Setting active file to:', tabId);
-    setActiveFile(tabId);
-    
-    // Add to tabs if not already open
-    if (!openTabs.includes(tabId)) {
-      console.log('[OPEN_PLUGIN_FILE] Adding new plugin file tab:', tabId);
-      setOpenTabs(prev => {
-        const newTabs = [...prev, tabId];
-        console.log('[OPEN_PLUGIN_FILE] New openTabs:', newTabs);
-        return newTabs;
-      });
-      setTabs(prev => {
-        const newTab: Tab = {
-          id: tabId,
-          type: 'plugin-file',
-          title: fileName,
-          pluginId: pluginId,
-          filePath: filePath,
-          organizationId: organizationId
-        };
-        const newTabs = [...prev, newTab];
-        console.log('[OPEN_PLUGIN_FILE] New tabs:', newTabs);
-        return newTabs;
-      });
-    } else {
-      console.log('[OPEN_PLUGIN_FILE] Tab already exists:', tabId);
-    }
-    console.log('[OPEN_PLUGIN_FILE] Opening plugin file:', fileName, 'at', filePath, 'in plugin', pluginId);
-  };
-
-  const closeTab = (filePath: string) => {
-    setOpenTabs(prev => prev.filter(tab => tab !== filePath));
-    setTabs(prev => prev.filter(tab => tab.id !== filePath));
+  const closeTab = (fileId: string) => {
+    setOpenTabs(prev => prev.filter(tab => tab !== fileId));
+    setTabs(prev => prev.filter(tab => tab.id !== fileId));
     // If closing active tab, switch to the last remaining tab
-    if (activeFile === filePath) {
-      const remainingTabs = openTabs.filter(tab => tab !== filePath);
+    if (activeFile === fileId) {
+      const remainingTabs = openTabs.filter(tab => tab !== fileId);
       setActiveFile(remainingTabs.length > 0 ? remainingTabs[remainingTabs.length - 1] : undefined);
     }
   };
 
-  const updatePluginTabTitle = (pluginId: string, newTitle: string) => {
+  const updateTabTitle = (fileId: string, newTitle: string) => {
     setTabs(prev => prev.map(tab => {
-      if (tab.type === 'plugin' && tab.pluginId === pluginId) {
+      if (tab.id === fileId) {
         return { ...tab, title: newTitle };
       }
       return tab;
@@ -150,9 +80,7 @@ export const FileProvider = ({ children }: FileProviderProps) => {
     activeFile,
     setActiveFile,
     openFile,
-    openPlugin,
-    openPluginFile,
-    updatePluginTabTitle,
+    updateTabTitle,
     openTabs,
     tabs,
     closeTab,

@@ -4,7 +4,7 @@ import { mutation, query } from "./_generated/server";
 // Load all messages for a plugin
 export const loadMessagesByPlugin = query({
   args: { 
-    pluginId: v.id("plugins"),
+    pluginId: v.string(),
   },
   handler: async (ctx, args) => {
     const messages = await ctx.db
@@ -21,7 +21,7 @@ export const loadMessagesByPlugin = query({
 // Add multiple messages at once - AI SDK format
 export const addMessages = mutation({
   args: {
-    pluginId: v.id("plugins"),
+    pluginId: v.string(),
     messages: v.array(v.any()), // Accept array of AI SDK message objects
   },
   handler: async (ctx, args) => {

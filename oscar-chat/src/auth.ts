@@ -56,6 +56,7 @@ const getAuthUrl = () => {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   debug: true,
+  secret: process.env.CONVEX_AUTH_ADAPTER_SECRET,
   ...(getAuthUrl() && { url: getAuthUrl() }),
   providers: [
     Google({
@@ -112,7 +113,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async redirect({ url, baseUrl }) {
       // Parse the URL to check for workspace parameter
       try {
-        const urlObj = new URL(url);
+        const urlObj = new URL(url, baseUrl);
         const workspace = urlObj.searchParams.get('workspace');
         
         if (workspace) {

@@ -126,7 +126,7 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
         organizationId: user.organization._id,
         path: filePath,
         content: "",
-        type: "blog",
+        type: "user",
         isPublic: false,
       });
 

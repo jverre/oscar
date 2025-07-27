@@ -12,37 +12,54 @@ import { ArrowUp, MessageSquare } from "lucide-react";
 import { useQuery, useMutation } from 'convex/react';
 import { useSession } from 'next-auth/react';
 import { api } from '../../../convex/_generated/api';
+import { Id } from '../../../convex/_generated/dataModel';
 import { SandboxIframe } from './SandboxIframe';
 import { ChatSidebar } from './ChatSidebar';
 import { useFileContext } from '../providers/FileProvider';
 
 interface PluginBuilderProps {
-  pluginName?: string;
-  pluginId?: string;
-  fileId?: string;
-  organizationId?: string;
+  fileId: Id<"files">;
 }
 
 
 // Main Content Component
-function MainContent({ pluginId, fileId, organizationId, pluginName: initialPluginName }: { pluginId?: string; fileId?: string; organizationId?: string; pluginName?: string }) {
-  const [pluginName, setPluginName] = useState(initialPluginName || '');
+function MainContent({ fileId }: PluginBuilderProps) {
+  const { data: session } = useSession();
+  const [pluginName, setPluginName] = useState("New Plugin");
   const [fileExtension, setFileExtension] = useState('');
-  const { updatePluginTabTitle } = useFileContext();
+  const { updateTabTitle } = useFileContext();
   
-  // Add mutation for updating plugin metadata
+  // Get the file to extract pluginId from the path
+  const file = useQuery(api.files.getFileById, { fileId });
+  const pluginId = file?.path; // The path contains the pluginId
+  
   const updatePlugin = useMutation(api.plugins?.updatePlugin);
   
+  // Load plugin data when file is available
+  useEffect(() => {
+    if (file && pluginId) {
+      // For marketplace plugins, pluginId is a string like "marketplace_xxx"
+      // For custom plugins, pluginId is an actual plugin ID
+      if (pluginId.startsWith('marketplace_')) {
+        // For marketplace plugins, we can't update the name/extension
+        setPluginName(file.name || "Marketplace Plugin");
+      } else {
+        // For custom plugins, we could fetch plugin data here if needed
+        setPluginName(file.name || "New Plugin");
+      }
+    }
+  }, [file, pluginId]);
+  
   const handlePluginNameBlur = () => {
-    if (pluginId && updatePlugin && pluginName !== initialPluginName) {
+    if (pluginId && updatePlugin && !pluginId.startsWith('marketplace_')) {
       updatePlugin({ pluginId: pluginId as any, name: pluginName });
       // Update the tab title
-      updatePluginTabTitle(pluginId, pluginName);
+      updateTabTitle(fileId, pluginName);
     }
   };
   
   const handleExtensionBlur = () => {
-    if (pluginId && updatePlugin && fileExtension) {
+    if (pluginId && updatePlugin && fileExtension && !pluginId.startsWith('marketplace_')) {
       updatePlugin({ pluginId: pluginId as any, fileExtension });
     }
   };
@@ -60,6 +77,7 @@ function MainContent({ pluginId, fileId, organizationId, pluginName: initialPlug
               value={pluginName}
               onChange={(e) => setPluginName(e.target.value)}
               onBlur={handlePluginNameBlur}
+              readOnly={pluginId?.startsWith('marketplace_')}
               className="h-6 text-xs px-2 py-1"
             />
           </div>
@@ -70,6 +88,7 @@ function MainContent({ pluginId, fileId, organizationId, pluginName: initialPlug
               value={fileExtension}
               onChange={(e) => setFileExtension(e.target.value)}
               onBlur={handleExtensionBlur}
+              readOnly={pluginId?.startsWith('marketplace_')}
               className="h-6 text-xs px-2 py-1"
             />
           </div>
@@ -78,26 +97,30 @@ function MainContent({ pluginId, fileId, organizationId, pluginName: initialPlug
 
       {/* Content Area */}
       <div className="flex-1 p-4">
-        <SandboxIframe pluginId={pluginId} fileId={fileId} organizationId={organizationId} />
+        {pluginId && <SandboxIframe pluginId={pluginId} />}
       </div>
     </div>
   );
 }
 
-export function PluginBuilder({ pluginName = "New Plugin", pluginId, fileId, organizationId }: PluginBuilderProps) {
+export function PluginBuilder({ fileId }: PluginBuilderProps) {
+  // Get the file to extract pluginId from the path
+  const file = useQuery(api.files.getFileById, { fileId });
+  const pluginId = file?.path; // The path contains the pluginId
+
   return (
     <div className="h-full bg-background">
       <ResizablePanelGroup direction="horizontal" className="h-full">
         {/* Main Content Panel */}
         <ResizablePanel defaultSize={70} minSize={50}>
-          <MainContent pluginId={pluginId} fileId={fileId} organizationId={organizationId} pluginName={pluginName} />
+          <MainContent fileId={fileId} />
         </ResizablePanel>
 
         <ResizableHandle />
 
         {/* Chat Sidebar Panel */}
         <ResizablePanel defaultSize={30} minSize={20} maxSize={50}>
-          <ChatSidebar pluginId={pluginId} />
+          {pluginId && <ChatSidebar pluginId={pluginId} />}
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

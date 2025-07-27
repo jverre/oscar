@@ -49,13 +49,13 @@ export const FileTree = ({ organizationId }: FileTreeProps) => {
 
     try {
       if (pendingItem.isFile) {
-        const filePath = name.endsWith('.blog') ? name : `${name}.blog`;
+        const filePath = name.includes('.') ? name : `${name}.blog`;
         await createFileMutation({
           userId: session.user.id as any,
           organizationId: organizationId,
           path: filePath,
           content: "",
-          type: "blog",
+          type: "user",
           isPublic: pendingItem.isPublic,
         });
       } else {
