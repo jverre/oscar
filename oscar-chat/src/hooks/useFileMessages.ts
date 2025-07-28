@@ -18,17 +18,9 @@ function deserializeMessage(bytes: ArrayBuffer): any {
 export function useFileMessages(fileId?: Id<"files">, organizationId?: Id<"organizations">) {
   const { data: session } = useSession();
   
-  // Query to get all messages for a file
-  const messages = useQuery(
-    api.fileMessages.getMessages,
-    fileId && organizationId
-      ? { fileId, organizationId }
-      : "skip"
-  );
-  
-  // Query to get the latest message for a file
-  const latestMessage = useQuery(
-    api.fileMessages.getLatestMessage,
+  // Query to get the message for a file (single message per file)
+  const message = useQuery(
+    api.fileMessages.getMessage,
     fileId && organizationId
       ? { fileId, organizationId }
       : "skip"
@@ -38,7 +30,7 @@ export function useFileMessages(fileId?: Id<"files">, organizationId?: Id<"organ
   const createMessageMutation = useMutation(api.fileMessages.createMessage);
   const updateMessageMutation = useMutation(api.fileMessages.updateMessage);
   const deleteMessageMutation = useMutation(api.fileMessages.deleteMessage);
-  const deleteAllMessagesMutation = useMutation(api.fileMessages.deleteAllMessagesForFile);
+  const deleteMessageForFileMutation = useMutation(api.fileMessages.deleteMessageForFile);
   
   // Function to create a new message
   const createMessage = async (message: any) => {
@@ -51,7 +43,6 @@ export function useFileMessages(fileId?: Id<"files">, organizationId?: Id<"organ
     return await createMessageMutation({
       fileId,
       organizationId,
-      userId: session.user.id as Id<"users">,
       message: messageBytes,
     });
   };
@@ -67,7 +58,6 @@ export function useFileMessages(fileId?: Id<"files">, organizationId?: Id<"organ
     return await updateMessageMutation({
       messageId,
       organizationId,
-      userId: session.user.id as Id<"users">,
       message: messageBytes,
     });
   };
@@ -81,55 +71,46 @@ export function useFileMessages(fileId?: Id<"files">, organizationId?: Id<"organ
     return await deleteMessageMutation({
       messageId,
       organizationId,
-      userId: session.user.id as Id<"users">,
     });
   };
   
-  // Function to delete all messages for the file
-  const deleteAllMessages = async () => {
+  // Function to delete the message for the file
+  const deleteMessageForFile = async () => {
     if (!fileId || !organizationId || !session?.user?.id) {
       throw new Error('Missing required parameters');
     }
     
-    return await deleteAllMessagesMutation({
+    return await deleteMessageForFileMutation({
       fileId,
       organizationId,
-      userId: session.user.id as Id<"users">,
     });
   };
   
-  // Convert messages to usable format
-  const deserializedMessages = messages?.map((msg: any) => ({
-    ...msg,
-    data: deserializeMessage(msg.message)
-  }));
-  
-  const deserializedLatestMessage = latestMessage ? {
-    ...latestMessage,
-    data: deserializeMessage(latestMessage.message)
+  // Convert message to usable format
+  const deserializedMessage = message ? {
+    ...message,
+    data: deserializeMessage(message.message)
   } : null;
   
   return {
-    // Raw messages with bytes
-    messages,
-    latestMessage,
+    // Raw message with bytes
+    message,
     
-    // Deserialized messages with data
-    deserializedMessages,
-    deserializedLatestMessage,
+    // Deserialized message with data
+    deserializedMessage,
     
     // Message operations
     createMessage,
     updateMessage,
     deleteMessage,
-    deleteAllMessages,
+    deleteMessageForFile,
     
     // Utility functions
     serializeMessage,
     deserializeMessage,
     
     // Loading states
-    isLoading: messages === undefined,
-    hasMessages: (messages?.length ?? 0) > 0,
+    isLoading: message === undefined,
+    hasMessage: message !== null && message !== undefined,
   };
 }

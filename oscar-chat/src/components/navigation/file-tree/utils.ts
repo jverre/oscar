@@ -13,7 +13,8 @@ export const buildTreeFromFiles = (files: any[], pendingItems: PendingItem[] = [
       isFile: item.isFile,
       isPending: true,
       isEditing: true,
-      children: item.isFile ? undefined : []
+      children: item.isFile ? undefined : [],
+      type: 'user' as const
     }));
   }
   
@@ -30,7 +31,9 @@ export const buildTreeFromFiles = (files: any[], pendingItems: PendingItem[] = [
         path: file.path,
         children: [],
         isFile: false,
-        fileId: file._id
+        fileId: file._id,
+        type: 'user' as const,
+        isPublic: file.isPublic
       };
       nodeMap.set(file.path, folderNode);
       rootNodes.push(folderNode);
@@ -53,7 +56,9 @@ export const buildTreeFromFiles = (files: any[], pendingItems: PendingItem[] = [
           path: currentPath,
           children: isFile ? undefined : [],
           isFile,
-          fileId: isFile ? file._id : undefined
+          fileId: isFile ? file._id : undefined,
+          type: 'user' as const,
+          isPublic: isFile ? file.isPublic : undefined
         };
         nodeMap.set(currentPath, node);
         
@@ -78,7 +83,8 @@ export const buildTreeFromFiles = (files: any[], pendingItems: PendingItem[] = [
       isFile: item.isFile,
       isPending: true,
       isEditing: true,
-      children: item.isFile ? undefined : []
+      children: item.isFile ? undefined : [],
+      type: 'user' as const
     };
     rootNodes.push(pendingNode);
   });

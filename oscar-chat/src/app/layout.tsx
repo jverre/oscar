@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
-import { ConvexClientProvider } from "@/components/providers/ConvexClientProvider";
+import ConvexClientProvider from "./ConvexProviderWithAuth";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { auth } from "@/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,11 +10,13 @@ export const metadata: Metadata = {
   description: "Multi-tenant SaaS for storing and managing AI coding assistant conversations",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+  
   return (
     <html lang="en" className={GeistMono.className} suppressHydrationWarning>
       <body className="bg-background text-foreground antialiased min-h-screen">
@@ -23,7 +26,7 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <ConvexClientProvider>
+          <ConvexClientProvider session={session}>
             {children}
           </ConvexClientProvider>
         </ThemeProvider>

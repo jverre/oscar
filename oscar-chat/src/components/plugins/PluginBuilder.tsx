@@ -29,6 +29,12 @@ function MainContent({ fileId }: PluginBuilderProps) {
   const [fileExtension, setFileExtension] = useState('');
   const { updateTabTitle } = useFileContext();
   
+  // Get current user and organization information
+  const currentUser = useQuery(
+    api.users.currentUser, 
+    session?.user?.id ? { userId: session.user.id } : "skip"
+  );
+  
   // Get the file to extract pluginId from the path
   const file = useQuery(api.files.getFileById, { fileId });
   const pluginId = file?.path; // The path contains the pluginId
@@ -42,25 +48,35 @@ function MainContent({ fileId }: PluginBuilderProps) {
       // For custom plugins, pluginId is an actual plugin ID
       if (pluginId.startsWith('marketplace_')) {
         // For marketplace plugins, we can't update the name/extension
-        setPluginName(file.name || "Marketplace Plugin");
+        const fileName = file.path.split('/').pop() || "Marketplace Plugin";
+        setPluginName(fileName);
       } else {
         // For custom plugins, we could fetch plugin data here if needed
-        setPluginName(file.name || "New Plugin");
+        const fileName = file.path.split('/').pop() || "New Plugin";
+        setPluginName(fileName);
       }
     }
   }, [file, pluginId]);
   
   const handlePluginNameBlur = () => {
-    if (pluginId && updatePlugin && !pluginId.startsWith('marketplace_')) {
-      updatePlugin({ pluginId: pluginId as any, name: pluginName });
+    if (pluginId && updatePlugin && !pluginId.startsWith('marketplace_') && currentUser?.organization?._id) {
+      updatePlugin({ 
+        pluginId: pluginId as any, 
+        organizationId: currentUser.organization._id,
+        name: pluginName 
+      });
       // Update the tab title
       updateTabTitle(fileId, pluginName);
     }
   };
   
   const handleExtensionBlur = () => {
-    if (pluginId && updatePlugin && fileExtension && !pluginId.startsWith('marketplace_')) {
-      updatePlugin({ pluginId: pluginId as any, fileExtension });
+    if (pluginId && updatePlugin && fileExtension && !pluginId.startsWith('marketplace_') && currentUser?.organization?._id) {
+      updatePlugin({ 
+        pluginId: pluginId as any, 
+        organizationId: currentUser.organization._id,
+        fileExtension 
+      });
     }
   };
 

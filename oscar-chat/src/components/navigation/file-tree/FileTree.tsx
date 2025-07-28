@@ -2,24 +2,28 @@ import React, { useState } from "react";
 import { Lock, Globe } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { useSession } from "next-auth/react";
+import { useTenant } from "@/components/providers/TenantProvider";
 import { FileTreeProps, PendingItem } from "./types";
 import { FilesHeader } from "./FilesHeader";
 import { FileGroupSection } from "./FileGroupSection";
 import { Id } from "../../../../convex/_generated/dataModel";
 
-export const FileTree = ({ organizationId }: FileTreeProps) => {
-  const { data: session } = useSession();
+export const FileTree = () => {
+  const { organizationId, isAuthenticated, user } = useTenant();
   const createFileMutation = useMutation(api.files.createFile);
   const createFolderMutation = useMutation(api.files.createFolder);
   const deleteFileMutation = useMutation(api.files.deleteFile);
   const deleteFolderMutation = useMutation(api.files.deleteFolder);
   const renameFileMutation = useMutation(api.files.renameFile);
+  const toggleVisibilityMutation = useMutation(api.files.toggleFileVisibility);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
   
-  const filesData = useQuery(api.files.getAllFiles, {
-    organizationId,
-  });
+  const filesData = useQuery(
+    api.files.getFiles, 
+    organizationId ? { organizationId } : "skip"
+  );
+  
+  console.log('[FileTree] Files data:', filesData);
 
   const handleCreateFile = () => {
     const newId = `pending-file-${Date.now()}`;
@@ -45,13 +49,12 @@ export const FileTree = ({ organizationId }: FileTreeProps) => {
 
   const handleSavePending = async (id: string, name: string) => {
     const pendingItem = pendingItems.find(item => item.id === id);
-    if (!pendingItem || !session?.user?.id) return;
+    if (!pendingItem || !user?._id || !organizationId) return;
 
     try {
       if (pendingItem.isFile) {
         const filePath = name.includes('.') ? name : `${name}.blog`;
         await createFileMutation({
-          userId: session.user.id as any,
           organizationId: organizationId,
           path: filePath,
           content: "",
@@ -60,7 +63,6 @@ export const FileTree = ({ organizationId }: FileTreeProps) => {
         });
       } else {
         await createFolderMutation({
-          userId: session.user.id as any,
           organizationId: organizationId,
           path: name,
           isPublic: pendingItem.isPublic,
@@ -80,20 +82,18 @@ export const FileTree = ({ organizationId }: FileTreeProps) => {
   };
 
   const handleDelete = async (fileId?: Id<"files">, folderPath?: string) => {
-    if (!session?.user?.id) return;
+    if (!user?._id || !organizationId) return;
 
     try {
       if (fileId) {
         // Delete a single file
         await deleteFileMutation({
-          userId: session.user.id as any,
           organizationId: organizationId,
           fileId: fileId,
         });
       } else if (folderPath) {
         // Delete a folder (and all files within it)
         await deleteFolderMutation({
-          userId: session.user.id as any,
           organizationId: organizationId,
           folderPath: folderPath,
         });
@@ -105,11 +105,10 @@ export const FileTree = ({ organizationId }: FileTreeProps) => {
   };
 
   const handleRename = async (fileId: Id<"files">, newName: string) => {
-    if (!session?.user?.id) return;
+    if (!user?._id || !organizationId) return;
 
     try {
       await renameFileMutation({
-        userId: session.user.id as any,
         organizationId: organizationId,
         fileId: fileId,
         newPath: newName,
@@ -117,6 +116,20 @@ export const FileTree = ({ organizationId }: FileTreeProps) => {
     } catch (error) {
       console.error("Error renaming file:", error);
       alert("Error renaming file. Please try again.");
+    }
+  };
+
+  const handleToggleVisibility = async (fileId: Id<"files">) => {
+    if (!user?._id || !organizationId) return;
+
+    try {
+      await toggleVisibilityMutation({
+        organizationId: organizationId,
+        fileId: fileId,
+      });
+    } catch (error) {
+      console.error("Error toggling file visibility:", error);
+      alert("Error changing file visibility. Please try again.");
     }
   };
 
@@ -176,6 +189,7 @@ export const FileTree = ({ organizationId }: FileTreeProps) => {
           onCancelPending={handleCancelPending}
           onDelete={handleDelete}
           onRename={handleRename}
+          onToggleVisibility={handleToggleVisibility}
           organizationId={organizationId}
         />
       )}
@@ -192,6 +206,7 @@ export const FileTree = ({ organizationId }: FileTreeProps) => {
           onCancelPending={handleCancelPending}
           onDelete={handleDelete}
           onRename={handleRename}
+          onToggleVisibility={handleToggleVisibility}
           organizationId={organizationId}
         />
       )}

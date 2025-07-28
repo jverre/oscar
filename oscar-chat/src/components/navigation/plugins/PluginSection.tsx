@@ -129,7 +129,6 @@ export const PluginSection = ({ organizationId }: PluginSectionProps) => {
     if (session?.user?.id) {
       getPlugins({
         organizationId,
-        userId: session.user.id as Id<"users">,
       }).then(setPlugins);
     }
   }, [session?.user?.id, organizationId]);
@@ -154,13 +153,11 @@ export const PluginSection = ({ organizationId }: PluginSectionProps) => {
         name: pluginName,
         organizationId,
         visibility: "private",
-        userId: session.user.id as Id<"users">,
       });
       
       // Refresh plugins list
       const updatedPlugins = await getPlugins({
         organizationId,
-        userId: session.user.id as Id<"users">,
       });
       setPlugins(updatedPlugins);
       
@@ -177,13 +174,12 @@ export const PluginSection = ({ organizationId }: PluginSectionProps) => {
       if (plugin?.fileId) {
         closeTab(plugin.fileId);
       }
-      await deletePlugin({ pluginId });
+      await deletePlugin({ organizationId, pluginId });
       
       // Refresh plugins list
       if (session?.user?.id) {
         const updatedPlugins = await getPlugins({
           organizationId,
-          userId: session.user.id as Id<"users">,
         });
         setPlugins(updatedPlugins);
       }

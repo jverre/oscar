@@ -1,12 +1,17 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
+import { requireOrgMember } from "./authUtils";
 
 // Load all messages for a plugin
 export const loadMessagesByPlugin = query({
   args: { 
     pluginId: v.string(),
+    organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
+    // Require user to be a member of the organization
+    await requireOrgMember(ctx, args.organizationId);
+    
     const messages = await ctx.db
       .query("messages")
       .withIndex("by_plugin", (q) => q.eq("pluginId", args.pluginId))
@@ -19,7 +24,7 @@ export const loadMessagesByPlugin = query({
 
 
 // Add multiple messages at once - AI SDK format
-export const addMessages = mutation({
+export const addMessages = internalMutation({
   args: {
     pluginId: v.string(),
     messages: v.array(v.any()), // Accept array of AI SDK message objects

@@ -1,6 +1,6 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { openai } from '@ai-sdk/openai';
 import { streamText, convertToModelMessages, stepCountIs } from 'ai';
@@ -80,7 +80,7 @@ export const chat = httpAction(async (ctx, request) => {
     let sandboxId: string | undefined;
     let organizationId: string | undefined;
     
-    const plugin = await ctx.runQuery(api.plugins.getPluginById, {
+    const plugin = await ctx.runQuery(internal.plugins.getPluginById, {
       pluginId: pluginId as Id<"plugins">,
     });
     
@@ -98,7 +98,8 @@ export const chat = httpAction(async (ctx, request) => {
     }
 
     const sandbox = await ctx.runQuery(api.sandboxes.getSandboxForFile, {
-      fileId: file._id
+      fileId: file._id,
+      organizationId: plugin.organizationId
     });
     if (!sandbox) {
       return new Response('Failed to get sandbox for plugin', { status: 404 });
@@ -117,7 +118,7 @@ export const chat = httpAction(async (ctx, request) => {
     const aiTools = getToolsForAI(toolContext);
 
     // Save new user messages to database - AI SDK format, no transformation
-    await ctx.runMutation(api.chats.addMessages, {
+    await ctx.runMutation(internal.chats.addMessages, {
       pluginId: pluginId as any,
       messages: [messages[messages.length - 1]],
     });
@@ -164,7 +165,7 @@ export const chat = httpAction(async (ctx, request) => {
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
       },
       onFinish: async ({messages}) => {
-        await ctx.runMutation(api.chats.addMessages, {
+        await ctx.runMutation(internal.chats.addMessages, {
           pluginId: pluginId as any,
           messages: messages,
         });

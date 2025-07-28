@@ -14,6 +14,7 @@ export type TreeNode = {
   isEditing?: boolean;
   fileId?: Id<"files">;
   type: 'user';
+  isPublic?: boolean;
 };
 
 export type PendingItem = {
@@ -31,7 +32,8 @@ export interface TreeNodeComponentProps {
   onCancelPending?: (id: string) => void;
   onDelete?: (fileId?: Id<"files">, folderPath?: string) => void;
   onRename?: (fileId: Id<"files">, newName: string) => void;
-  organizationId: Id<"organizations">;
+  onToggleVisibility?: (fileId: Id<"files">) => void;
+  organizationId: Id<"organizations"> | null;
 }
 
 export interface FileGroupSectionProps {
@@ -44,11 +46,12 @@ export interface FileGroupSectionProps {
   onCancelPending: (id: string) => void;
   onDelete: (fileId?: Id<"files">, folderPath?: string) => void;
   onRename: (fileId: Id<"files">, newName: string) => void;
-  organizationId: Id<"organizations">;
+  onToggleVisibility: (fileId: Id<"files">) => void;
+  organizationId: Id<"organizations"> | null;
 }
 
 export interface FilesHeaderProps {
-  organizationId: Id<"organizations">;
+  organizationId: Id<"organizations"> | null;
   onCreateFile: () => void;
   onCreateFolder: () => void;
 }

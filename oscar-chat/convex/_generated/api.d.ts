@@ -15,12 +15,12 @@ import type {
 } from "convex/server";
 import type * as auth from "../auth.js";
 import type * as authAdapter from "../authAdapter.js";
+import type * as authUtils from "../authUtils.js";
 import type * as chats from "../chats.js";
 import type * as constants from "../constants.js";
 import type * as fileMessages from "../fileMessages.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
-import type * as marketplace from "../marketplace.js";
 import type * as plugins from "../plugins.js";
 import type * as sandboxes from "../sandboxes.js";
 import type * as tools_bash from "../tools/bash.js";
@@ -53,12 +53,12 @@ import type * as users from "../users.js";
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   authAdapter: typeof authAdapter;
+  authUtils: typeof authUtils;
   chats: typeof chats;
   constants: typeof constants;
   fileMessages: typeof fileMessages;
   files: typeof files;
   http: typeof http;
-  marketplace: typeof marketplace;
   plugins: typeof plugins;
   sandboxes: typeof sandboxes;
   "tools/bash": typeof tools_bash;

@@ -32,8 +32,7 @@ def create_sandbox_from_snapshot(snapshot_id):
             timeout=3600,
             workdir="/plugin"
         )
-        time.sleep(3)
-        
+
         try:
             tunnel_url = sb.tunnels()[5173].url
             print(f"[DEBUG] Created tunnel: {tunnel_url}")

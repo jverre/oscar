@@ -138,7 +138,7 @@ export default defineSchema({
     expiresAt: v.optional(v.number())
   }),
 
-  // File messages - stores messages as byte arrays for each file
+  // File messages - stores single message per file (upsert pattern)
   fileMessages: defineTable({
     fileId: v.id("files"),
     organizationId: v.id("organizations"),
@@ -148,27 +148,20 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_file", ["fileId"])
-    .index("by_file_created", ["fileId", "createdAt"])
     .index("by_org", ["organizationId"]),
-
-  // Plugin marketplace - default plugins available to all organizations
-  pluginMarketplace: defineTable({
-    name: v.string(),
-    fileExtension: v.string(),
-    snapshotId: v.string(),
-    isActive: v.boolean(), // Global enable/disable
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }),
 
   // Organization's activated marketplace plugins
   organizationMarketplacePlugins: defineTable({
+    name: v.string(),
     organizationId: v.id("organizations"),
-    marketplacePluginId: v.id("pluginMarketplace"),
-    fileId: v.optional(v.id("files")),
+    visibility: v.union(v.literal("private"), v.literal("public")),
+    snapshotId: v.string(),
     isActive: v.boolean(),
+    fileExtension: v.string(),
+    fileId: v.optional(v.id("files")),
+    createdBy: v.id("users"),
     createdAt: v.number(),
+    updatedAt: v.number(),
   })
-    .index("by_org", ["organizationId"])
-    .index("by_org_marketplace", ["organizationId", "marketplacePluginId"]),
+    .index("by_org", ["organizationId"]),
 });

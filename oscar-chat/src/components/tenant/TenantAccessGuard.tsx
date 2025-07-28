@@ -1,25 +1,25 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { useTenant } from "@/components/providers/TenantProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface TenantAccessGuardProps {
   children: React.ReactNode;
-  tenant: string;
 }
 
-export function TenantAccessGuard({ children, tenant }: TenantAccessGuardProps) {
-  const { data: session, status } = useSession();
-  const accessResult = useQuery(
-    api.users.validateTenantAccess, 
-    session?.user?.id ? { userId: session.user.id, tenant } : "skip"
-  );
+export function TenantAccessGuard({ children }: TenantAccessGuardProps) {
+  const { 
+    subdomain, 
+    isAuthenticated, 
+    hasAccess, 
+    accessReason, 
+    user, 
+    isLoading 
+  } = useTenant();
 
   // Loading state
-  if (status === "loading" || (session && accessResult === undefined)) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="w-full max-w-md">
@@ -31,66 +31,15 @@ export function TenantAccessGuard({ children, tenant }: TenantAccessGuardProps) 
     );
   }
 
-  // User not authenticated
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Sign in to {tenant}</CardTitle>
-            <CardDescription>
-              You need to sign in to access this workspace.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={() => {
-                // Get current domain info
-                const protocol = window.location.protocol;
-                const hostname = window.location.hostname;
-                const port = window.location.port ? `:${window.location.port}` : "";
-                
-                // Extract base domain
-                const parts = hostname.split('.');
-                let baseDomain;
-                if (parts.length >= 2) {
-                  baseDomain = parts.slice(-2).join('.');
-                } else {
-                  baseDomain = hostname;
-                }
-                
-                // Redirect to signin with workspace parameter
-                const signinUrl = `${protocol}//${baseDomain}${port}/signin?workspace=${tenant}`;
-                window.location.href = signinUrl;
-              }}
-              className="w-full"
-            >
-              Sign in to {tenant}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Check if we're still loading the access result
-  if (!accessResult) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex items-center justify-center p-6">
-            <div className="text-center">Validating access...</div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  // User not authenticated - allow access to all domains to view public content
+  if (!isAuthenticated) {
+    return children;
   }
 
   // Handle different access denial reasons
-  if (!accessResult.hasAccess) {
-    const { reason, user } = accessResult;
+  if (!hasAccess) {
     
-    if (reason === "no_organization") {
+    if (accessReason === "no_organization") {
       return (
         <div className="min-h-screen flex items-center justify-center">
           <Card className="w-full max-w-md">
@@ -131,14 +80,14 @@ export function TenantAccessGuard({ children, tenant }: TenantAccessGuardProps) 
       );
     }
 
-    if (reason === "wrong_organization" && user?.organization) {
+    if (accessReason === "wrong_organization" && user?.organization) {
       return (
         <div className="min-h-screen flex items-center justify-center">
           <Card className="w-full max-w-md">
             <CardHeader>
               <CardTitle>Access Denied</CardTitle>
               <CardDescription>
-                You don't have access to the "{tenant}" workspace.
+                You don't have access to the "{subdomain}" workspace.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -162,12 +111,12 @@ export function TenantAccessGuard({ children, tenant }: TenantAccessGuardProps) 
                   }
                   
                   // Redirect to user's actual workspace
-                  const workspaceUrl = `${protocol}//${user.organization.subdomain}.${baseDomain}${port}`;
+                  const workspaceUrl = `${protocol}//${user.organization?.subdomain}.${baseDomain}${port}`;
                   window.location.href = workspaceUrl;
                 }}
                 className="w-full"
               >
-                Go to your workspace: {user.organization.name}
+                Go to your workspace: {user.organization?.name}
               </Button>
             </CardContent>
           </Card>

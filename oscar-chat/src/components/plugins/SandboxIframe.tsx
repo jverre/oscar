@@ -16,6 +16,12 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
   const { data: session } = useSession();
   const createSandbox = useMutation(api.sandboxes.createSandboxForFile);
 
+  // Get current user and organization information
+  const currentUser = useQuery(
+    api.users.currentUser, 
+    session?.user?.id ? { userId: session.user.id } : "skip"
+  );
+
   const file = useQuery(api.files.getFileByPath, {
     path: `${pluginId}`,
   });
@@ -24,9 +30,13 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
   console.log("fileId", fileId);
 
   let status: string = 'creating';
-  const sandbox = useQuery(api.sandboxes.getSandboxForFile, {
-    fileId: fileId as Id<"files">,
-  });
+  const sandbox = useQuery(
+    api.sandboxes.getSandboxForFile, 
+    fileId && currentUser?.organization?._id ? {
+      fileId: fileId as Id<"files">,
+      organizationId: currentUser.organization._id
+    } : "skip"
+  );
   if (sandbox) {
     status = sandbox.status;
   }
@@ -34,12 +44,15 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
   
 
   useEffect(() => {
-    if (sandbox === undefined || fileId === null) return; // Still loading
+    if (sandbox === undefined || fileId === null || !currentUser?.organization?._id) return; // Still loading
     if (!sandbox) {
       // No sandbox exists, trigger creation
-      void createSandbox({ fileId: fileId as Id<"files"> });
+      void createSandbox({ 
+        fileId: fileId as Id<"files">,
+        organizationId: currentUser.organization._id
+      });
     }
-  }, [sandbox, createSandbox, fileId])
+  }, [sandbox, createSandbox, fileId, currentUser?.organization?._id])
 
   // const {
   //   messages,
@@ -87,7 +100,7 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
         <div className="text-center">
           <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
           <p className="text-sm text-muted-foreground mb-3">
-            {error || 'Failed to create sandbox'}
+            Failed to create sandbox
           </p>
           <Button
             onClick={() => window.location.reload()}

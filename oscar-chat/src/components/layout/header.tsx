@@ -122,7 +122,6 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
       console.log("Creating file with organizationId:", user.organization._id);
       
       await createFileMutation({
-        userId: session.user.id as any,
         organizationId: user.organization._id,
         path: filePath,
         content: "",

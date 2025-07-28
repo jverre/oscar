@@ -56,7 +56,6 @@ const getAuthUrl = () => {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   debug: true,
-  secret: process.env.CONVEX_AUTH_ADAPTER_SECRET,
   ...(getAuthUrl() && { url: getAuthUrl() }),
   providers: [
     Google({
@@ -113,7 +112,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async redirect({ url, baseUrl }) {
       // Parse the URL to check for workspace parameter
       try {
-        const urlObj = new URL(url, baseUrl);
+        const urlObj = new URL(url);
         const workspace = urlObj.searchParams.get('workspace');
         
         if (workspace) {
@@ -147,30 +146,3 @@ declare module "next-auth" {
     userId?: string;
   }
 }
-
-
-// import NextAuth from "next-auth";
-// import Google from "next-auth/providers/google";
-// import { ConvexAdapter } from "./lib/ConvexAdapter";
-
-// export const { handlers, signIn, signOut, auth } = NextAuth({
-//   adapter: ConvexAdapter(),
-//   providers: [
-//     Google({
-//       clientId: process.env.GOOGLE_CLIENT_ID!,
-//       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-//     }),
-//   ],
-//   session: {
-//     strategy: "database",
-//   },
-//   callbacks: {
-//     async session({ session, user }) {
-//       // Add user ID to session
-//       if (session.user && user) {
-//         session.user.id = user.id;
-//       }
-//       return session;
-//     },
-//   },
-// });

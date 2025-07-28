@@ -9,14 +9,15 @@ interface TabProps {
   filePath: string;
   fileName: string;
   isActive: boolean;
+  type: 'user' | 'plugin';
   onClose: (filePath: string) => void;
 }
 
-export const Tab = ({ filePath, fileName, isActive, onClose }: TabProps) => {
+export const Tab = ({ filePath, fileName, isActive, type, onClose }: TabProps) => {
   const { openFile } = useFileContext();
 
   const handleClick = () => {
-    openFile(filePath);
+    openFile(filePath, fileName, type);
   };
 
   const handleClose = (e: React.MouseEvent) => {

@@ -68,14 +68,14 @@ export function PluginHost({
             };
             iframeRef.current.contentWindow.postMessage(initMessage, '*');
             
-            // Send file messages if available
+            // Send file message if available
             if (fileMessages.length > 0) {
-              const messagesPayload = fileMessages.map(buffer => deserializeMessage(buffer));
+              const latestMessage = deserializeMessage(fileMessages[0]);
               const fileMessagesMessage: HostMessage = {
                 type: 'FILE_MESSAGES',
                 payload: {
                   fileId,
-                  messages: messagesPayload
+                  latestMessage: latestMessage
                 }
               };
               iframeRef.current.contentWindow.postMessage(fileMessagesMessage, '*');
@@ -152,12 +152,12 @@ export function PluginHost({
 
   const sendFileMessages = (messages: ArrayBuffer[]) => {
     if (iframeRef.current?.contentWindow && messages.length > 0) {
-      const messagesPayload = messages.map(buffer => deserializeMessage(buffer));
+      const latestMessage = deserializeMessage(messages[0]);
       const fileMessagesMessage: HostMessage = {
         type: 'FILE_MESSAGES',
         payload: {
           fileId,
-          messages: messagesPayload
+          latestMessage: latestMessage
         }
       };
       iframeRef.current.contentWindow.postMessage(fileMessagesMessage, '*');

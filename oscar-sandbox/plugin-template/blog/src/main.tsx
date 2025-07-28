@@ -25,6 +25,19 @@ const App = () => {
             setContent(event.data.payload.content);
           }
         }
+      } else if (event.data?.type === 'FILE_MESSAGES') {
+        // Load saved message from database
+        const latestMessage = event.data.payload?.latestMessage;
+        if (latestMessage) {
+          try {
+            const parsed = JSON.parse(latestMessage.content);
+            setTitle(parsed.title || '');
+            setContent(parsed.content || '');
+          } catch (e) {
+            // Fallback if content is not JSON
+            setContent(latestMessage.content || '');
+          }
+        }
       }
     };
 

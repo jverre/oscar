@@ -4,6 +4,8 @@ import React from 'react';
 import { useFileContext } from '@/components/providers/FileProvider';
 import { PluginBuilder } from '@/components/plugins/PluginBuilder';
 import { PluginFileComponent } from '@/components/plugins/PluginFileComponent';
+import { UserFileViewer } from '@/components/plugins/UserFileViewer';
+import { Id } from '../../../convex/_generated/dataModel';
 
 export const ContentRenderer = () => {
   const { getActiveTab } = useFileContext();
@@ -23,12 +25,20 @@ export const ContentRenderer = () => {
   if (activeTab.type === 'plugin') {
     return (
       <PluginBuilder
+        fileId={activeTab.id as Id<"files">}
+      />
+    );
+  }
+
+  if (activeTab.type === 'user') {
+    return (
+      <UserFileViewer
         fileId={activeTab.id}
       />
     );
   }
 
-  // File content (you can implement file content rendering here)
+  // Fallback for unknown file types
   return (
     <div className="p-6 h-full">
       <div className="text-center">

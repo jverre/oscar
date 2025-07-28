@@ -18,19 +18,23 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
   // Check if this is a marketplace plugin (chat should be disabled)
   const isMarketplacePlugin = pluginId?.startsWith("marketplace_");
   
-  // Load messages using useQuery hook - skip for marketplace plugins
-  const queryMessages = useQuery(
-    api.chats.loadMessagesByPlugin,
-    pluginId && !isMarketplacePlugin ? { pluginId: pluginId } : "skip"
-  );
-  
-  // Track initialization state
-  const [hasInitialized, setHasInitialized] = useState(false);
   // Get current user and organization information
   const currentUser = useQuery(
     api.users.currentUser, 
     session?.user?.id ? { userId: session.user.id } : "skip"
   );
+  
+  // Load messages using useQuery hook - skip for marketplace plugins
+  const queryMessages = useQuery(
+    api.chats.loadMessagesByPlugin,
+    pluginId && !isMarketplacePlugin && currentUser?.organization?._id ? { 
+      pluginId: pluginId,
+      organizationId: currentUser.organization._id 
+    } : "skip"
+  );
+  
+  // Track initialization state
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Input state management (now handled manually in v5)
   const [input, setInput] = useState('');

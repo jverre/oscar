@@ -13,6 +13,7 @@ export const FileGroupSection = ({
   onCancelPending,
   onDelete,
   onRename,
+  onToggleVisibility,
   organizationId
 }: FileGroupSectionProps) => {
   const relevantPendingItems = pendingItems.filter(item => item.isPublic === isPublic);
@@ -43,6 +44,7 @@ export const FileGroupSection = ({
             onCancelPending={onCancelPending}
             onDelete={onDelete}
             onRename={onRename}
+            onToggleVisibility={onToggleVisibility}
             organizationId={organizationId}
           />
         ))}

@@ -48,6 +48,50 @@ def create_template_snapshot(template_name="default"):
     
     return snapshot_id
 
+def update_constants_file(snapshots):
+    """Update the constants.ts file with new snapshot IDs"""
+    constants_path = "../../oscar-chat/convex/constants.ts"
+    
+    # Define file extensions for each template
+    file_extensions = {
+        "blog": "md",
+        "canvas": "canvas", 
+        "xterm": "sh"
+    }
+    
+    # Build the new MARKETPLACE_PLUGINS object
+    plugins_code = "export const MARKETPLACE_PLUGINS = {\n"
+    for template, snapshot_id in snapshots.items():
+        plugins_code += f'  {template}: {{\n'
+        plugins_code += f'    name: "{template}",\n'
+        plugins_code += f'    fileExtension: ".{file_extensions.get(template, "txt")}",\n'
+        plugins_code += f'    snapshotId: "{snapshot_id}",\n'
+        plugins_code += f'    isActive: true\n'
+        plugins_code += f'  }},\n'
+    plugins_code = plugins_code.rstrip(',\n') + '\n};'
+    
+    try:
+        # Read the current constants file
+        with open(constants_path, "r") as f:
+            content = f.read()
+        
+        # Find and replace the MARKETPLACE_PLUGINS section
+        import re
+        # Match the entire MARKETPLACE_PLUGINS object including nested braces
+        pattern = r'export const MARKETPLACE_PLUGINS = \{(?:[^{}]|\{[^{}]*\})*\};'
+        replacement = plugins_code
+        
+        new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+        
+        # Write back the updated content
+        with open(constants_path, "w") as f:
+            f.write(new_content)
+        
+        print(f"✓ Updated {constants_path}")
+        
+    except Exception as e:
+        print(f"✗ Error updating constants file: {e}")
+
 def main():
     templates = ["blog", "canvas", "xterm"]
     snapshots = {}
@@ -76,6 +120,9 @@ def main():
         json.dump(snapshots, f, indent=2)
     
     print(f"\nSnapshot IDs saved to plugin_snapshots.json")
+    
+    # Update constants.ts file
+    update_constants_file(snapshots)
 
 if __name__ == "__main__":
     main()

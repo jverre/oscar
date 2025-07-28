@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronRight, Edit2, Trash2 } from "lucide-react";
+import { ChevronRight, Edit2, Trash2, Globe, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useFileContext } from "@/components/providers/FileProvider";
@@ -21,6 +21,7 @@ export const TreeNodeComponent = ({
   onCancelPending,
   onDelete,
   onRename,
+  onToggleVisibility,
   organizationId
 }: TreeNodeComponentProps) => {
   const { activeFile, openFile } = useFileContext();
@@ -31,7 +32,7 @@ export const TreeNodeComponent = ({
   const handleClick = () => {
     if (node.isPending || node.isEditing || isRenaming) return;
     
-    if (node.isFile) {
+    if (node.isFile && node.fileId) {
       openFile(node.fileId, node.name, node.type);
     } else {
       setIsExpanded(!isExpanded);
@@ -73,6 +74,12 @@ export const TreeNodeComponent = ({
 
   const handleRename = () => {
     setIsRenaming(true);
+  };
+
+  const handleToggleVisibility = () => {
+    if (onToggleVisibility && node.fileId) {
+      onToggleVisibility(node.fileId);
+    }
   };
 
   const treeNodeContent = (
@@ -135,6 +142,7 @@ export const TreeNodeComponent = ({
               onCancelPending={onCancelPending}
               onDelete={onDelete}
               onRename={onRename}
+              onToggleVisibility={onToggleVisibility}
               organizationId={organizationId}
             />
           ))}
@@ -154,6 +162,23 @@ export const TreeNodeComponent = ({
         {treeNodeContent}
       </ContextMenuTrigger>
       <ContextMenuContent>
+        {/* Visibility toggle options - only for files and folders with fileId */}
+        {node.fileId && (
+          <>
+            {node.isPublic ? (
+              <ContextMenuItem onClick={handleToggleVisibility}>
+                <Lock className="h-4 w-4 mr-2" />
+                Make Private
+              </ContextMenuItem>
+            ) : (
+              <ContextMenuItem onClick={handleToggleVisibility}>
+                <Globe className="h-4 w-4 mr-2" />
+                Make Public
+              </ContextMenuItem>
+            )}
+            <ContextMenuSeparator />
+          </>
+        )}
         <ContextMenuItem onClick={handleRename}>
           <Edit2 className="h-4 w-4 mr-2" />
           Rename

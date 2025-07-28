@@ -8,32 +8,35 @@ import { useSession } from 'next-auth/react';
 import { PluginHost } from './PluginHost';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
+import { useTenant } from '@/components/providers/TenantProvider';
+import { useFileMessages } from '@/hooks/useFileMessages';
 
-interface PluginFileViewerProps {
-  pluginId: string;
-  filePath: string;
-  fileName: string;
-  organizationId: string;
+interface UserFileViewerProps {
+  fileId: string;
 }
 
-export const PluginFileViewer = ({ pluginId, filePath, fileName, organizationId }: PluginFileViewerProps) => {
+export const UserFileViewer = ({ fileId }: UserFileViewerProps) => {
   const { data: session } = useSession();
+  const { organizationId, isAuthenticated } = useTenant();
   const createSandbox = useMutation(api.sandboxes.createSandboxForFile);
+  
+  // Initialize file messages hook
+  const fileMessages = useFileMessages(
+    fileId as Id<"files">, 
+    organizationId as Id<"organizations">
+  );
 
-  // Get the file by path
-  const file = useQuery(api.files.getFileByPath, {
-    path: pluginId,
+  // Get the file
+  const file = useQuery(api.files.getFileById, {
+    fileId: fileId as Id<"files">,
   });
-
-  const fileId = file?._id;
-  const isAuthenticated = !!session?.user?.id;
 
   // Try to get sandbox - include isPublicAccess parameter
   const sandbox = useQuery(
     api.sandboxes.getSandboxForFile,
-    fileId ? {
+    organizationId ? {
       fileId: fileId as Id<"files">,
-      organizationId: organizationId as Id<"organizations">,
+      organizationId: organizationId,
       isPublicAccess: !isAuthenticated
     } : "skip"
   );
@@ -44,12 +47,12 @@ export const PluginFileViewer = ({ pluginId, filePath, fileName, organizationId 
   }
 
   useEffect(() => {
-    if (sandbox === undefined || fileId === null) return; // Still loading
-    if (!sandbox && fileId) {
+    if (sandbox === undefined || !organizationId) return; // Still loading
+    if (!sandbox && organizationId) {
       // No sandbox exists, trigger creation
       void createSandbox({ 
         fileId: fileId as Id<"files">,
-        organizationId: organizationId as Id<"organizations">,
+        organizationId: organizationId,
         isPublicAccess: !isAuthenticated
       });
     }
@@ -60,13 +63,35 @@ export const PluginFileViewer = ({ pluginId, filePath, fileName, organizationId 
   };
 
   const handleSaveMessage = async (messageData: any) => {
-    // PluginFileViewer doesn't implement message saving - placeholder only
-    console.log('PluginFileViewer - Message save not implemented:', messageData);
+    // Only save messages if user is authenticated
+    if (!isAuthenticated || !organizationId) {
+      console.log('Skipping message save - user not authenticated or no organization');
+      return;
+    }
+
+    try {
+      await fileMessages.createMessage(messageData);
+      console.log('Message saved successfully:', messageData);
+    } catch (error) {
+      console.error('Failed to save message:', error);
+      throw error; // Re-throw so PluginHost can handle the error
+    }
   };
 
   const handleUpdateMessage = async (messageId: string, messageData: any) => {
-    // PluginFileViewer doesn't implement message updating - placeholder only
-    console.log('PluginFileViewer - Message update not implemented:', messageId, messageData);
+    // Only update messages if user is authenticated
+    if (!isAuthenticated || !organizationId) {
+      console.log('Skipping message update - user not authenticated or no organization');
+      return;
+    }
+
+    try {
+      await fileMessages.updateMessage(messageId as Id<"fileMessages">, messageData);
+      console.log('Message updated successfully:', messageId, messageData);
+    } catch (error) {
+      console.error('Failed to update message:', error);
+      throw error; // Re-throw so PluginHost can handle the error
+    }
   };
 
   if (!file) {
@@ -77,7 +102,7 @@ export const PluginFileViewer = ({ pluginId, filePath, fileName, organizationId 
           <div className="text-center">
             <div className="font-medium">File Not Found</div>
             <div className="text-sm text-muted-foreground mt-1">
-              The requested plugin file could not be found
+              The requested file could not be found
             </div>
           </div>
         </div>
@@ -107,7 +132,7 @@ export const PluginFileViewer = ({ pluginId, filePath, fileName, organizationId 
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">Creating sandbox...</p>
-          <p className="text-xs text-muted-foreground mt-1">{fileName}</p>
+          <p className="text-xs text-muted-foreground mt-1">{file.path}</p>
         </div>
       </div>
     );
@@ -140,7 +165,9 @@ export const PluginFileViewer = ({ pluginId, filePath, fileName, organizationId 
       <div className={`h-full w-full bg-background border border-border rounded-lg overflow-hidden`}>
         <PluginHost 
           url={sandbox.sandboxUrl}
-          pluginId={pluginId}
+          pluginId={fileId}
+          fileId={fileId}
+          fileMessages={fileMessages.message ? [fileMessages.message.message] : []}
           onMessage={handlePluginMessage}
           onSaveMessage={handleSaveMessage}
           onUpdateMessage={handleUpdateMessage}

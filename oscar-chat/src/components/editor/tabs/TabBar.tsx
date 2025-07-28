@@ -19,6 +19,7 @@ export const TabBar = () => {
           filePath={tab.id}
           fileName={tab.title}
           isActive={activeFile === tab.id}
+          type={tab.type}
           onClose={closeTab}
         />
       ))}
