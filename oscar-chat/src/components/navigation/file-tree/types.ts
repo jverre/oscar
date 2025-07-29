@@ -17,19 +17,12 @@ export type TreeNode = {
   isPublic?: boolean;
 };
 
-export type PendingItem = {
-  id: string;
-  name: string;
-  isFile: boolean;
-  isPublic: boolean;
-  parentPath?: string;
-};
 
 export interface TreeNodeComponentProps {
   node: TreeNode;
   level?: number;
-  onSavePending?: (id: string, name: string) => void;
-  onCancelPending?: (id: string) => void;
+  onSaveCreating?: (name: string) => void;
+  onCancelCreating?: () => void;
   onDelete?: (fileId?: Id<"files">, folderPath?: string) => void;
   onRename?: (fileId: Id<"files">, newName: string) => void;
   onToggleVisibility?: (fileId: Id<"files">) => void;
@@ -41,9 +34,9 @@ export interface FileGroupSectionProps {
   files: unknown[];
   icon: React.ReactNode;
   isPublic: boolean;
-  pendingItems: PendingItem[];
-  onSavePending: (id: string, name: string) => void;
-  onCancelPending: (id: string) => void;
+  creatingItem: { type: 'file' | 'folder', isPublic: boolean } | null;
+  onSaveCreating: (name: string) => void;
+  onCancelCreating: () => void;
   onDelete: (fileId?: Id<"files">, folderPath?: string) => void;
   onRename: (fileId: Id<"files">, newName: string) => void;
   onToggleVisibility: (fileId: Id<"files">) => void;
@@ -51,9 +44,8 @@ export interface FileGroupSectionProps {
 }
 
 export interface FilesHeaderProps {
-  organizationId: Id<"organizations"> | null;
-  onCreateFile: () => void;
-  onCreateFolder: () => void;
+  onCreateFile: (isPublic?: boolean) => void;
+  onCreateFolder: (isPublic?: boolean) => void;
 }
 
 export interface InlineEditorProps {

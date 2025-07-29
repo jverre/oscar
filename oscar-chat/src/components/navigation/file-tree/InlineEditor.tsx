@@ -3,9 +3,10 @@ import { InlineEditorProps } from "./types";
 
 export const InlineEditor = ({ 
   initialName, 
+  isFile: _isFile, // eslint-disable-line @typescript-eslint/no-unused-vars
   onSave, 
   onCancel 
-}: Omit<InlineEditorProps, 'isFile'>) => {
+}: InlineEditorProps) => {
   const [name, setName] = useState(initialName);
   const inputRef = useRef<HTMLInputElement>(null);
 

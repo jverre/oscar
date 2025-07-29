@@ -62,7 +62,6 @@ export const chat = httpAction(async (ctx, request) => {
     });
   }
 
-  console.log("chat");
   try {
     const { messages, pluginId } = await request.json();
 
@@ -85,7 +84,6 @@ export const chat = httpAction(async (ctx, request) => {
     });
     
     if (!plugin) {
-      console.log("plugin not found");
       return new Response('Plugin not found', { status: 404 });
     }
     
@@ -93,7 +91,6 @@ export const chat = httpAction(async (ctx, request) => {
       path: `${pluginId}`,
     });
     if (!file) {
-      console.log("file not found");
       return new Response('Failed to get plugin demo file', { status: 404 });
     }
 
@@ -133,28 +130,12 @@ export const chat = httpAction(async (ctx, request) => {
     // Convert UI messages to model format for AI SDK v5
     const modelMessages = convertToModelMessages(messagesWithSystem);
 
-    // Debug logging to see what messages are being sent
-    console.log('Messages being sent to streamText:', JSON.stringify(modelMessages, null, 2));
-
     const result = streamText({
       model: openai('gpt-4o'),
       messages: modelMessages,
       tools: aiTools,
       toolChoice: 'auto',
-      stopWhen: stepCountIs(5),
-      onStepFinish: async (step) => {
-        // Stream tool call states in real-time for immediate UI feedback
-        if (step.toolCalls) {
-          step.toolCalls.forEach(toolCall => {
-            console.log('Tool call:', toolCall.toolName);
-          });
-        }
-        if (step.toolResults) {
-          step.toolResults.forEach(result => {
-            console.log('Tool result:', result);
-          });
-        }
-      },
+      stopWhen: stepCountIs(5),    
     });
 
     return result.toUIMessageStreamResponse({

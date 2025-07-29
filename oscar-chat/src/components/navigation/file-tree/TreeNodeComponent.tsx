@@ -16,14 +16,14 @@ import { InlineEditor } from "./InlineEditor";
 export const TreeNodeComponent = ({ 
   node, 
   level = 0,
-  onSavePending,
-  onCancelPending,
+  onSaveCreating,
+  onCancelCreating,
   onDelete,
   onRename,
   onToggleVisibility,
   organizationId
 }: TreeNodeComponentProps) => {
-  const { activeFile, openFile } = useFileContext();
+  const { activeFile, openContent } = useFileContext();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isRenaming, setIsRenaming] = useState(false);
   const isActive = activeFile === node.path;
@@ -31,16 +31,16 @@ export const TreeNodeComponent = ({
   const handleClick = () => {
     if (node.isPending || node.isEditing || isRenaming) return;
     
-    if (node.isFile && node.fileId) {
-      openFile(node.fileId, node.name, node.type);
+    if (node.isFile && node.path) {
+      openContent(node.path, node.name);
     } else {
       setIsExpanded(!isExpanded);
     }
   };
 
   const handleSave = (name: string) => {
-    if (node.isPending && onSavePending) {
-      onSavePending(node.id, name);
+    if (node.isPending && onSaveCreating) {
+      onSaveCreating(name);
     } else if (isRenaming && onRename && node.fileId) {
       onRename(node.fileId, name);
       setIsRenaming(false);
@@ -48,8 +48,8 @@ export const TreeNodeComponent = ({
   };
 
   const handleCancel = () => {
-    if (node.isPending && onCancelPending) {
-      onCancelPending(node.id);
+    if (node.isPending && onCancelCreating) {
+      onCancelCreating();
     } else if (isRenaming) {
       setIsRenaming(false);
     }
@@ -118,6 +118,7 @@ export const TreeNodeComponent = ({
           {(node.isEditing && node.isPending) || isRenaming ? (
             <InlineEditor
               initialName={node.name}
+              isFile={node.isFile}
               onSave={handleSave}
               onCancel={handleCancel}
             />
@@ -136,8 +137,8 @@ export const TreeNodeComponent = ({
               key={child.id} 
               node={child} 
               level={level + 1}
-              onSavePending={onSavePending}
-              onCancelPending={onCancelPending}
+              onSaveCreating={onSaveCreating}
+              onCancelCreating={onCancelCreating}
               onDelete={onDelete}
               onRename={onRename}
               onToggleVisibility={onToggleVisibility}

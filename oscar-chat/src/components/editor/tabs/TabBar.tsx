@@ -15,11 +15,10 @@ export const TabBar = () => {
     <div className="flex h-8 bg-sidebar border-b border-sidebar-border overflow-x-auto">
       {tabs.map((tab) => (
         <Tab
-          key={tab.id}
-          filePath={tab.id}
+          key={tab.path}
+          filePath={tab.path}
           fileName={tab.title}
-          isActive={activeFile === tab.id}
-          type={tab.type}
+          isActive={activeFile === tab.path}
           onClose={closeTab}
         />
       ))}

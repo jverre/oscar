@@ -90,8 +90,6 @@ export const createPlugin = mutation({
     // Require user to be a member of the organization and get user info
     const userWithOrg = await requireOrgMember(ctx, args.organizationId);
     
-    console.log("[PLUGIN_CREATE] Starting plugin creation with args:", args);
-    
     const pluginId = await ctx.db.insert("plugins", {
       name: args.name,
       organizationId: args.organizationId,
@@ -103,10 +101,6 @@ export const createPlugin = mutation({
       updatedAt: Date.now(),
     });
 
-    console.log("[PLUGIN_CREATE] Plugin inserted with ID:", pluginId);
-
-    // Create hidden demo file for this plugin
-    console.log("[PLUGIN_CREATE] Creating demo file for plugin:", pluginId);
     const fileId: Id<"files"> = await ctx.runMutation(internal.files.createPluginDemoFile, {
       userId: userWithOrg._id,
       organizationId: args.organizationId,
@@ -176,11 +170,15 @@ export const deletePlugin = mutation({
 });
 
 
-export const getPluginById = internalQuery({
+export const getPluginData = query({
   args: {
     pluginId: v.union(v.id("plugins"), v.id("organizationMarketplacePlugins"), v.string()),
+    organizationId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
+    // Require user to be a member of the organization
+    await requireOrgMember(ctx, args.organizationId);
+    
     // Handle marketplace plugin string IDs (format: "marketplace_<pluginName>")
     if (typeof args.pluginId === 'string' && args.pluginId.startsWith('marketplace_')) {
       const pluginName = args.pluginId.replace('marketplace_', '');
@@ -202,6 +200,45 @@ export const getPluginById = internalQuery({
     // Try to get as organization marketplace plugin
     const orgMarketplacePlugin = await ctx.db.get(args.pluginId as Id<"organizationMarketplacePlugins">);
     return orgMarketplacePlugin;
+  },
+});
+
+export const getPluginById = internalQuery({
+  args: {
+    pluginId: v.union(v.id("plugins"), v.id("organizationMarketplacePlugins"), v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Handle marketplace plugin string IDs (format: "marketplace_<pluginName>")
+    if (typeof args.pluginId === 'string' && args.pluginId.startsWith('marketplace_')) {
+      const pluginName = args.pluginId.replace('marketplace_', '');
+      
+      // Find the organization marketplace plugin by name
+      const orgMarketplacePlugin = await ctx.db.query("organizationMarketplacePlugins")
+        .filter((q) => q.eq(q.field("name"), pluginName))
+        .first();
+      
+      return orgMarketplacePlugin || null;
+    }
+    
+    // Try to get as regular plugin first
+    try {
+      const plugin = await ctx.db.get(args.pluginId as Id<"plugins">);
+      if (plugin) {
+        return plugin;
+      }
+    } catch (e) {
+      // Not a plugin ID
+    }
+    
+    // Try to get as organization marketplace plugin
+    try {
+      const orgMarketplacePlugin = await ctx.db.get(args.pluginId as Id<"organizationMarketplacePlugins">);
+      return orgMarketplacePlugin;
+    } catch (e) {
+      // Not found
+    }
+    
+    return null;
   },
 });
 

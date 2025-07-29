@@ -3,8 +3,9 @@
 import { Command as CommandIcon, FileText, Menu } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { useTenant } from "@/components/providers/TenantProvider";
 import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
@@ -21,13 +22,8 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: session } = useSession();
+  const { user, organizationId } = useTenant();
   const createFileMutation = useMutation(api.files.createFile);
-  
-  // Get user's organization info
-  const user = useQuery(
-    api.users.currentUser,
-    session?.user?.id ? { userId: session.user.id } : "skip"
-  );
 
   const commands = [
     {
@@ -42,7 +38,7 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
   );
 
   const handleCreateFile = useCallback(async () => {
-    if (!fileNameInput.trim() || !user?.organization?._id || !session?.user?.id) {
+    if (!fileNameInput.trim() || !organizationId || !session?.user?.id) {
       return;
     }
 
@@ -50,10 +46,10 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
       const fileName = fileNameInput.trim();
       const filePath = fileName.endsWith('.blog') ? fileName : `${fileName}.blog`;
       
-      console.log("Creating file with organizationId:", user.organization._id);
+      console.log("Creating file with organizationId:", organizationId);
       
       await createFileMutation({
-        organizationId: user.organization._id,
+        organizationId: organizationId,
         path: filePath,
         content: "",
         type: "user",
@@ -72,7 +68,7 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
     } catch (error) {
       console.error("Failed to create file:", error);
     }
-  }, [fileNameInput, user?.organization?._id, session?.user?.id, createFileMutation, setOpen, setIsCreatingFile, setFileNameInput, setSearchValue, setSelectedIndex]);
+  }, [fileNameInput, organizationId, session?.user?.id, createFileMutation, setOpen, setIsCreatingFile, setFileNameInput, setSearchValue, setSelectedIndex]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {

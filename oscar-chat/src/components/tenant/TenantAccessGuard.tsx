@@ -3,6 +3,7 @@
 import { useTenant } from "@/components/providers/TenantProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CenteredLoading } from "@/components/ui/loading";
 
 interface TenantAccessGuardProps {
   children: React.ReactNode;
@@ -21,13 +22,11 @@ export function TenantAccessGuard({ children }: TenantAccessGuardProps) {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex items-center justify-center p-6">
-            <div className="text-center">Loading...</div>
-          </CardContent>
-        </Card>
-      </div>
+      <CenteredLoading 
+        title="Loading workspace..."
+        description="Checking access permissions"
+        className="min-h-screen bg-background"
+      />
     );
   }
 

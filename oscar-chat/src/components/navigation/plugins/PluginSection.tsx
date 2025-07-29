@@ -30,7 +30,7 @@ const PluginItem = ({
 }: {
   plugin: Record<string, unknown>;
   onDelete?: (id: string) => void;
-  onOpenPlugin?: (fileId: string) => void;
+  onOpenPlugin?: () => void;
   isTabActive?: boolean;
   isExpanded?: boolean;
   onToggleExpanded?: (pluginId: string) => void;
@@ -40,11 +40,7 @@ const PluginItem = ({
     if ((e.target as HTMLElement).closest('.chevron-button')) {
       return;
     }
-    if (plugin.fileId) {
-      onOpenPlugin?.(plugin.fileId as string);
-    } else {
-      console.warn(`Plugin ${plugin.name} has no fileId yet`);
-    }
+    onOpenPlugin?.();
   };
 
 
@@ -106,7 +102,7 @@ const PluginItem = ({
 
 export const PluginSection = ({ organizationId }: PluginSectionProps) => {
   const { data: session } = useSession();
-  const { openFile, activeFile, closeTab } = useFileContext();
+  const { openContent, activeFile, closeTab } = useFileContext();
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedPlugins, setExpandedPlugins] = useState<Set<string>>(new Set());
   const [plugins, setPlugins] = useState<Record<string, unknown>[]>([]);
@@ -139,7 +135,7 @@ export const PluginSection = ({ organizationId }: PluginSectionProps) => {
         }
       }
       
-      const result = await createPlugin({
+      await createPlugin({
         name: pluginName,
         organizationId,
         visibility: "private",
@@ -151,7 +147,11 @@ export const PluginSection = ({ organizationId }: PluginSectionProps) => {
       });
       setPlugins(updatedPlugins);
       
-      openFile(result.fileId, pluginName, 'plugin');
+      // Get the created plugin ID to use as the file path
+      const newPlugin = updatedPlugins.find(p => p.name === pluginName);
+      if (newPlugin) {
+        openContent(newPlugin._id as string, pluginName);
+      }
     } catch (error) {
       console.error("Failed to create plugin:", error);
     }
@@ -226,8 +226,8 @@ export const PluginSection = ({ organizationId }: PluginSectionProps) => {
               key={plugin._id as string}
               plugin={plugin}
               onDelete={(id) => handleDeletePlugin(id as Id<"plugins">)}
-              onOpenPlugin={(fileId) => openFile(fileId, String(plugin.name), 'plugin')}
-              isTabActive={activeFile === plugin.fileId}
+              onOpenPlugin={() => openContent(plugin._id as string, String(plugin.name))}
+              isTabActive={activeFile === plugin._id}
               isExpanded={expandedPlugins.has(plugin._id as string)}
               onToggleExpanded={handleTogglePluginExpanded}
             />

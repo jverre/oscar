@@ -121,3 +121,94 @@ export const validateTenantAccess = query({
     };
   },
 });
+
+export const getTenantInfo = query({
+  args: { 
+    subdomain: v.string(),
+    userId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // First, get the organization by subdomain (unauthenticated)
+    const organization = await ctx.db
+      .query("organizations")
+      .withIndex("by_subdomain", (q) => q.eq("subdomain", args.subdomain))
+      .unique();
+
+    // If no userId provided, return just organization info (unauthenticated case)
+    if (!args.userId) {
+      return {
+        organization,
+        hasAccess: false, // No subdomain allows unauthenticated access
+        accessReason: "not_authenticated",
+        user: null,
+      };
+    }
+
+    // If userId provided, validate access
+    const userId = args.userId as Id<"users">;
+    
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("_id"), userId))
+      .unique();
+      
+    if (!user) {
+      return {
+        organization,
+        hasAccess: false, // No subdomain allows access without user
+        accessReason: "not_authenticated",
+        user: null,
+      };
+    }
+    
+    // All subdomains (including base domain) require user to have matching organization
+    if (!user.organizationId) {
+      return {
+        organization,
+        hasAccess: false,
+        accessReason: "no_organization",
+        user: {
+          ...user,
+          organization: null,
+        },
+      };
+    }
+    
+    const userOrganization = await ctx.db.get(user.organizationId);
+    if (!userOrganization) {
+      return {
+        organization,
+        hasAccess: false,
+        accessReason: "organization_not_found",
+        user: {
+          ...user,
+          organization: null,
+        },
+      };
+    }
+    
+    // Check if user's organization matches the requested subdomain
+    if (userOrganization.subdomain !== args.subdomain) {
+      return {
+        organization,
+        hasAccess: false,
+        accessReason: "wrong_organization",
+        user: {
+          ...user,
+          organization: userOrganization,
+        },
+      };
+    }
+    
+    // User has access
+    return {
+        organization,
+        hasAccess: true,
+        accessReason: null,
+        user: {
+          ...user,
+          organization: userOrganization,
+        },
+      };
+  },
+});

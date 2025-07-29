@@ -1,20 +1,10 @@
 import React from "react";
 import { File, Folder } from "lucide-react";
-import { TreeNode, PendingItem } from "./types";
+import { TreeNode } from "./types";
 
-export const buildTreeFromFiles = (files: unknown[], pendingItems: PendingItem[] = []): TreeNode[] => {
+export const buildTreeFromFiles = (files: unknown[]): TreeNode[] => {
   if (!files || files.length === 0) {
-    // If no files but have pending items, show them at root
-    return pendingItems.map(item => ({
-      id: item.id,
-      name: item.name,
-      path: item.name,
-      isFile: item.isFile,
-      isPending: true,
-      isEditing: true,
-      children: item.isFile ? undefined : [],
-      type: 'user' as const
-    }));
+    return [];
   }
   
   const nodeMap = new Map<string, TreeNode>();
@@ -72,21 +62,6 @@ export const buildTreeFromFiles = (files: unknown[], pendingItems: PendingItem[]
         }
       }
     });
-  });
-  
-  // Add pending items to root level
-  pendingItems.forEach(item => {
-    const pendingNode: TreeNode = {
-      id: item.id,
-      name: item.name,
-      path: item.name,
-      isFile: item.isFile,
-      isPending: true,
-      isEditing: true,
-      children: item.isFile ? undefined : [],
-      type: 'user' as const
-    };
-    rootNodes.push(pendingNode);
   });
   
   return rootNodes;

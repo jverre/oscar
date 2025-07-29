@@ -52,7 +52,7 @@ export async function getAuthenticatedUser(ctx: AuthContext): Promise<Authentica
 
 export async function requireOrgMember(ctx: AuthContext, organizationId: Id<"organizations">): Promise<UserWithOrganization> {
   const user = await requireAuth(ctx);
-  console.log("user", user.email);
+  
   if ((!user.organizationId || user.organizationId !== organizationId)) {
     throw new Error("Access denied: User does not belong to this organization");
   }

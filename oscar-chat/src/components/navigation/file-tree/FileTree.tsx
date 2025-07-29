@@ -3,9 +3,9 @@ import { Lock, Globe } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useTenant } from "@/components/providers/TenantProvider";
-import { PendingItem } from "./types";
 import { FilesHeader } from "./FilesHeader";
 import { FileGroupSection } from "./FileGroupSection";
+import { LoadingPlaceholder } from "@/components/ui/loading";
 import { Id } from "../../../../convex/_generated/dataModel";
 
 export const FileTree = () => {
@@ -16,7 +16,7 @@ export const FileTree = () => {
   const deleteFolderMutation = useMutation(api.files.deleteFolder);
   const renameFileMutation = useMutation(api.files.renameFile);
   const toggleVisibilityMutation = useMutation(api.files.toggleFileVisibility);
-  const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
+  const [creatingItem, setCreatingItem] = useState<{ type: 'file' | 'folder', isPublic: boolean } | null>(null);
   
   const filesData = useQuery(
     api.files.getFiles, 
@@ -25,60 +25,45 @@ export const FileTree = () => {
   
   console.log('[FileTree] Files data:', filesData);
 
-  const handleCreateFile = () => {
-    const newId = `pending-file-${Date.now()}`;
-    const newPendingFile: PendingItem = {
-      id: newId,
-      name: "Untitled",
-      isFile: true,
-      isPublic: false, // Default to private
-    };
-    setPendingItems(prev => [...prev, newPendingFile]);
+  const handleCreateFile = (isPublic: boolean = false) => {
+    setCreatingItem({ type: 'file', isPublic });
   };
 
-  const handleCreateFolder = () => {
-    const newId = `pending-folder-${Date.now()}`;
-    const newPendingFolder: PendingItem = {
-      id: newId,
-      name: "Untitled",
-      isFile: false,
-      isPublic: false, // Default to private
-    };
-    setPendingItems(prev => [...prev, newPendingFolder]);
+  const handleCreateFolder = (isPublic: boolean = false) => {
+    setCreatingItem({ type: 'folder', isPublic });
   };
 
-  const handleSavePending = async (id: string, name: string) => {
-    const pendingItem = pendingItems.find(item => item.id === id);
-    if (!pendingItem || !user?._id || !organizationId) return;
+  const handleSaveCreating = async (name: string) => {
+    if (!creatingItem || !user?._id || !organizationId) return;
 
     try {
-      if (pendingItem.isFile) {
+      if (creatingItem.type === 'file') {
         const filePath = name.includes('.') ? name : `${name}.blog`;
         await createFileMutation({
           organizationId: organizationId,
           path: filePath,
           content: "",
           type: "user",
-          isPublic: pendingItem.isPublic,
+          isPublic: creatingItem.isPublic,
         });
       } else {
         await createFolderMutation({
           organizationId: organizationId,
           path: name,
-          isPublic: pendingItem.isPublic,
+          isPublic: creatingItem.isPublic,
         });
       }
       
-      // Remove from pending items
-      setPendingItems(prev => prev.filter(item => item.id !== id));
+      // Clear creating state
+      setCreatingItem(null);
     } catch (error) {
       console.error("Error creating item:", error);
       alert("Error creating item. Please try again.");
     }
   };
 
-  const handleCancelPending = (id: string) => {
-    setPendingItems(prev => prev.filter(item => item.id !== id));
+  const handleCancelCreating = () => {
+    setCreatingItem(null);
   };
 
   const handleDelete = async (fileId?: Id<"files">, folderPath?: string) => {
@@ -140,9 +125,7 @@ export const FileTree = () => {
           onCreateFile={handleCreateFile}
           onCreateFolder={handleCreateFolder}
         />
-        <div className="p-3 text-muted-foreground text-xs">
-          Loading files...
-        </div>
+        <LoadingPlaceholder message="Loading files..." />
       </div>
     );
   }
@@ -153,7 +136,7 @@ export const FileTree = () => {
   const filteredPublicFiles = publicFiles.filter(file => !file.path.startsWith('plugins/data/'));
   const filteredPrivateFiles = privateFiles.filter(file => !file.path.startsWith('plugins/data/'));
 
-  if (filteredPublicFiles.length === 0 && filteredPrivateFiles.length === 0 && pendingItems.length === 0) {
+  if (filteredPublicFiles.length === 0 && filteredPrivateFiles.length === 0 && !creatingItem) {
     return (
       <div className="w-full bg-background font-mono text-xs">
         <FilesHeader 
@@ -175,15 +158,15 @@ export const FileTree = () => {
       />
       
       {/* Private Files Section */}
-      {(filteredPrivateFiles.length > 0 || pendingItems.some(item => !item.isPublic)) && (
+      {(filteredPrivateFiles.length > 0 || (creatingItem && !creatingItem.isPublic)) && (
         <FileGroupSection
           title="Private"
           files={filteredPrivateFiles}
           icon={<Lock className="h-3 w-3 text-muted-foreground/60" />}
           isPublic={false}
-          pendingItems={pendingItems}
-          onSavePending={handleSavePending}
-          onCancelPending={handleCancelPending}
+          creatingItem={creatingItem && !creatingItem.isPublic ? creatingItem : null}
+          onSaveCreating={handleSaveCreating}
+          onCancelCreating={handleCancelCreating}
           onDelete={handleDelete}
           onRename={handleRename}
           onToggleVisibility={handleToggleVisibility}
@@ -192,15 +175,15 @@ export const FileTree = () => {
       )}
       
       {/* Public Files Section */}
-      {(filteredPublicFiles.length > 0 || pendingItems.some(item => item.isPublic)) && (
+      {(filteredPublicFiles.length > 0 || (creatingItem && creatingItem.isPublic)) && (
         <FileGroupSection
           title="Public"
           files={filteredPublicFiles}
           icon={<Globe className="h-3 w-3 text-green-500" />}
           isPublic={true}
-          pendingItems={pendingItems}
-          onSavePending={handleSavePending}
-          onCancelPending={handleCancelPending}
+          creatingItem={creatingItem && creatingItem.isPublic ? creatingItem : null}
+          onSaveCreating={handleSaveCreating}
+          onCancelCreating={handleCancelCreating}
           onDelete={handleDelete}
           onRename={handleRename}
           onToggleVisibility={handleToggleVisibility}

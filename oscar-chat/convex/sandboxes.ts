@@ -27,15 +27,13 @@ export const createSandboxViaModal = internalAction({
     );
 
     const responseText = await modalResponse.json();
-    console.log("[SANDBOX_CREATE] Raw modal response text:", responseText);
-
+    
     const sandboxUrl = responseText.tunnel_info.tunnel_url;
 
     // Wait a bit for sandbox to be ready
     for (let i = 0; i < 20; i++) {
       try {
         await fetch(sandboxUrl, { method: "HEAD" });
-        console.log(`[SANDBOX_CREATE] Sandbox ready after ${i + 1} attempts`);
         break;
       } catch {
         if (i < 19) await new Promise(resolve => setTimeout(resolve, 100));
@@ -181,7 +179,6 @@ export const createSandboxForFile = mutation({
       throw new Error("File is not public");
     }
     
-    console.log("[DEBUG] Creating sandbox for fileId", args.fileId);
     // Initialize sandbox
     const sandboxId = await ctx.db.insert("sandboxes", {
       fileId: args.fileId,
@@ -192,73 +189,32 @@ export const createSandboxForFile = mutation({
     const file = await ctx.runQuery(api.files.getFileById, {
       fileId: args.fileId,
     });
-    console.log("[DEBUG] File details:", {
-      fileId: file._id,
-      path: file.path,
-      type: file.type,
-      organizationId: file.organizationId,
-    });
-
+    
     let plugin: any;
 
     if (file.type === "user") {
       const extension = `.${file.path.split(".").pop()}` as string;
-      console.log("[DEBUG] Looking for plugin by extension:", {
-        extension: extension,
-        filePath: file.path,
-        organizationId: args.organizationId,
-      });
       
       plugin = await ctx.runQuery(internal.plugins.getPluginByExtension, {
         extension: extension,
         organizationId: args.organizationId,
       });
 
-      console.log("[DEBUG] Plugin lookup result:", {
-        found: !!plugin,
-        plugin: plugin ? { id: plugin._id, name: plugin.name, fileExtension: plugin.fileExtension } : null,
-      });
-
       if (!plugin) {
-        console.error("[ERROR] Plugin not found for extension:", {
-          extension,
-          filePath: file.path,
-          organizationId: args.organizationId,
-        });
         throw new Error(`Plugin not found for extension: ${extension}`);
       }
     } else if (file.type === "plugin") {
-      console.log("[DEBUG] Looking for plugin by ID:", {
-        pluginId: file.path,
-        fileType: file.type,
-      });
-      
       plugin = await ctx.runQuery(internal.plugins.getPluginById, {
         pluginId: file.path as Id<"organizationMarketplacePlugins"> | Id<"plugins">,
       });
 
-      console.log("[DEBUG] Plugin by ID lookup result:", {
-        found: !!plugin,
-        plugin: plugin ? { id: plugin._id, name: plugin.name, snapshotId: plugin.snapshotId } : null,
-      });
-
       if (!plugin) {
-        console.error("[ERROR] Plugin not found by ID:", {
-          pluginId: file.path,
-          fileType: file.type,
-        });
         throw new Error(`Plugin not found for ID: ${file.path}`);
       }
     } else {
       throw new Error("File type not supported");
     }
 
-    console.log("[DEBUG] Creating sandbox with plugin:", {
-      fileId: args.fileId,
-      pluginId: plugin._id,
-      pluginName: plugin.name,
-      snapshotId: plugin.snapshotId,
-    });
     await ctx.scheduler.runAfter(0, internal.sandboxes.createSandboxViaModal, {
       sandboxId: sandboxId,
       snapshotId: plugin.snapshotId,

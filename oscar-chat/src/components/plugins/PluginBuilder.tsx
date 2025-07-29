@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/resizable";
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation } from 'convex/react';
-import { useSession } from 'next-auth/react';
 import { api } from '../../../convex/_generated/api';
+import { useTenant } from '@/components/providers/TenantProvider';
 import { Id } from '../../../convex/_generated/dataModel';
 import { SandboxIframe } from './SandboxIframe';
 import { ChatSidebar } from './ChatSidebar';
@@ -22,57 +22,59 @@ interface PluginBuilderProps {
 
 // Main Content Component
 function MainContent({ fileId }: PluginBuilderProps) {
-  const { data: session } = useSession();
+  const { organizationId } = useTenant();
   const [pluginName, setPluginName] = useState("New Plugin");
   const [fileExtension, setFileExtension] = useState('');
   const { updateTabTitle } = useFileContext();
-  
-  // Get current user and organization information
-  const currentUser = useQuery(
-    api.users.currentUser, 
-    session?.user?.id ? { userId: session.user.id } : "skip"
-  );
   
   // Get the file to extract pluginId from the path
   const file = useQuery(api.files.getFileById, { fileId });
   const pluginId = file?.path; // The path contains the pluginId
   
+  // Get the actual plugin data to get the correct name
+  const pluginData = useQuery(
+    api.plugins.getPluginData,
+    pluginId && organizationId ? { 
+      pluginId: pluginId as Id<"plugins"> | Id<"organizationMarketplacePlugins"> | string, 
+      organizationId: organizationId 
+    } : "skip"
+  );
+  
   const updatePlugin = useMutation(api.plugins?.updatePlugin);
   
-  // Load plugin data when file is available
+  // Load plugin data when available
   useEffect(() => {
-    if (file && pluginId) {
-      // For marketplace plugins, pluginId is a string like "marketplace_xxx"
-      // For custom plugins, pluginId is an actual plugin ID
-      if (pluginId.startsWith('marketplace_')) {
-        // For marketplace plugins, we can't update the name/extension
-        const fileName = file.path.split('/').pop() || "Marketplace Plugin";
-        setPluginName(fileName);
-      } else {
-        // For custom plugins, we could fetch plugin data here if needed
-        const fileName = file.path.split('/').pop() || "New Plugin";
-        setPluginName(fileName);
+    if (pluginData) {
+      setPluginName(pluginData.name || "New Plugin");
+      if (pluginData.fileExtension) {
+        setFileExtension(pluginData.fileExtension);
       }
+    } else if (file && pluginId) {
+      // Fallback to file path parsing if plugin data is not available
+      const fileName = file.path.split('/').pop() || "New Plugin";
+      setPluginName(fileName);
     }
-  }, [file, pluginId]);
+  }, [pluginData, file, pluginId]);
   
   const handlePluginNameBlur = () => {
-    if (pluginId && updatePlugin && !pluginId.startsWith('marketplace_') && currentUser?.organization?._id) {
+    if (pluginId && updatePlugin && !pluginId.startsWith('marketplace_') && organizationId) {
       updatePlugin({ 
         pluginId: pluginId as Id<"plugins">, 
-        organizationId: currentUser.organization._id,
+        organizationId: organizationId,
         name: pluginName 
       });
-      // Update the tab title
-      updateTabTitle(fileId, pluginName);
+      // Update the tab title using the plugin path
+      if (file?.path) {
+        updateTabTitle(file.path, pluginName);
+      }
     }
   };
   
   const handleExtensionBlur = () => {
-    if (pluginId && updatePlugin && fileExtension && !pluginId.startsWith('marketplace_') && currentUser?.organization?._id) {
+    if (pluginId && updatePlugin && fileExtension && !pluginId.startsWith('marketplace_') && organizationId) {
       updatePlugin({ 
         pluginId: pluginId as Id<"plugins">, 
-        organizationId: currentUser.organization._id,
+        organizationId: organizationId,
         fileExtension 
       });
     }

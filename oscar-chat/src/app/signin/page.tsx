@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "../../../convex/_generated/api";
 import { validateSubdomain } from "@/utils/validation";
+import { InlineLoading, CenteredLoading } from "@/components/ui/loading";
 
 function SignInContent() {
   const { data: session } = useSession();
@@ -202,7 +203,11 @@ function SignInContent() {
                   <p className="text-sm text-destructive">{error}</p>
                 )}
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating..." : "Create Organization"}
+                  <InlineLoading 
+                    text="Create Organization"
+                    loadingText="Creating..."
+                    isLoading={isLoading}
+                  />
                 </Button>
               </div>
             </form>
@@ -239,7 +244,11 @@ function SignInContent() {
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? "Signing in..." : "Continue with Google"}
+            <InlineLoading 
+              text="Continue with Google"
+              loadingText="Signing in..."
+              isLoading={isLoading}
+            />
           </Button>
         </CardContent>
       </Card>
@@ -249,7 +258,7 @@ function SignInContent() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={<CenteredLoading title="Loading..." className="min-h-screen" />}>
       <SignInContent />
     </Suspense>
   );

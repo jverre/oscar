@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "../../../../convex/_generated/api";
 import { validateSubdomain } from "@/utils/validation";
+import { InlineLoading } from "@/components/ui/loading";
 
 export default function SignInPage() {
   const { data: session } = useSession();
@@ -149,7 +150,11 @@ export default function SignInPage() {
                   <p className="text-sm text-destructive">{error}</p>
                 )}
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating..." : "Create Organization"}
+                  <InlineLoading 
+                    text="Create Organization"
+                    loadingText="Creating..."
+                    isLoading={isLoading}
+                  />
                 </Button>
               </div>
             </form>
@@ -178,7 +183,11 @@ export default function SignInPage() {
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? "Signing in..." : "Continue with Google"}
+            <InlineLoading 
+              text="Continue with Google"
+              loadingText="Signing in..."
+              isLoading={isLoading}
+            />
           </Button>
         </CardContent>
       </Card>

@@ -1,45 +1,39 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { MessageSquare, ArrowUp, Loader2, CheckCircle } from "lucide-react";
+import { MessageSquare, ArrowUp, CheckCircle } from "lucide-react";
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useQuery } from 'convex/react';
 import { useSession } from 'next-auth/react';
 import { api } from '../../../convex/_generated/api';
+import { useTenant } from '@/components/providers/TenantProvider';
 import { Button } from "@/components/ui/button";
 import { UserMessage } from "@/components/chat/UserMessage";
 import { AssistantMessage } from "@/components/chat/AssistantMessage";
+import { LoadingSpinner } from "@/components/ui/loading";
 
 
 export function ChatSidebar({ pluginId }: { pluginId?: string }) {
   const { data: session } = useSession();
+  const { organizationId } = useTenant();
   
   // Check if this is a marketplace plugin (chat should be disabled)
   const isMarketplacePlugin = pluginId?.startsWith("marketplace_");
   
-  // Get current user and organization information
-  const currentUser = useQuery(
-    api.users.currentUser, 
-    session?.user?.id ? { userId: session.user.id } : "skip"
-  );
-  
   // Load messages using useQuery hook - skip for marketplace plugins
   const queryMessages = useQuery(
     api.chats.loadMessagesByPlugin,
-    pluginId && !isMarketplacePlugin && currentUser?.organization?._id ? { 
+    pluginId && !isMarketplacePlugin && organizationId ? { 
       pluginId: pluginId,
-      organizationId: currentUser.organization._id 
+      organizationId: organizationId 
     } : "skip"
   );
   
-  // Track initialization state
-  const [hasInitialized, setHasInitialized] = useState(false);
-
   // Input state management (now handled manually in v5)
   const [input, setInput] = useState('');
 
-  // Initialize useChat hook with empty messages initially
+  // Initialize useChat hook with loaded messages or empty array
   const { messages, sendMessage, setMessages, status, error } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
@@ -47,27 +41,27 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
         pluginId: pluginId,
       },
     }),
-    messages: [], // Start with empty array (v5 uses 'messages' not 'initialMessages')
+    messages: queryMessages || [], // Use loaded messages directly or empty array
     id: pluginId, // Enable AI SDK automatic persistence
     onError: (error) => {
       console.error('Chat error:', error);
     },
   });
 
-  // Update messages when query data loads (two-stage initialization)
+  // Update messages when query data loads (only if we have new data and it's different)
   useEffect(() => {
-    if (queryMessages && !hasInitialized) {
+    if (queryMessages && messages.length === 0) {
       setMessages(queryMessages);
-      setHasInitialized(true);
     }
-  }, [queryMessages, hasInitialized, setMessages]);
+  }, [queryMessages, messages.length, setMessages]);
 
-  const isLoading = status === 'streaming' || status === 'submitted';
+  const isStreamingOrSubmitted = status === 'streaming' || status === 'submitted';
+  const isQueryLoading = queryMessages === undefined && !isMarketplacePlugin && !!pluginId && !!organizationId;
 
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || isMarketplacePlugin) return;
+    if (!input.trim() || isStreamingOrSubmitted || isMarketplacePlugin || isQueryLoading) return;
     
     sendMessage({ text: input });
     setInput('');
@@ -89,7 +83,7 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
     );
   }
 
-  if (!currentUser?.organization) {
+  if (!organizationId) {
     return (
       <div className="h-full bg-card border-l border-border flex flex-col items-center justify-center p-4 text-center">
         <MessageSquare className="w-8 h-8 text-muted-foreground mb-2" />
@@ -146,7 +140,7 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
                           {(part.state === 'input-streaming' || part.state === 'input-available') && part.input !== undefined && (
                             <details className="text-xs">
                               <summary className="cursor-pointer text-muted-foreground flex items-center gap-2">
-                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <LoadingSpinner size="sm" />
                                 <span>Running {toolName}...</span>
                               </summary>
                               <div className="mt-1">
@@ -242,10 +236,16 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
             {/* Input Area */}
             <div className="min-h-[18px]">
               <textarea
-                placeholder={isMarketplacePlugin ? "Chat is disabled for marketplace plugins" : "Ask about your plugin..."}
+                placeholder={
+                  isMarketplacePlugin 
+                    ? "Chat is disabled for marketplace plugins"
+                    : isQueryLoading 
+                      ? "Loading chat history..."
+                      : "Ask about your plugin..."
+                }
                 value={input}
                 onChange={handleInputChange}
-                disabled={isLoading || isMarketplacePlugin}
+                disabled={isStreamingOrSubmitted || isMarketplacePlugin || isQueryLoading}
                 className="w-full bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground resize-none overflow-hidden disabled:opacity-50"
                 style={{ fontSize: '12px', lineHeight: '1.5' }}
                 rows={1}
@@ -255,7 +255,7 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
                   target.style.height = target.scrollHeight + 'px';
                 }}
                 onKeyDown={async (e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && input.trim() && !isLoading && !isMarketplacePlugin) {
+                  if (e.key === 'Enter' && !e.shiftKey && input.trim() && !isStreamingOrSubmitted && !isMarketplacePlugin && !isQueryLoading) {
                     e.preventDefault();
                     handleSubmit(e);
                   }
@@ -270,11 +270,11 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={!input.trim() || isLoading || isMarketplacePlugin}
+                  disabled={!input.trim() || isStreamingOrSubmitted || isMarketplacePlugin || isQueryLoading}
                   className="h-6 w-6 p-0 rounded-md bg-transparent border-none text-muted-foreground hover:text-foreground hover:bg-muted/20 hover:shadow-sm flex items-center justify-center transition-all duration-200 ease-in-out disabled:opacity-50"
                 >
-                  {isLoading ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
+                  {isStreamingOrSubmitted || isQueryLoading ? (
+                    <LoadingSpinner size="sm" />
                   ) : (
                     <ArrowUp className="h-3 w-3" />
                   )}

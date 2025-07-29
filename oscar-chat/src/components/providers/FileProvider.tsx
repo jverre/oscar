@@ -1,22 +1,27 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
-interface Tab {
-  id: string;
-  type: 'user' | 'plugin';
+interface ContentTab {
+  path: string;
   title: string;
+}
+
+interface UserTabState {
+  activeFile?: string;
+  tabs: ContentTab[];
 }
 
 interface FileContextType {
   activeFile: string | undefined;
-  setActiveFile: (fileId: string | undefined) => void;
-  openFile: (fileId: string, title: string, type: 'user' | 'plugin') => void;
-  updateTabTitle: (fileId: string, newTitle: string) => void;
+  openContent: (filePath: string, title: string) => void;
+  updateTabTitle: (filePath: string, newTitle: string) => void;
   openTabs: string[];
-  tabs: Tab[];
+  tabs: ContentTab[];
   closeTab: (filePath: string) => void;
-  getActiveTab: () => Tab | undefined;
+  getActiveTab: () => ContentTab | undefined;
 }
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
@@ -34,55 +39,129 @@ interface FileProviderProps {
 }
 
 export const FileProvider = ({ children }: FileProviderProps) => {
-  const [activeFile, setActiveFile] = useState<string | undefined>();
-  const [openTabs, setOpenTabs] = useState<string[]>([]);
-  const [tabs, setTabs] = useState<Tab[]>([]);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
+  
+  const [tabState, setTabState] = useState<UserTabState>({ tabs: [] });
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Generate storage key based on user ID
+  const getStorageKey = useCallback(() => {
+    return session?.user?.id ? `fileProvider_${session.user.id}` : 'fileProvider_anonymous';
+  }, [session?.user?.id]);
 
-  const openFile = (fileId: string, title: string, type: 'user' | 'plugin') => {
-    setActiveFile(fileId);
-    // Add to tabs if not already open
-    if (!openTabs.includes(fileId)) {
-      setOpenTabs(prev => [...prev, fileId]);
-      // Add to tabs array
-      setTabs(prev => [...prev, {
-        id: fileId,
-        type: type,
-        title: title
-      }]);
-    }
-    console.log('Opening file:', fileId);
-  };
-
-  const closeTab = (fileId: string) => {
-    setOpenTabs(prev => prev.filter(tab => tab !== fileId));
-    setTabs(prev => prev.filter(tab => tab.id !== fileId));
-    // If closing active tab, switch to the last remaining tab
-    if (activeFile === fileId) {
-      const remainingTabs = openTabs.filter(tab => tab !== fileId);
-      setActiveFile(remainingTabs.length > 0 ? remainingTabs[remainingTabs.length - 1] : undefined);
-    }
-  };
-
-  const updateTabTitle = (fileId: string, newTitle: string) => {
-    setTabs(prev => prev.map(tab => {
-      if (tab.id === fileId) {
-        return { ...tab, title: newTitle };
+  // Load tab state from session storage and handle initial URL
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const storageKey = getStorageKey();
+      const saved = sessionStorage.getItem(storageKey);
+      let initialState: UserTabState = { tabs: [] };
+      
+      if (saved) {
+        initialState = JSON.parse(saved) as UserTabState;
       }
-      return tab;
+      
+      // Handle direct navigation to a file URL
+      const urlFile = searchParams.get('file');
+      if (urlFile && !initialState.activeFile) {
+        // Only set URL file as active if we don't have existing state
+        initialState.activeFile = urlFile;
+      }
+      
+      setTabState(initialState);
+    } catch (error) {
+      console.warn('Failed to load tab state from session storage:', error);
+    }
+    setIsInitialized(true);
+  }, [getStorageKey, searchParams]);
+
+  // Save tab state to session storage whenever it changes
+  useEffect(() => {
+    if (!isInitialized || typeof window === 'undefined') return;
+    
+    try {
+      const storageKey = getStorageKey();
+      sessionStorage.setItem(storageKey, JSON.stringify(tabState));
+    } catch (error) {
+      console.warn('Failed to save tab state to session storage:', error);
+    }
+  }, [tabState, isInitialized, getStorageKey]);
+
+  // Sync URL with active file (one-way: session storage -> URL)
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    const urlFile = searchParams.get('file');
+    if (tabState.activeFile !== urlFile) {
+      const params = new URLSearchParams(searchParams.toString());
+      if (tabState.activeFile) {
+        params.set('file', tabState.activeFile);
+      } else {
+        params.delete('file');
+      }
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [tabState.activeFile, pathname, searchParams, router, isInitialized]);
+
+  const openContent = (filePath: string, title: string) => {
+    setTabState(prev => {
+      // If this file is already active, don't update state
+      if (prev.activeFile === filePath) {
+        return prev;
+      }
+      
+      const existingTab = prev.tabs.find(tab => tab.path === filePath);
+      const newTabs = existingTab 
+        ? prev.tabs 
+        : [...prev.tabs, { path: filePath, title }];
+      
+      return {
+        activeFile: filePath,
+        tabs: newTabs
+      };
+    });
+    console.log('Opening content:', filePath);
+  };
+
+  const closeTab = (filePath: string) => {
+    setTabState(prev => {
+      const newTabs = prev.tabs.filter(tab => tab.path !== filePath);
+      
+      // If closing active tab, switch to the last remaining tab
+      const newActiveFile = prev.activeFile === filePath 
+        ? (newTabs.length > 0 ? newTabs[newTabs.length - 1].path : undefined)
+        : prev.activeFile;
+      
+      return {
+        activeFile: newActiveFile,
+        tabs: newTabs
+      };
+    });
+  };
+
+  const updateTabTitle = (filePath: string, newTitle: string) => {
+    setTabState(prev => ({
+      ...prev,
+      tabs: prev.tabs.map(tab => 
+        tab.path === filePath ? { ...tab, title: newTitle } : tab
+      )
     }));
   };
 
   const getActiveTab = () => {
-    return tabs.find(tab => tab.id === activeFile);
+    return tabState.tabs.find(tab => tab.path === tabState.activeFile);
   };
 
   const value: FileContextType = {
-    activeFile,
-    setActiveFile,
-    openFile,
+    activeFile: tabState.activeFile,
+    openContent,
     updateTabTitle,
-    openTabs,
-    tabs,
+    openTabs: tabState.tabs.map(tab => tab.path),
+    tabs: tabState.tabs,
     closeTab,
     getActiveTab,
   };

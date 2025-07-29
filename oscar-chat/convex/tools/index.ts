@@ -57,12 +57,11 @@ export function getToolsForAI(toolContext: ToolContext) {
       description: toolDef.description,
       inputSchema: toolDef.parameters,
       execute: async (params: any) => {
-        console.log(`Executing tool: ${name}`, params);
         
         try {
           const result = await toolDef.execute(params, toolContext);
           console.log(`Tool ${name} result:`, result);
-          return result;
+        return result;
         } catch (error) {
           console.error(`Tool ${name} error:`, error);
           return { success: false, error: `Tool execution failed: ${error}` };

@@ -11,14 +11,14 @@ export const FilesHeader = ({
       <span className="text-xs uppercase tracking-wide">Files</span>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          onClick={onCreateFile}
+          onClick={() => onCreateFile()}
           className="p-1 hover:bg-sidebar-accent-hover rounded-sm transition-colors"
           title="New File"
         >
           <FilePlus className="h-4 w-4" />
         </button>
         <button
-          onClick={onCreateFolder}
+          onClick={() => onCreateFolder()}
           className="p-1 hover:bg-sidebar-accent-hover rounded-sm transition-colors"
           title="New Folder"
         >

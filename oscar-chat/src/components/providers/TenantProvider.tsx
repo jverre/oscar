@@ -55,37 +55,26 @@ interface TenantProviderProps {
 export const TenantProvider = ({ children, subdomain }: TenantProviderProps) => {
   const { data: session, status: sessionStatus } = useSession();
   
-  // Get organization by subdomain (unauthenticated query)
-  const organization = useQuery(
-    api.users.getOrganizationBySubdomain,
-    { subdomain }
-  );
-  
-  // Validate tenant access if user is authenticated
-  const accessResult = useQuery(
-    api.users.validateTenantAccess,
-    session?.user?.id && subdomain !== null
-      ? { userId: session.user.id, tenant: subdomain || "" }
-      : "skip"
+  // Single consolidated query for tenant info
+  const tenantInfo = useQuery(
+    api.users.getTenantInfo,
+    {
+      subdomain: subdomain || "",
+      userId: session?.user?.id
+    }
   );
 
-  const isLoading = sessionStatus === "loading" || 
-    Boolean(subdomain && organization === undefined) ||
-    Boolean(session && subdomain !== null && accessResult === undefined);
-
+  const isLoading = sessionStatus === "loading" || tenantInfo === undefined;
   const isAuthenticated = !!session;
+  const organization = tenantInfo?.organization || null;
   const organizationId = organization?._id || null;
+  const hasAccess = tenantInfo?.hasAccess || false;
+  const accessReason = tenantInfo?.accessReason || null;
   
-  // For base domain (empty subdomain), allow unauthenticated access
-  const hasAccess = subdomain === null 
-    ? true  // Base domain - always allow access (unauthenticated or authenticated)
-    : Boolean(accessResult?.hasAccess); // Subdomain - require auth validation
-    
   // Ensure user has required properties and is typed correctly
-  const user: UserWithOrganization | null = accessResult?.user && 'email' in accessResult.user 
-    ? accessResult.user as UserWithOrganization
+  const user: UserWithOrganization | null = tenantInfo?.user && 'email' in tenantInfo.user 
+    ? tenantInfo.user as UserWithOrganization
     : null;
-  const accessReason = accessResult?.reason || null;
 
   const value: TenantContextType = {
     subdomain,
