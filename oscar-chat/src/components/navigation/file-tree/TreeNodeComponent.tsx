@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { ChevronRight, Edit2, Trash2, Globe, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Id } from "../../../../convex/_generated/dataModel";
 import { useFileContext } from "@/components/providers/FileProvider";
 import {
   ContextMenu,
@@ -119,7 +118,6 @@ export const TreeNodeComponent = ({
           {(node.isEditing && node.isPending) || isRenaming ? (
             <InlineEditor
               initialName={node.name}
-              isFile={node.isFile}
               onSave={handleSave}
               onCancel={handleCancel}
             />

@@ -54,9 +54,9 @@ def update_constants_file(snapshots):
     
     # Define file extensions for each template
     file_extensions = {
-        "blog": "md",
-        "canvas": "canvas", 
-        "xterm": "sh"
+        "blog": ".blog",
+        "canvas": ".canvas", 
+        "xterm": ".sh"
     }
     
     # Build the new MARKETPLACE_PLUGINS object
@@ -64,7 +64,7 @@ def update_constants_file(snapshots):
     for template, snapshot_id in snapshots.items():
         plugins_code += f'  {template}: {{\n'
         plugins_code += f'    name: "{template}",\n'
-        plugins_code += f'    fileExtension: ".{file_extensions.get(template, "txt")}",\n'
+        plugins_code += f'    fileExtension: "{file_extensions.get(template, ".txt")}",\n'
         plugins_code += f'    snapshotId: "{snapshot_id}",\n'
         plugins_code += f'    isActive: true\n'
         plugins_code += f'  }},\n'

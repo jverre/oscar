@@ -3,7 +3,6 @@
 import React from 'react';
 import { useFileContext } from '@/components/providers/FileProvider';
 import { PluginBuilder } from '@/components/plugins/PluginBuilder';
-import { PluginFileComponent } from '@/components/plugins/PluginFileComponent';
 import { UserFileViewer } from '@/components/plugins/UserFileViewer';
 import { Id } from '../../../convex/_generated/dataModel';
 

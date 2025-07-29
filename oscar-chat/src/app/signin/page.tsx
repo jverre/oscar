@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useSession } from "next-auth/react";
 import { useMutation, useQuery } from "convex/react";
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +54,7 @@ function SignInContent() {
               <CardHeader>
                 <CardTitle>Access Denied</CardTitle>
                 <CardDescription>
-                  You don't have access to the "{workspace}" workspace.
+                  You don&apos;t have access to the &quot;{workspace}&quot; workspace.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -107,7 +107,7 @@ function SignInContent() {
           <CardHeader>
             <CardTitle>Welcome back!</CardTitle>
             <CardDescription>
-              You're signed in as {user.email}
+              You&apos;re signed in as {user.email}
             </CardDescription>
           </CardHeader>
           <CardContent>

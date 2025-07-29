@@ -3,13 +3,13 @@ import { Lock, Globe } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useTenant } from "@/components/providers/TenantProvider";
-import { FileTreeProps, PendingItem } from "./types";
+import { PendingItem } from "./types";
 import { FilesHeader } from "./FilesHeader";
 import { FileGroupSection } from "./FileGroupSection";
 import { Id } from "../../../../convex/_generated/dataModel";
 
 export const FileTree = () => {
-  const { organizationId, isAuthenticated, user } = useTenant();
+  const { organizationId, user } = useTenant();
   const createFileMutation = useMutation(api.files.createFile);
   const createFolderMutation = useMutation(api.files.createFolder);
   const deleteFileMutation = useMutation(api.files.deleteFile);
@@ -137,7 +137,6 @@ export const FileTree = () => {
     return (
       <div className="w-full bg-background font-mono text-xs">
         <FilesHeader 
-          organizationId={organizationId}
           onCreateFile={handleCreateFile}
           onCreateFolder={handleCreateFolder}
         />
@@ -158,7 +157,6 @@ export const FileTree = () => {
     return (
       <div className="w-full bg-background font-mono text-xs">
         <FilesHeader 
-          organizationId={organizationId}
           onCreateFile={handleCreateFile}
           onCreateFolder={handleCreateFolder}
         />
@@ -172,7 +170,6 @@ export const FileTree = () => {
   return (
     <div className="w-full bg-background font-mono text-xs">
       <FilesHeader 
-        organizationId={organizationId}
         onCreateFile={handleCreateFile}
         onCreateFolder={handleCreateFolder}
       />

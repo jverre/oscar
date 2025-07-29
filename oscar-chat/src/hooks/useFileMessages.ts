@@ -4,13 +4,13 @@ import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 
 // Helper functions for message serialization
-function serializeMessage(message: any): ArrayBuffer {
+function serializeMessage(message: unknown): ArrayBuffer {
   const encoder = new TextEncoder();
   const uint8Array = encoder.encode(JSON.stringify(message));
   return uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength) as ArrayBuffer;
 }
 
-function deserializeMessage(bytes: ArrayBuffer): any {
+function deserializeMessage(bytes: ArrayBuffer): unknown {
   const decoder = new TextDecoder();
   return JSON.parse(decoder.decode(new Uint8Array(bytes)));
 }
@@ -33,7 +33,7 @@ export function useFileMessages(fileId?: Id<"files">, organizationId?: Id<"organ
   const deleteMessageForFileMutation = useMutation(api.fileMessages.deleteMessageForFile);
   
   // Function to create a new message
-  const createMessage = async (message: any) => {
+  const createMessage = async (message: unknown) => {
     if (!fileId || !organizationId || !session?.user?.id) {
       throw new Error('Missing required parameters');
     }
@@ -48,7 +48,7 @@ export function useFileMessages(fileId?: Id<"files">, organizationId?: Id<"organ
   };
   
   // Function to update an existing message
-  const updateMessage = async (messageId: Id<"fileMessages">, message: any) => {
+  const updateMessage = async (messageId: Id<"fileMessages">, message: unknown) => {
     if (!organizationId || !session?.user?.id) {
       throw new Error('Missing required parameters');
     }

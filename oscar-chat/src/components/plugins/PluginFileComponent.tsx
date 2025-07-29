@@ -11,12 +11,11 @@ import { ChatSidebar } from './ChatSidebar';
 
 interface PluginFileComponentProps {
   pluginId: string;
-  filePath: string;
   fileName: string;
   organizationId: string;
 }
 
-export const PluginFileComponent = ({ pluginId, filePath, fileName, organizationId }: PluginFileComponentProps) => {
+export const PluginFileComponent = ({ pluginId, fileName, organizationId }: PluginFileComponentProps) => {
   return (
     <div className="h-full bg-background">
       <ResizablePanelGroup direction="horizontal" className="h-full">
@@ -24,7 +23,6 @@ export const PluginFileComponent = ({ pluginId, filePath, fileName, organization
         <ResizablePanel defaultSize={70} minSize={50}>
           <PluginFileViewer
             pluginId={pluginId}
-            filePath={filePath}
             fileName={fileName}
             organizationId={organizationId}
           />

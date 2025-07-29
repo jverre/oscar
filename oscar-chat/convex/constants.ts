@@ -10,20 +10,20 @@ export const SUBDOMAIN_REGEX = /^[a-z0-9-]{3,32}$/;
 export const MARKETPLACE_PLUGINS = {
   blog: {
     name: "blog",
-    fileExtension: ".md",
-    snapshotId: "im-u6wwP8eRV6b0dvhLK81ihQ",
+    fileExtension: ".blog",
+    snapshotId: "im-9Y9bpOgjF7ILC6XNR5kOdy",
     isActive: true
   },
   canvas: {
     name: "canvas",
     fileExtension: ".canvas",
-    snapshotId: "im-Mn9VtH8UoORDiLExz9Oee8",
+    snapshotId: "im-5hi7Pwd7blAeB83XN0bqmU",
     isActive: true
   },
   xterm: {
     name: "xterm",
     fileExtension: ".sh",
-    snapshotId: "im-GQMURnEry0tFntTu4AhqXA",
+    snapshotId: "im-HTn3jGkBOmgdR8BlmvUrCN",
     isActive: true
   }
 };

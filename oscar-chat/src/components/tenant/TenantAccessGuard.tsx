@@ -87,12 +87,12 @@ export function TenantAccessGuard({ children }: TenantAccessGuardProps) {
             <CardHeader>
               <CardTitle>Access Denied</CardTitle>
               <CardDescription>
-                You don't have access to the "{subdomain}" workspace.
+                You don&apos;t have access to the &quot;{subdomain}&quot; workspace.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                You are signed in as {'email' in user ? user.email : 'unknown'} and belong to the "{user.organization.name}" workspace.
+                You are signed in as {`${'email' in user ? user.email : 'unknown'}`} and belong to the `{user.organization.name}` workspace.
               </p>
               <Button
                 onClick={() => {
@@ -131,7 +131,7 @@ export function TenantAccessGuard({ children }: TenantAccessGuardProps) {
           <CardHeader>
             <CardTitle>Access Denied</CardTitle>
             <CardDescription>
-              You don't have access to this workspace.
+              You don&apos;t have access to this workspace.
             </CardDescription>
           </CardHeader>
         </Card>

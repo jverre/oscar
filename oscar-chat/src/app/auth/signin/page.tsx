@@ -48,7 +48,7 @@ export default function SignInPage() {
           <CardHeader>
             <CardTitle>Welcome back!</CardTitle>
             <CardDescription>
-              You're signed in as {user.email}
+              You&apos;re signed in as {user.email}
             </CardDescription>
           </CardHeader>
           <CardContent>

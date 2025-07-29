@@ -16,7 +16,7 @@ interface PluginFileViewerProps {
   organizationId: string;
 }
 
-export const PluginFileViewer = ({ pluginId, filePath, fileName, organizationId }: PluginFileViewerProps) => {
+export const PluginFileViewer = ({ pluginId, fileName, organizationId }: Omit<PluginFileViewerProps, 'filePath'>) => {
   const { data: session } = useSession();
   const createSandbox = useMutation(api.sandboxes.createSandboxForFile);
 
@@ -28,7 +28,6 @@ export const PluginFileViewer = ({ pluginId, filePath, fileName, organizationId 
   const fileId = file?._id;
   const isAuthenticated = !!session?.user?.id;
 
-  // Try to get sandbox - include isPublicAccess parameter
   const sandbox = useQuery(
     api.sandboxes.getSandboxForFile,
     fileId ? {
@@ -55,16 +54,16 @@ export const PluginFileViewer = ({ pluginId, filePath, fileName, organizationId 
     }
   }, [sandbox, createSandbox, fileId, organizationId, isAuthenticated]);
 
-  const handlePluginMessage = (message: any) => {
+  const handlePluginMessage = (message: unknown) => {
     console.log('Plugin message:', message);
   };
 
-  const handleSaveMessage = async (messageData: any) => {
+  const handleSaveMessage = async (messageData: unknown) => {
     // PluginFileViewer doesn't implement message saving - placeholder only
     console.log('PluginFileViewer - Message save not implemented:', messageData);
   };
 
-  const handleUpdateMessage = async (messageId: string, messageData: any) => {
+  const handleUpdateMessage = async (messageId: string, messageData: unknown) => {
     // PluginFileViewer doesn't implement message updating - placeholder only
     console.log('PluginFileViewer - Message update not implemented:', messageId, messageData);
   };

@@ -31,6 +31,7 @@ import type {
       });
       return { ...session, id };
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async createUser({ id: _, ...user }: User) {
       const id = await callMutation(api.authAdapter.createUser, {
         user: toDB(user),
@@ -137,17 +138,17 @@ import type {
     query: Query,
     args: Omit<FunctionArgs<Query>, "secret">,
   ) {
-    return fetchQuery(query, addSecret(args) as any);
+    return fetchQuery(query, addSecret(args) as FunctionArgs<Query>);
   }
   
   function callMutation<Mutation extends FunctionReference<"mutation">>(
     mutation: Mutation,
     args: Omit<FunctionArgs<Mutation>, "secret">,
   ) {
-    return fetchMutation(mutation, addSecret(args) as any);
+    return fetchMutation(mutation, addSecret(args) as FunctionArgs<Mutation>);
   }
   
-  function addSecret(args: Record<string, any>) {
+  function addSecret(args: Record<string, unknown>) {
     if (process.env.CONVEX_AUTH_ADAPTER_SECRET === undefined) {
       throw new Error("Missing CONVEX_AUTH_ADAPTER_SECRET environment variable");
     }
@@ -193,10 +194,7 @@ import type {
     return { ...verificationToken, expires: new Date(verificationToken.expires) };
   }
   
-  function maybeDate(value: number | undefined) {
-    return value === undefined ? null : new Date(value);
-  }
-  
+    
   function toDB<T extends object>(
     obj: T,
   ): {
@@ -206,10 +204,16 @@ import type {
         ? undefined
         : T[K];
   } {
-    const result: any = {};
+    const result = {} as {
+      [K in keyof T]: T[K] extends Date
+        ? number
+        : null extends T[K]
+          ? undefined
+          : T[K];
+    };
     for (const key in obj) {
       const value = obj[key];
-      result[key] =
+      (result as Record<string, unknown>)[key] =
         value instanceof Date
           ? value.getTime()
           : value === null

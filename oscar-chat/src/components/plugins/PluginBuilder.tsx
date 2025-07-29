@@ -6,9 +6,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowUp, MessageSquare } from "lucide-react";
 import { useQuery, useMutation } from 'convex/react';
 import { useSession } from 'next-auth/react';
 import { api } from '../../../convex/_generated/api';
@@ -61,7 +59,7 @@ function MainContent({ fileId }: PluginBuilderProps) {
   const handlePluginNameBlur = () => {
     if (pluginId && updatePlugin && !pluginId.startsWith('marketplace_') && currentUser?.organization?._id) {
       updatePlugin({ 
-        pluginId: pluginId as any, 
+        pluginId: pluginId as Id<"plugins">, 
         organizationId: currentUser.organization._id,
         name: pluginName 
       });
@@ -73,7 +71,7 @@ function MainContent({ fileId }: PluginBuilderProps) {
   const handleExtensionBlur = () => {
     if (pluginId && updatePlugin && fileExtension && !pluginId.startsWith('marketplace_') && currentUser?.organization?._id) {
       updatePlugin({ 
-        pluginId: pluginId as any, 
+        pluginId: pluginId as Id<"plugins">, 
         organizationId: currentUser.organization._id,
         fileExtension 
       });

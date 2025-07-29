@@ -1,6 +1,20 @@
+interface Message {
+  role: 'user' | 'assistant' | 'tool';
+  content: MessageContent | string;
+}
+
+type MessageContent = MessagePart[];
+
+interface MessagePart {
+  type: 'tool-call' | 'tool-result' | 'text';
+  toolCallId?: string;
+  text?: string;
+  [key: string]: unknown;
+}
+
 export interface MessageGroup {
-  userMessage?: any;
-  toolCalls: Map<string, { call?: any; result?: any }>;
+  userMessage?: Message;
+  toolCalls: Map<string, { call?: MessagePart; result?: MessagePart }>;
   assistantText?: string;
 }
 
@@ -9,7 +23,7 @@ export const createMessageGroup = (): MessageGroup => ({
   assistantText: undefined,
 });
 
-export const processMessage = (message: any, currentGroup: MessageGroup | null): MessageGroup => {
+export const processMessage = (message: Message, currentGroup: MessageGroup | null): MessageGroup => {
   if (message.role === 'user') {
     return {
       userMessage: message,
@@ -24,10 +38,10 @@ export const processMessage = (message: any, currentGroup: MessageGroup | null):
     if (Array.isArray(message.content)) {
       for (const part of message.content) {
         if (part.type === 'tool-call') {
-          const existing = group.toolCalls.get(part.toolCallId) || {};
-          group.toolCalls.set(part.toolCallId, { ...existing, call: part });
+          const existing = group.toolCalls.get(part.toolCallId || '') || {};
+          group.toolCalls.set(part.toolCallId || '', { ...existing, call: part });
         } else if (part.type === 'text') {
-          group.assistantText = (group.assistantText || '') + part.text;
+          group.assistantText = (group.assistantText || '') + (part.text || '');
         }
       }
     } else if (typeof message.content === 'string') {
@@ -36,8 +50,8 @@ export const processMessage = (message: any, currentGroup: MessageGroup | null):
   } else if (message.role === 'tool' && Array.isArray(message.content)) {
     for (const part of message.content) {
       if (part.type === 'tool-result') {
-        const existing = group.toolCalls.get(part.toolCallId) || {};
-        group.toolCalls.set(part.toolCallId, { ...existing, result: part });
+        const existing = group.toolCalls.get(part.toolCallId || '') || {};
+        group.toolCalls.set(part.toolCallId || '', { ...existing, result: part });
       }
     }
   }
@@ -45,7 +59,7 @@ export const processMessage = (message: any, currentGroup: MessageGroup | null):
   return group;
 };
 
-export const groupMessages = (messages: any[]): MessageGroup[] => {
+export const groupMessages = (messages: Message[]): MessageGroup[] => {
   const groups: MessageGroup[] = [];
   let currentGroup: MessageGroup | null = null;
 

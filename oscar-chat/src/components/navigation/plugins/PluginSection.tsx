@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { useSession } from "next-auth/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -26,33 +26,27 @@ const PluginItem = ({
   onOpenPlugin,
   isTabActive,
   isExpanded,
-  onToggleExpanded,
-  organizationId
+  onToggleExpanded
 }: {
-  plugin: any;
-  onDelete?: (id: any) => void;
+  plugin: Record<string, unknown>;
+  onDelete?: (id: string) => void;
   onOpenPlugin?: (fileId: string) => void;
   isTabActive?: boolean;
   isExpanded?: boolean;
   onToggleExpanded?: (pluginId: string) => void;
-  organizationId: Id<"organizations">;
 }) => {
-  const { openFile } = useFileContext();
 
   const handlePluginClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.chevron-button')) {
       return;
     }
     if (plugin.fileId) {
-      onOpenPlugin?.(plugin.fileId);
+      onOpenPlugin?.(plugin.fileId as string);
     } else {
       console.warn(`Plugin ${plugin.name} has no fileId yet`);
     }
   };
 
-  const handleFileClick = (_: string, fileName: string, filePath: string) => {
-    openFile(filePath, fileName, 'plugin');
-  };
 
   return (
     <div>
@@ -70,7 +64,7 @@ const PluginItem = ({
                 className="chevron-button flex items-center justify-center w-4 h-4 mr-1 flex-shrink-0 cursor-pointer hover:bg-sidebar-accent-hover rounded-sm transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onToggleExpanded?.(plugin._id);
+                  onToggleExpanded?.(plugin._id as string);
                 }}
               >
                 {isExpanded ? (
@@ -81,10 +75,10 @@ const PluginItem = ({
               </div>
               
               <span className="truncate text-xs leading-none">
-                {plugin.name}
+                {String(plugin.name)}
               </span>
               
-              {plugin.isTemplate && (
+              {Boolean(plugin.isTemplate) && (
                 <span className="text-xs text-blue-500/80 ml-1">(default)</span>
               )}
             </div>
@@ -94,7 +88,7 @@ const PluginItem = ({
         {!plugin.isTemplate && (
           <ContextMenuContent>
             <ContextMenuItem 
-              onClick={() => onDelete?.(plugin._id)}
+              onClick={() => onDelete?.(plugin._id as string)}
               className="text-red-600"
             >
               Delete
@@ -104,11 +98,7 @@ const PluginItem = ({
       </ContextMenu>
       
       {isExpanded && (
-        <PluginFileList
-          pluginId={plugin._id}
-          organizationId={organizationId}
-          onFileClick={handleFileClick}
-        />
+        <PluginFileList />
       )}
     </div>
   );
@@ -119,7 +109,7 @@ export const PluginSection = ({ organizationId }: PluginSectionProps) => {
   const { openFile, activeFile, closeTab } = useFileContext();
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedPlugins, setExpandedPlugins] = useState<Set<string>>(new Set());
-  const [plugins, setPlugins] = useState<any[]>([]);
+  const [plugins, setPlugins] = useState<Record<string, unknown>[]>([]);
   const getPlugins = useMutation(api.plugins.getPlugins);
   const createPlugin = useMutation(api.plugins.createPlugin);
   const deletePlugin = useMutation(api.plugins.deletePlugin);
@@ -131,7 +121,7 @@ export const PluginSection = ({ organizationId }: PluginSectionProps) => {
         organizationId,
       }).then(setPlugins);
     }
-  }, [session?.user?.id, organizationId]);
+  }, [session?.user?.id, organizationId, getPlugins]);
   
   const handleCreatePlugin = async () => {
     if (!session?.user?.id) return;
@@ -172,7 +162,7 @@ export const PluginSection = ({ organizationId }: PluginSectionProps) => {
       // Find the plugin to get its fileId
       const plugin = plugins?.find(p => p._id === pluginId);
       if (plugin?.fileId) {
-        closeTab(plugin.fileId);
+        closeTab(String(plugin.fileId));
       }
       await deletePlugin({ organizationId, pluginId });
       
@@ -233,14 +223,13 @@ export const PluginSection = ({ organizationId }: PluginSectionProps) => {
         <div>
           {plugins?.map((plugin) => (
             <PluginItem
-              key={plugin._id}
+              key={plugin._id as string}
               plugin={plugin}
-              onDelete={handleDeletePlugin}
-              onOpenPlugin={(fileId) => openFile(fileId, plugin.name, 'plugin')}
+              onDelete={(id) => handleDeletePlugin(id as Id<"plugins">)}
+              onOpenPlugin={(fileId) => openFile(fileId, String(plugin.name), 'plugin')}
               isTabActive={activeFile === plugin.fileId}
-              isExpanded={expandedPlugins.has(plugin._id)}
+              isExpanded={expandedPlugins.has(plugin._id as string)}
               onToggleExpanded={handleTogglePluginExpanded}
-              organizationId={organizationId}
             />
           ))}
           

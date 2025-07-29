@@ -38,7 +38,7 @@ export interface TreeNodeComponentProps {
 
 export interface FileGroupSectionProps {
   title: string;
-  files: any[];
+  files: unknown[];
   icon: React.ReactNode;
   isPublic: boolean;
   pendingItems: PendingItem[];

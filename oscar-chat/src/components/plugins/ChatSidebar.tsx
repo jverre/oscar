@@ -133,8 +133,8 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
                       const toolName = part.type.slice(5); // Remove 'tool-' prefix
                       
                       // Type guard to check if this is a tool UI part with the expected properties
-                      const isToolPart = (p: any): p is { state: string; input?: any; output?: any; errorText?: string } => {
-                        return 'state' in p;
+                      const isToolPart = (p: unknown): p is { state: string; input?: unknown; output?: unknown; errorText?: string } => {
+                        return typeof p === 'object' && p !== null && 'state' in p;
                       };
                       
                       if (!isToolPart(part)) {

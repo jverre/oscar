@@ -3,10 +3,9 @@ import { InlineEditorProps } from "./types";
 
 export const InlineEditor = ({ 
   initialName, 
-  isFile, 
   onSave, 
   onCancel 
-}: InlineEditorProps) => {
+}: Omit<InlineEditorProps, 'isFile'>) => {
   const [name, setName] = useState(initialName);
   const inputRef = useRef<HTMLInputElement>(null);
 

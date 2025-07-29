@@ -29,9 +29,19 @@ interface ToolInvocationProps {
   toolInvocation: {
     toolCallId: string;
     toolName: string;
-    args?: any;
+    args?: Record<string, unknown>;
     state: 'partial-call' | 'call' | 'result';
-    result?: any;
+    result?: {
+      data?: {
+        stdout?: string;
+        stderr?: string;
+        content?: string;
+        files?: unknown[];
+        [key: string]: unknown;
+      };
+      error?: string;
+      success?: boolean;
+    };
     timestamp?: number;
   };
 }
@@ -52,52 +62,59 @@ export function ToolInvocationComponent({ toolInvocation }: ToolInvocationProps)
   const isComplete = toolInvocation.state === 'result';
   const isSuccess = isComplete && toolInvocation.result?.success !== false && !toolInvocation.result?.error;
   const hasOutput = isComplete && (toolInvocation.result?.data || toolInvocation.result?.error);
-  const hasError = isComplete && toolInvocation.result?.error;
 
   const getCommandDetails = () => {
     if (!toolInvocation.args) return null;
     
     const { args, toolName } = toolInvocation;
+    const argsTyped = args as Record<string, unknown>;
     const detailsMap = {
-      execute_command: () => args.command,
-      read_file: () => args.filePath || args.path,
-      write_file: () => args.filePath || args.path,
-      list_files: () => args.path || args.directory || '/',
+      execute_command: () => argsTyped.command,
+      read_file: () => argsTyped.filePath || argsTyped.path,
+      write_file: () => argsTyped.filePath || argsTyped.path,
+      list_files: () => argsTyped.path || argsTyped.directory || '/',
     };
     
-    return detailsMap[toolName as keyof typeof detailsMap]?.() || null;
+    const result = detailsMap[toolName as keyof typeof detailsMap]?.();
+    return typeof result === 'string' ? result : null;
   };
 
-  const getFormattedOutput = () => {
+  const getFormattedOutput = (): string | null => {
     const { result, toolName } = toolInvocation;
     if (!result) return null;
     
-    if (result.error) return result.error;
+    if (result.error) return String(result.error);
     if (!result.data) return null;
 
     const formatters = {
       execute_command: () => {
-        const { stdout, stderr } = result.data;
+        const data = result.data as { stdout?: string; stderr?: string };
+        const { stdout, stderr } = data;
         const output = [stdout, stderr].filter(Boolean).join('\n');
         return output || 'Command completed with no output';
       },
       read_file: () => {
-        const content = result.data.content || result.data;
+        const data = result.data as { content?: string };
+        const content = data.content || result.data;
         if (typeof content === 'string') {
           return content.length > LIMITS.contentTruncateLength 
             ? content.slice(0, LIMITS.contentTruncateLength) + '...' 
             : content;
         }
-        return content;
+        return String(content);
       },
       list_files: () => {
-        const files = result.data.files || result.data;
-        return Array.isArray(files) ? `Found ${files.length} items` : files;
+        const data = result.data as { files?: unknown[] };
+        const files = data.files || result.data;
+        return Array.isArray(files) ? `Found ${files.length} items` : String(files);
       },
     };
 
     const formatter = formatters[toolName as keyof typeof formatters];
-    if (formatter) return formatter();
+    if (formatter) {
+      const formatted = formatter();
+      return typeof formatted === 'string' ? formatted : String(formatted);
+    }
     
     return typeof result.data === 'string' 
       ? result.data 

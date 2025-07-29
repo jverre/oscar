@@ -6,9 +6,12 @@ interface ToolCallMessageProps {
     toolInvocation: {
       toolCallId: string;
       toolName: string;
-      args?: any;
+      args?: Record<string, unknown>;
       state: 'partial-call' | 'call' | 'result';
-      result?: any;
+      result?: {
+        data?: unknown;
+        error?: string;
+      };
     };
   };
 }
@@ -60,7 +63,7 @@ export function ToolCallMessage({ part }: ToolCallMessageProps) {
             </div>
             {hasOutput && (
               <div className="text-xs font-mono bg-muted/30 rounded p-2 border border-border max-h-32 overflow-y-auto">
-                {hasError ? toolInvocation.result.error : JSON.stringify(toolInvocation.result?.data, null, 2)}
+                {hasError ? toolInvocation.result?.error : JSON.stringify(toolInvocation.result?.data, null, 2)}
               </div>
             )}
           </div>

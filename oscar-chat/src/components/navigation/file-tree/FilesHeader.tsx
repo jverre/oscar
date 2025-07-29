@@ -3,10 +3,9 @@ import { FilePlus, FolderPlus } from "lucide-react";
 import { FilesHeaderProps } from "./types";
 
 export const FilesHeader = ({ 
-  organizationId,
   onCreateFile,
   onCreateFolder 
-}: FilesHeaderProps) => {
+}: Omit<FilesHeaderProps, 'organizationId'>) => {
   return (
     <div className="group flex items-center justify-between h-8 px-2 text-sm font-medium text-foreground/80 border-b border-sidebar-border mb-2">
       <span className="text-xs uppercase tracking-wide">Files</span>

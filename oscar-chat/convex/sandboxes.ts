@@ -29,11 +29,24 @@ export const createSandboxViaModal = internalAction({
     const responseText = await modalResponse.json();
     console.log("[SANDBOX_CREATE] Raw modal response text:", responseText);
 
+    const sandboxUrl = responseText.tunnel_info.tunnel_url;
+
+    // Wait a bit for sandbox to be ready
+    for (let i = 0; i < 20; i++) {
+      try {
+        await fetch(sandboxUrl, { method: "HEAD" });
+        console.log(`[SANDBOX_CREATE] Sandbox ready after ${i + 1} attempts`);
+        break;
+      } catch {
+        if (i < 19) await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
     await ctx.runMutation(internal.sandboxes.updateSandbox, {
       sandboxId: args.sandboxId,
       status: "active",
       modalSandboxId: responseText.sandbox_id,
-      sandboxUrl: responseText.tunnel_info.tunnel_url,
+      sandboxUrl: sandboxUrl,
     });
   }
 });
@@ -97,6 +110,49 @@ export const updateSandbox = internalMutation({
       status: args.status,
       modalSandboxId: args.modalSandboxId,
       sandboxUrl: args.sandboxUrl,
+      expiresAt: Date.now() + 60 * 60 * 1000, // 60 minutes from now
+    });
+  }
+});
+
+export const deleteSandbox = internalMutation({
+  args: {
+    sandboxId: v.id("sandboxes"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.sandboxId);
+  }
+});
+
+export const refreshSandbox = mutation({
+  args: {
+    fileId: v.id("files"),
+    organizationId: v.id("organizations"),
+    isPublicAccess: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    // For private access, require user to be a member of the organization
+    if (!args.isPublicAccess) {
+      await requireOrgMember(ctx, args.organizationId);
+    }
+    
+    // Delete existing sandbox if it exists
+    const existingSandbox = await ctx.db
+      .query("sandboxes")
+      .filter((q) => 
+        q.eq(q.field("fileId"), args.fileId)
+      )
+      .first();
+    
+    if (existingSandbox) {
+      await ctx.db.delete(existingSandbox._id);
+    }
+    
+    // Create new sandbox - reuse the logic from createSandboxForFile
+    await ctx.runMutation(api.sandboxes.createSandboxForFile, {
+      fileId: args.fileId,
+      organizationId: args.organizationId,
+      isPublicAccess: args.isPublicAccess,
     });
   }
 });
@@ -143,20 +199,18 @@ export const createSandboxForFile = mutation({
       organizationId: file.organizationId,
     });
 
-    let pluginId: Id<"plugins">;
     let plugin: any;
 
     if (file.type === "user") {
-      const extension = file.path.split(".").pop() as string;
-      const extensionWithDot = `.${extension}`;
+      const extension = `.${file.path.split(".").pop()}` as string;
       console.log("[DEBUG] Looking for plugin by extension:", {
-        extension: extensionWithDot,
+        extension: extension,
         filePath: file.path,
         organizationId: args.organizationId,
       });
       
       plugin = await ctx.runQuery(internal.plugins.getPluginByExtension, {
-        extension: extensionWithDot,
+        extension: extension,
         organizationId: args.organizationId,
       });
 

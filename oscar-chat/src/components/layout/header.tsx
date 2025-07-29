@@ -1,7 +1,7 @@
 "use client";
 
 import { Command as CommandIcon, FileText, Menu } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -40,6 +40,39 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
   const filteredCommands = commands.filter(command =>
     command.title.toLowerCase().includes(searchValue.toLowerCase())
   );
+
+  const handleCreateFile = useCallback(async () => {
+    if (!fileNameInput.trim() || !user?.organization?._id || !session?.user?.id) {
+      return;
+    }
+
+    try {
+      const fileName = fileNameInput.trim();
+      const filePath = fileName.endsWith('.blog') ? fileName : `${fileName}.blog`;
+      
+      console.log("Creating file with organizationId:", user.organization._id);
+      
+      await createFileMutation({
+        organizationId: user.organization._id,
+        path: filePath,
+        content: "",
+        type: "user",
+        isPublic: false,
+      });
+
+      // Reset state
+      setOpen(false);
+      setIsCreatingFile(false);
+      setFileNameInput("");
+      setSearchValue("");
+      setSelectedIndex(0);
+      
+      // TODO: Navigate to the created file or refresh file tree
+      console.log(`Created blog file: ${filePath}`);
+    } catch (error) {
+      console.error("Failed to create file:", error);
+    }
+  }, [fileNameInput, user?.organization?._id, session?.user?.id, createFileMutation, setOpen, setIsCreatingFile, setFileNameInput, setSearchValue, setSelectedIndex]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -94,7 +127,7 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
       document.removeEventListener("keydown", down);
       document.removeEventListener("mousedown", clickOutside);
     };
-  }, [open, selectedIndex, filteredCommands, isCreatingFile, fileNameInput, user]);
+  }, [open, selectedIndex, filteredCommands, isCreatingFile, fileNameInput, user, handleCreateFile]);
 
   const executeCommand = (commandId: string) => {
     if (commandId === "create-blog") {
@@ -110,39 +143,6 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
     }
   };
 
-  const handleCreateFile = async () => {
-    if (!fileNameInput.trim() || !user?.organization?._id || !session?.user?.id) {
-      return;
-    }
-
-    try {
-      const fileName = fileNameInput.trim();
-      const filePath = fileName.endsWith('.blog') ? fileName : `${fileName}.blog`;
-      
-      console.log("Creating file with organizationId:", user.organization._id);
-      
-      await createFileMutation({
-        organizationId: user.organization._id,
-        path: filePath,
-        content: "",
-        type: "user",
-        isPublic: false,
-      });
-
-      // Reset state
-      setOpen(false);
-      setIsCreatingFile(false);
-      setFileNameInput("");
-      setSearchValue("");
-      setSelectedIndex(0);
-      
-      // TODO: Navigate to the created file or refresh file tree
-      console.log(`Created blog file: ${filePath}`);
-    } catch (error) {
-      console.error("Failed to create file:", error);
-      // TODO: Show error toast
-    }
-  };
 
   return (
     <header className="border-b border-border h-[28px] flex items-center px-4">

@@ -1,23 +1,24 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 
 interface PluginMessage {
   type: 'PLUGIN_READY' | 'PLUGIN_EVENT' | 'PLUGIN_CLOSE' | 'SAVE_MESSAGE' | 'UPDATE_MESSAGE';
-  payload?: any;
+  payload?: unknown;
 }
 
 interface HostMessage {
   type: 'INIT' | 'UPDATE' | 'COMMAND' | 'FILE_MESSAGES' | 'MESSAGE_SAVED' | 'MESSAGE_ERROR';
-  payload?: any;
+  payload?: unknown;
 }
 
 // Helper functions for message serialization
-function serializeMessage(message: any): ArrayBuffer {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function serializeMessage(messageObj: unknown): ArrayBuffer {
   const encoder = new TextEncoder();
-  const uint8Array = encoder.encode(JSON.stringify(message));
+  const uint8Array = encoder.encode(JSON.stringify(messageObj));
   return uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength) as ArrayBuffer;
 }
 
-function deserializeMessage(bytes: ArrayBuffer): any {
+function deserializeMessage(bytes: ArrayBuffer): unknown {
   const decoder = new TextDecoder();
   return JSON.parse(decoder.decode(new Uint8Array(bytes)));
 }
@@ -26,11 +27,11 @@ interface PluginHostProps {
   url: string;
   pluginId?: string;
   fileId?: string;
-  initialData?: any;
+  initialData?: unknown;
   fileMessages?: ArrayBuffer[];
   onMessage?: (message: PluginMessage) => void;
-  onSaveMessage?: (message: any) => Promise<void>;
-  onUpdateMessage?: (messageId: string, message: any) => Promise<void>;
+  onSaveMessage?: (message: unknown) => Promise<void>;
+  onUpdateMessage?: (messageId: string, message: unknown) => Promise<void>;
   className?: string;
 }
 
@@ -63,7 +64,7 @@ export function PluginHost({
               payload: {
                 pluginId,
                 fileId,
-                ...initialData
+                ...(initialData && typeof initialData === 'object' ? initialData as Record<string, unknown> : {})
               }
             };
             iframeRef.current.contentWindow.postMessage(initMessage, '*');
@@ -111,7 +112,8 @@ export function PluginHost({
         case 'UPDATE_MESSAGE':
           if (onUpdateMessage && message.payload) {
             try {
-              await onUpdateMessage(message.payload.messageId, message.payload.message);
+              const payload = message.payload as { messageId: string; message: unknown };
+              await onUpdateMessage(payload.messageId, payload.message);
               // Send success confirmation
               if (iframeRef.current?.contentWindow) {
                 const successMessage: HostMessage = {
@@ -150,7 +152,7 @@ export function PluginHost({
     }
   };
 
-  const sendFileMessages = (messages: ArrayBuffer[]) => {
+  const sendFileMessages = useCallback((messages: ArrayBuffer[]) => {
     if (iframeRef.current?.contentWindow && messages.length > 0) {
       const latestMessage = deserializeMessage(messages[0]);
       const fileMessagesMessage: HostMessage = {
@@ -162,15 +164,15 @@ export function PluginHost({
       };
       iframeRef.current.contentWindow.postMessage(fileMessagesMessage, '*');
     }
-  };
+  }, [fileId]);
 
   // Expose methods for parent components
   useEffect(() => {
     if (iframeRef.current) {
-      (iframeRef.current as any).sendMessage = sendMessage;
-      (iframeRef.current as any).sendFileMessages = sendFileMessages;
+      (iframeRef.current as HTMLIFrameElement & { sendMessage?: typeof sendMessage; sendFileMessages?: typeof sendFileMessages }).sendMessage = sendMessage;
+      (iframeRef.current as HTMLIFrameElement & { sendMessage?: typeof sendMessage; sendFileMessages?: typeof sendFileMessages }).sendFileMessages = sendFileMessages;
     }
-  }, [fileId]);
+  }, [fileId, sendFileMessages]);
 
   return (
     <iframe

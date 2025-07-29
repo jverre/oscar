@@ -4,7 +4,6 @@ import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
-import { useSession } from 'next-auth/react';
 import { PluginHost } from './PluginHost';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
@@ -16,7 +15,6 @@ interface UserFileViewerProps {
 }
 
 export const UserFileViewer = ({ fileId }: UserFileViewerProps) => {
-  const { data: session } = useSession();
   const { organizationId, isAuthenticated } = useTenant();
   const createSandbox = useMutation(api.sandboxes.createSandboxForFile);
   
@@ -31,7 +29,6 @@ export const UserFileViewer = ({ fileId }: UserFileViewerProps) => {
     fileId: fileId as Id<"files">,
   });
 
-  // Try to get sandbox - include isPublicAccess parameter
   const sandbox = useQuery(
     api.sandboxes.getSandboxForFile,
     organizationId ? {
@@ -58,11 +55,11 @@ export const UserFileViewer = ({ fileId }: UserFileViewerProps) => {
     }
   }, [sandbox, createSandbox, fileId, organizationId, isAuthenticated]);
 
-  const handlePluginMessage = (message: any) => {
+  const handlePluginMessage = (message: unknown) => {
     console.log('Plugin message:', message);
   };
 
-  const handleSaveMessage = async (messageData: any) => {
+  const handleSaveMessage = async (messageData: unknown) => {
     // Only save messages if user is authenticated
     if (!isAuthenticated || !organizationId) {
       console.log('Skipping message save - user not authenticated or no organization');
@@ -78,7 +75,7 @@ export const UserFileViewer = ({ fileId }: UserFileViewerProps) => {
     }
   };
 
-  const handleUpdateMessage = async (messageId: string, messageData: any) => {
+  const handleUpdateMessage = async (messageId: string, messageData: unknown) => {
     // Only update messages if user is authenticated
     if (!isAuthenticated || !organizationId) {
       console.log('Skipping message update - user not authenticated or no organization');

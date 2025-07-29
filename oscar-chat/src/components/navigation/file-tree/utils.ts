@@ -1,9 +1,8 @@
 import React from "react";
 import { File, Folder } from "lucide-react";
 import { TreeNode, PendingItem } from "./types";
-import { Id } from "../../../../convex/_generated/dataModel";
 
-export const buildTreeFromFiles = (files: any[], pendingItems: PendingItem[] = []): TreeNode[] => {
+export const buildTreeFromFiles = (files: unknown[], pendingItems: PendingItem[] = []): TreeNode[] => {
   if (!files || files.length === 0) {
     // If no files but have pending items, show them at root
     return pendingItems.map(item => ({
@@ -22,7 +21,8 @@ export const buildTreeFromFiles = (files: any[], pendingItems: PendingItem[] = [
   const rootNodes: TreeNode[] = [];
   
   // Create all nodes from actual files and folders
-  files.forEach(file => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  files.forEach((file: any) => {
     // Handle direct folder entries (type: "directory")
     if (file.type === "directory") {
       const folderNode: TreeNode = {
