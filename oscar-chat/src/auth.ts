@@ -110,19 +110,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       };
     },
     async redirect({ url, baseUrl }) {
-      console.log('[auth][redirect] Called with:', { url, baseUrl, isRelative: url.startsWith('/') });
-      
       // First, handle the default redirect cases
       if (url.startsWith("/")) {
         // For relative URLs, check for workspace parameter
         if (url.includes('workspace=')) {
-          console.log('[auth][redirect] Relative URL with workspace parameter detected');
           try {
             const fullUrl = `${baseUrl}${url}`;
             const urlObj = new URL(fullUrl);
             const workspace = urlObj.searchParams.get('workspace');
-            console.log('[auth][redirect] Extracted workspace:', workspace);
-            
             if (workspace) {
               // Extract base domain from baseUrl
               const baseUrlObj = new URL(baseUrl);
@@ -143,7 +138,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               
               // Redirect to tenant subdomain
               const redirectUrl = `${protocol}//${workspace}.${baseDomain}${port}`;
-              console.log('[auth][redirect] Redirecting to workspace subdomain:', redirectUrl);
               return redirectUrl;
             }
           } catch (error) {
@@ -151,7 +145,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
         }
         const finalUrl = `${baseUrl}${url}`;
-        console.log('[auth][redirect] Returning relative URL:', finalUrl);
         return finalUrl;
       }
       
@@ -160,8 +153,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const urlObj = new URL(url);
         // Check if URL has workspace parameter even in absolute URLs
         const workspace = urlObj.searchParams.get('workspace');
-        console.log('[auth][redirect] Absolute URL, workspace:', workspace);
-        
         if (workspace) {
           const baseUrlObj = new URL(baseUrl);
           const hostname = baseUrlObj.hostname;
@@ -178,19 +169,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const protocol = baseUrlObj.protocol;
           
           const redirectUrl = `${protocol}//${workspace}.${baseDomain}${port}`;
-          console.log('[auth][redirect] Redirecting absolute URL to workspace subdomain:', redirectUrl);
           return redirectUrl;
         }
         
         if (urlObj.origin === baseUrl) {
-          console.log('[auth][redirect] Returning same-origin URL:', url);
           return url;
         }
       } catch (e) {
         console.error('[auth][redirect] Error parsing absolute URL:', e);
       }
       
-      console.log('[auth][redirect] Returning baseUrl as fallback:', baseUrl);
       return baseUrl;
     },
   },

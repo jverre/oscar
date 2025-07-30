@@ -12,10 +12,6 @@ export default async function Home() {
   const hostWithoutPort = hostname.split(":")[0];
   const parts = hostWithoutPort.split(".");
   
-  console.log('[PAGE] Hostname:', hostname);
-  console.log('[PAGE] Host without port:', hostWithoutPort);
-  console.log('[PAGE] Parts:', parts);
-  
   // Check if we're on a subdomain
   const isDevelopment = hostWithoutPort.endsWith(".localtest.me") || hostWithoutPort.endsWith(".local");
   const isProduction = hostWithoutPort.endsWith(".com") || hostWithoutPort.endsWith(".app");
@@ -30,8 +26,6 @@ export default async function Home() {
   } else if (isVercelPreview && parts.length >= 3) {
     subdomain = parts[0];
   }
-  
-  console.log('[PAGE] Extracted subdomain:', subdomain);
   
   // Wrap with TenantProvider first, then TenantAccessGuard
   return (

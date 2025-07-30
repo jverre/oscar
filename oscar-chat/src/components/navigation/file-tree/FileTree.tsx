@@ -23,7 +23,6 @@ export const FileTree = () => {
     organizationId ? { organizationId } : "skip"
   );
   
-  console.log('[FileTree] Files data:', filesData);
 
   const handleCreateFile = (isPublic: boolean = false) => {
     setCreatingItem({ type: 'file', isPublic });

@@ -46,8 +46,6 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
       const fileName = fileNameInput.trim();
       const filePath = fileName.endsWith('.blog') ? fileName : `${fileName}.blog`;
       
-      console.log("Creating file with organizationId:", organizationId);
-      
       await createFileMutation({
         organizationId: organizationId,
         path: filePath,
@@ -64,7 +62,6 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
       setSelectedIndex(0);
       
       // TODO: Navigate to the created file or refresh file tree
-      console.log(`Created blog file: ${filePath}`);
     } catch (error) {
       console.error("Failed to create file:", error);
     }
@@ -132,7 +129,6 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
       setFileNameInput("");
       setTimeout(() => inputRef.current?.focus(), 0);
     } else {
-      console.log(`Executing: ${commandId}`);
       setOpen(false);
       setSearchValue("");
       setSelectedIndex(0);

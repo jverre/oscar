@@ -56,19 +56,19 @@ export const UserFileViewer = ({ fileId }: UserFileViewerProps) => {
   }, [sandbox, createSandbox, fileId, organizationId, isAuthenticated]);
 
   const handlePluginMessage = (message: unknown) => {
-    console.log('Plugin message:', message);
+    // Handle plugin events/messages - could be used for real-time updates
+    // For now, we just acknowledge the message
+    console.debug('Plugin message received:', message);
   };
 
   const handleSaveMessage = async (messageData: unknown) => {
     // Only save messages if user is authenticated
     if (!isAuthenticated || !organizationId) {
-      console.log('Skipping message save - user not authenticated or no organization');
       return;
     }
 
     try {
       await fileMessages.createMessage(messageData);
-      console.log('Message saved successfully:', messageData);
     } catch (error) {
       console.error('Failed to save message:', error);
       throw error; // Re-throw so PluginHost can handle the error
@@ -78,13 +78,11 @@ export const UserFileViewer = ({ fileId }: UserFileViewerProps) => {
   const handleUpdateMessage = async (messageId: string, messageData: unknown) => {
     // Only update messages if user is authenticated
     if (!isAuthenticated || !organizationId) {
-      console.log('Skipping message update - user not authenticated or no organization');
       return;
     }
 
     try {
       await fileMessages.updateMessage(messageId as Id<"fileMessages">, messageData);
-      console.log('Message updated successfully:', messageId, messageData);
     } catch (error) {
       console.error('Failed to update message:', error);
       throw error; // Re-throw so PluginHost can handle the error

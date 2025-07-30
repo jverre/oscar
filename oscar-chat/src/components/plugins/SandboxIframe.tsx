@@ -6,6 +6,7 @@ import { PluginHost } from './PluginHost';
 import { api } from '../../../convex/_generated/api';
 import { useTenant } from '@/components/providers/TenantProvider';
 import { CenteredLoading } from '@/components/ui/loading';
+import { useFileMessages } from '@/hooks/useFileMessages';
 import { Id } from '../../../convex/_generated/dataModel';
 
 interface SandboxIframeProps {
@@ -13,7 +14,7 @@ interface SandboxIframeProps {
 }
 
 export function SandboxIframe({ pluginId }: SandboxIframeProps) {
-  const { organizationId } = useTenant();
+  const { organizationId, isAuthenticated } = useTenant();
   const createSandbox = useMutation(api.sandboxes.createSandboxForFile);
 
   const file = useQuery(api.files.getFileByPath, {
@@ -21,7 +22,6 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
   });
 
   const fileId = file?._id;
-  console.log("fileId", fileId);
 
   const refreshSandbox = useMutation(api.sandboxes.refreshSandbox);
   const [retryCount, setRetryCount] = React.useState(0);
@@ -40,7 +40,6 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
   if (sandbox) {
     status = sandbox.status;
   }
-  console.log("sandbox", sandbox);
   
 
   useEffect(() => {
@@ -58,7 +57,6 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
   useEffect(() => {
     if (sandbox?.status === 'error' && retryCount < 3 && !isRetrying) {
       const retryDelay = Math.pow(2, retryCount) * 2000; // 2s, 4s, 8s
-      console.log(`Sandbox failed, auto-retrying in ${retryDelay}ms (attempt ${retryCount + 1}/3)`);
       
       setIsRetrying(true);
       const timeout = setTimeout(async () => {
@@ -106,17 +104,14 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
       const refreshTime = timeUntilExpiry - (2 * 60 * 1000);
       
       if (refreshTime > 0) {
-        console.log(`Setting refresh timer for ${refreshTime / 1000 / 60} minutes from now`);
         
         refreshTimerRef.current = setTimeout(async () => {
-          console.log('Silently refreshing sandbox before expiration');
           if (fileId && organizationId) {
             try {
               await refreshSandbox({
                 fileId: fileId as Id<"files">,
                 organizationId: organizationId
               });
-              console.log('Sandbox refreshed successfully');
             } catch (error) {
               console.error('Failed to refresh sandbox:', error);
             }
@@ -134,33 +129,47 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
     };
   }, [sandbox?.status, sandbox?.expiresAt, fileId, organizationId, refreshSandbox]);
 
-  // const {
-  //   messages,
-  //   createMessage,
-  //   updateMessage,
-  //   serializeMessage
-  // } = useFileMessages(
-  //   messageFileId as Id<"files"> | undefined, 
-  //   organizationId as Id<"organizations"> | undefined
-  // );
+  // Initialize file messages hook for sandbox message persistence
+  const fileMessages = useFileMessages(
+    fileId as Id<"files">, 
+    organizationId as Id<"organizations">
+  );
 
   const handlePluginMessage = (message: unknown) => {
-    console.log('Plugin message:', message);
-    // Handle plugin events here if needed
+    // Handle plugin events/messages - could be used for sandbox communication
+    console.debug('Sandbox plugin message received:', message);
   };
 
   const handleSaveMessage = async (messageData: unknown) => {
-    console.log('Saving message:', messageData);
-    // await createMessage(messageData);
+    // Save messages for authenticated users only
+    if (!isAuthenticated || !organizationId) {
+      console.debug('Sandbox save message (unauthenticated - not persisted):', messageData);
+      return Promise.resolve();
+    }
+
+    try {
+      await fileMessages.createMessage(messageData);
+    } catch (error) {
+      console.error('Failed to save sandbox message:', error);
+      throw error; // Re-throw so PluginHost can handle the error
+    }
   };
 
   const handleUpdateMessage = async (messageId: string, messageData: unknown) => {
-    console.log('Updating message:', messageId, messageData);
-    // await updateMessage(messageId as Id<"fileMessages">, messageData);
+    // Update messages for authenticated users only
+    if (!isAuthenticated || !organizationId) {
+      console.debug('Sandbox update message (unauthenticated - not persisted):', messageId, messageData);
+      return Promise.resolve();
+    }
+
+    try {
+      await fileMessages.updateMessage(messageId as Id<"fileMessages">, messageData);
+    } catch (error) {
+      console.error('Failed to update sandbox message:', error);
+      throw error; // Re-throw so PluginHost can handle the error
+    }
   };
 
-  // Convert messages to ArrayBuffer format for PluginHost
-  // const fileMessages = messages?.map((msg: any) => msg.message) ?? [];
 
   if (status === 'creating') {
     return (
@@ -227,8 +236,8 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
         <PluginHost 
           url={sandbox.sandboxUrl}
           pluginId={pluginId}
-          // fileId={messageFileId}
-          // fileMessages={fileMessages}
+          fileId={fileId}
+          fileMessages={fileMessages.message ? [fileMessages.message.message] : []}
           onMessage={handlePluginMessage}
           onSaveMessage={handleSaveMessage}
           onUpdateMessage={handleUpdateMessage}

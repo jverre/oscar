@@ -124,7 +124,6 @@ export const FileProvider = ({ children }: FileProviderProps) => {
         tabs: newTabs
       };
     });
-    console.log('Opening content:', filePath);
   };
 
   const closeTab = (filePath: string) => {

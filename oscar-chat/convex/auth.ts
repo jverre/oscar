@@ -1,4 +1,4 @@
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { RESERVED_SUBDOMAINS, SUBDOMAIN_REGEX } from "./constants";
 
@@ -59,5 +59,43 @@ export const createOrganization = mutation({
     });
     
     return { organizationId: orgId, subdomain: args.subdomain };
+  },
+});
+
+// Query to check if a subdomain is available
+export const checkSubdomainAvailability = query({
+  args: {
+    subdomain: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Basic format validation
+    if (!args.subdomain) {
+      return { available: false, reason: "Subdomain is required" };
+    }
+    
+    if (!SUBDOMAIN_REGEX.test(args.subdomain)) {
+      return { available: false, reason: "Invalid format. Use lowercase letters, numbers, and hyphens only (3-32 characters)" };
+    }
+    
+    if (args.subdomain.startsWith("-") || args.subdomain.endsWith("-")) {
+      return { available: false, reason: "Cannot start or end with a hyphen" };
+    }
+    
+    // Check reserved subdomains
+    if (RESERVED_SUBDOMAINS.includes(args.subdomain)) {
+      return { available: false, reason: "This subdomain is reserved" };
+    }
+    
+    // Check if subdomain already exists
+    const existing = await ctx.db
+      .query("organizations")
+      .withIndex("by_subdomain", (q) => q.eq("subdomain", args.subdomain))
+      .unique();
+    
+    if (existing) {
+      return { available: false, reason: "This subdomain is already taken" };
+    }
+    
+    return { available: true, reason: "Available" };
   },
 });

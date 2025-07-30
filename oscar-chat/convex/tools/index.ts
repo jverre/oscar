@@ -60,7 +60,6 @@ export function getToolsForAI(toolContext: ToolContext) {
         
         try {
           const result = await toolDef.execute(params, toolContext);
-          console.log(`Tool ${name} result:`, result);
         return result;
         } catch (error) {
           console.error(`Tool ${name} error:`, error);

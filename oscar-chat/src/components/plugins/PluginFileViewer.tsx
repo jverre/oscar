@@ -55,17 +55,26 @@ export const PluginFileViewer = ({ pluginId, fileName, organizationId }: Omit<Pl
   }, [sandbox, createSandbox, fileId, organizationId, isAuthenticated]);
 
   const handlePluginMessage = (message: unknown) => {
-    console.log('Plugin message:', message);
+    // Handle plugin events/messages - could be used for plugin-specific logic
+    console.debug('Plugin message received:', message);
   };
 
   const handleSaveMessage = async (messageData: unknown) => {
-    // PluginFileViewer doesn't implement message saving - placeholder only
-    console.log('PluginFileViewer - Message save not implemented:', messageData);
+    // Plugin files don't persist messages to the database
+    // They handle their own message storage or rely on ephemeral state
+    console.debug('Plugin save message (not persisted):', messageData);
+    
+    // Return success to prevent PluginHost from showing errors
+    return Promise.resolve();
   };
 
   const handleUpdateMessage = async (messageId: string, messageData: unknown) => {
-    // PluginFileViewer doesn't implement message updating - placeholder only
-    console.log('PluginFileViewer - Message update not implemented:', messageId, messageData);
+    // Plugin files don't persist message updates to the database
+    // They handle their own message storage or rely on ephemeral state
+    console.debug('Plugin update message (not persisted):', messageId, messageData);
+    
+    // Return success to prevent PluginHost from showing errors
+    return Promise.resolve();
   };
 
   if (!file) {
