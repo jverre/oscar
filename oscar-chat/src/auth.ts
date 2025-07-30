@@ -150,6 +150,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // For absolute URLs
       try {
         const urlObj = new URL(url);
+        // Check if URL has workspace parameter even in absolute URLs
+        const workspace = urlObj.searchParams.get('workspace');
+        if (workspace) {
+          const baseUrlObj = new URL(baseUrl);
+          const hostname = baseUrlObj.hostname;
+          const parts = hostname.split('.');
+          
+          let baseDomain;
+          if (parts.length >= 2) {
+            baseDomain = parts.slice(-2).join('.');
+          } else {
+            baseDomain = hostname;
+          }
+          
+          const port = baseUrlObj.port ? `:${baseUrlObj.port}` : "";
+          const protocol = baseUrlObj.protocol;
+          
+          return `${protocol}//${workspace}.${baseDomain}${port}`;
+        }
+        
         if (urlObj.origin === baseUrl) return url;
       } catch {}
       
