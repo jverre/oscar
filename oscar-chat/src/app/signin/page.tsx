@@ -236,9 +236,25 @@ function SignInContent() {
           <Button
             onClick={() => {
               setIsLoading(true);
-              const callbackUrl = workspace 
-                ? `/signin?workspace=${workspace}`
-                : '/signin';
+              let callbackUrl = '/';
+              
+              if (workspace) {
+                // Construct subdomain URL
+                const currentHostname = window.location.hostname;
+                const parts = currentHostname.split('.');
+                
+                let baseDomain;
+                if (parts.length >= 2) {
+                  baseDomain = parts.slice(-2).join('.');
+                } else {
+                  baseDomain = currentHostname;
+                }
+                
+                const protocol = window.location.protocol;
+                const port = window.location.port ? `:${window.location.port}` : "";
+                callbackUrl = `${protocol}//${workspace}.${baseDomain}${port}/`;
+              }
+              
               signIn("google", { callbackUrl });
             }}
             className="w-full"

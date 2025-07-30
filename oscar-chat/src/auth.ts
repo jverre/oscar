@@ -110,29 +110,49 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       };
     },
     async redirect({ url, baseUrl }) {
-      // Parse the URL to check for workspace parameter
-      try {
-        const urlObj = new URL(url);
-        const workspace = urlObj.searchParams.get('workspace');
-        
-        if (workspace) {
-          // Extract base domain from baseUrl
-          const baseUrlObj = new URL(baseUrl);
-          const hostname = baseUrlObj.hostname;
-          const port = baseUrlObj.port ? `:${baseUrlObj.port}` : "";
-          const protocol = baseUrlObj.protocol;
-          
-          // Redirect to tenant subdomain
-          return `${protocol}//${workspace}.${hostname}${port}`;
+      // First, handle the default redirect cases
+      if (url.startsWith("/")) {
+        // For relative URLs, check for workspace parameter
+        if (url.includes('workspace=')) {
+          try {
+            const fullUrl = `${baseUrl}${url}`;
+            const urlObj = new URL(fullUrl);
+            const workspace = urlObj.searchParams.get('workspace');
+            
+            if (workspace) {
+              // Extract base domain from baseUrl
+              const baseUrlObj = new URL(baseUrl);
+              const hostname = baseUrlObj.hostname;
+              const parts = hostname.split('.');
+              
+              let baseDomain;
+              if (parts.length >= 2) {
+                // Use the last two parts as base domain (e.g., localtest.me or getoscar.ai)
+                baseDomain = parts.slice(-2).join('.');
+              } else {
+                // Fallback for single part domains (localhost)
+                baseDomain = hostname;
+              }
+              
+              const port = baseUrlObj.port ? `:${baseUrlObj.port}` : "";
+              const protocol = baseUrlObj.protocol;
+              
+              // Redirect to tenant subdomain
+              return `${protocol}//${workspace}.${baseDomain}${port}`;
+            }
+          } catch (error) {
+            console.error('Error handling workspace redirect:', error);
+          }
         }
-      } catch (error) {
-        // If URL parsing fails, fall back to default behavior
-        console.error('Error parsing redirect URL:', error);
+        return `${baseUrl}${url}`;
       }
       
-      // Default redirect behavior
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      if (new URL(url).origin === baseUrl) return url;
+      // For absolute URLs
+      try {
+        const urlObj = new URL(url);
+        if (urlObj.origin === baseUrl) return url;
+      } catch {}
+      
       return baseUrl;
     },
   },
