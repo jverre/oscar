@@ -41,7 +41,7 @@ const writeFile = {
       }
 
       // Write the file content
-      const writeResult = await executeCommand(ctx, `cat > "${params.file_path}" << 'EOF'\\n${params.content}\\nEOF`);
+      const writeResult = await executeCommand(ctx, `cat > "${params.file_path}" << 'EOF'\n${params.content}\nEOF`);
       
       if (!writeResult.success) {
         return { success: false, error: writeResult.error };

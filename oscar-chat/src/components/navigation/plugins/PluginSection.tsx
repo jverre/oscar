@@ -94,7 +94,10 @@ const PluginItem = ({
       </ContextMenu>
       
       {isExpanded && (
-        <PluginFileList />
+        <PluginFileList 
+          pluginId={plugin._id as string}
+          organizationId={plugin.organizationId as Id<"organizations">}
+        />
       )}
     </div>
   );

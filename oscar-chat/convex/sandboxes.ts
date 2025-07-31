@@ -1,6 +1,6 @@
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-import { internalAction, internalMutation, mutation, query } from "./_generated/server";
+import { internalAction, internalMutation, mutation, query, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { requireOrgMember } from "./authUtils";
 
@@ -46,6 +46,22 @@ export const createSandboxViaModal = internalAction({
       modalSandboxId: responseText.sandbox_id,
       sandboxUrl: sandboxUrl,
     });
+  }
+});
+
+export const getSandboxByFileId = internalQuery({
+  args: {
+    fileId: v.id("files"),
+  },
+  handler: async (ctx, args) => {
+    const sandbox = await ctx.db
+      .query("sandboxes")
+      .filter((q) => 
+        q.eq(q.field("fileId"), args.fileId)
+      )
+      .first();
+
+    return sandbox;
   }
 });
 

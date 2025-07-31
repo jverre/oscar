@@ -1,9 +1,152 @@
-import { mutation, query, internalQuery } from "./_generated/server";
+import { mutation, query, internalQuery, action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { requireOrgMember } from "./authUtils";
 import { MARKETPLACE_PLUGINS } from "./constants";
+import { lsTools } from "./tools/ls";
+import { readTools } from "./tools/read";
+import { ToolContext } from "./tools/index";
+
+export const getPluginFiles = action({
+  args: {
+    pluginId: v.union(v.id("plugins"), v.id("organizationMarketplacePlugins"), v.string()),
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    // Get plugin data
+    const plugin = await ctx.runQuery(internal.plugins.getPluginById, {
+      pluginId: args.pluginId,
+    });
+    
+    if (!plugin) {
+      throw new Error("Plugin not found");
+    }
+    
+    // Verify the plugin belongs to the organization
+    if (plugin.organizationId !== args.organizationId) {
+      throw new Error("Plugin does not belong to this organization");
+    }
+    
+    // Get sandbox for the plugin using the existing query
+    const sandbox = await ctx.runQuery(internal.sandboxes.getSandboxByFileId, {
+      fileId: plugin.fileId as Id<"files">,
+    });
+    
+    if (!sandbox || sandbox.status !== "active") {
+      return {
+        success: false,
+        error: "No active sandbox found for this plugin",
+        files: []
+      };
+    }
+    
+    // Create tool context
+    const toolContext: ToolContext = {
+      sandboxId: sandbox.modalSandboxId,
+      pluginId: plugin._id,
+      organizationId: args.organizationId,
+      modalAuthToken: process.env.MODAL_AUTH_TOKEN,
+    };
+    
+    // Use ls tool to list files in the sandbox root
+    const result = await lsTools.ls.execute(
+      { 
+        path: "/plugin/",
+        ignore: ["node_modules", ".git", ".next", "dist", "build"]
+      }, 
+      toolContext
+    );
+    
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "Failed to list files",
+        files: []
+      };
+    }
+    
+    return {
+      success: true,
+      files: result.data.files || [],
+      output: result.data.output || "",
+      truncated: result.data.truncated || false
+    };
+  },
+});
+
+export const fetchPluginFile = action({
+  args: {
+    pluginId: v.union(v.id("plugins"), v.id("organizationMarketplacePlugins"), v.string()),
+    filePath: v.string(),
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    // Get plugin data
+    const plugin = await ctx.runQuery(internal.plugins.getPluginById, {
+      pluginId: args.pluginId,
+    });
+    
+    if (!plugin) {
+      throw new Error("Plugin not found");
+    }
+    
+    // Verify the plugin belongs to the organization
+    if (plugin.organizationId !== args.organizationId) {
+      throw new Error("Plugin does not belong to this organization");
+    }
+    
+    // Get sandbox for the plugin
+    const sandbox = await ctx.runQuery(internal.sandboxes.getSandboxByFileId, {
+      fileId: plugin.fileId as Id<"files">,
+    });
+    
+    if (!sandbox || sandbox.status !== "active") {
+      return {
+        success: false,
+        error: "No active sandbox found for this plugin",
+        content: null
+      };
+    }
+    
+    // Create tool context
+    const toolContext: ToolContext = {
+      sandboxId: sandbox.modalSandboxId,
+      pluginId: plugin._id,
+      organizationId: args.organizationId,
+      modalAuthToken: process.env.MODAL_AUTH_TOKEN,
+    };
+    
+    // Prepend /plugin/ to the file path to match sandbox structure
+    const fullFilePath = `/plugin${args.filePath.startsWith('/') ? '' : '/'}${args.filePath}`;
+    
+    // Use read tool to fetch file content
+    const result = await readTools.read.execute(
+      { 
+        file_path: fullFilePath
+      }, 
+      toolContext
+    );
+    
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "Failed to read file",
+        content: null
+      };
+    }
+    
+    return {
+      success: true,
+      content: result.data.content || "",
+      metadata: {
+        filePath: args.filePath,
+        isImage: result.data.is_image || false,
+        lineCount: result.data.line_count || 0
+      }
+    };
+  },
+});
 
 export const getPlugins = mutation({
   args: {

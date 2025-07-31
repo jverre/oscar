@@ -74,8 +74,7 @@ const readFile = {
         }
       }
 
-      // Add line numbers
-      command += ` | cat -n`;
+      // Don't add line numbers - let the UI handle line numbering
 
       const result = await executeCommand(ctx, command);
       

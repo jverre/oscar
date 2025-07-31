@@ -71,20 +71,20 @@ const listDirectory = {
       // Combine default ignore patterns with user-provided ones
       const allIgnorePatterns = [...DEFAULT_IGNORE_PATTERNS, ...(params.ignore || [])];
       
-      // Create find command with ignore patterns
-      let findCommand = `find "${params.path}" -maxdepth 3 -type f -o -type d`;
+      // Create find command with ignore patterns - only files, not directories
+      let findCommand = `find "${params.path}" -maxdepth 3 -type f`;
       
       // Add ignore patterns using -not -path
       for (const pattern of allIgnorePatterns) {
         if (pattern.includes('*')) {
           findCommand += ` -not -path "*${pattern.replace('*', '')}*"`;
         } else {
-          findCommand += ` -not -path "*/${pattern}/*" -not -name "${pattern}"`;
+          findCommand += ` -not -path "*/${pattern}/*"`;
         }
       }
       
-      // Sort and limit results
-      findCommand += ' | sort | head -100';
+      // Sort results alphabetically (case-insensitive) and limit
+      findCommand += ' | sort -f | head -100';
 
       const listResult = await executeCommand(ctx, findCommand);
       
@@ -133,55 +133,66 @@ function formatTreeOutput(rootPath: string, files: string[]): string {
 
   const lines = [`${rootPath}/`];
   
-  // Group files by their immediate parent directory
-  const filesByDir: Record<string, string[]> = {};
+  // Build a tree structure from file paths
+  const tree: Record<string, Set<string>> = {};
+  const allDirs = new Set<string>();
   
   for (const file of files) {
     const relativePath = file.replace(rootPath, '').replace(/^\//, '');
     if (!relativePath) continue;
     
     const parts = relativePath.split('/');
-    const dirKey = parts.length > 1 ? parts[0] : '';
     
-    if (!filesByDir[dirKey]) {
-      filesByDir[dirKey] = [];
+    // Track all parent directories
+    let currentPath = '';
+    for (let i = 0; i < parts.length - 1; i++) {
+      currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+      allDirs.add(currentPath);
     }
-    filesByDir[dirKey].push(relativePath);
+    
+    // Add file to its immediate parent
+    const parentDir = parts.length > 1 ? parts.slice(0, -1).join('/') : '';
+    if (!tree[parentDir]) {
+      tree[parentDir] = new Set();
+    }
+    tree[parentDir].add(parts[parts.length - 1]);
   }
   
-  // Sort directories and files
-  const sortedDirs = Object.keys(filesByDir).sort();
+  // Add empty directories to tree
+  for (const dir of allDirs) {
+    const parentDir = dir.includes('/') ? dir.substring(0, dir.lastIndexOf('/')) : '';
+    if (!tree[parentDir]) {
+      tree[parentDir] = new Set();
+    }
+    const dirName = dir.includes('/') ? dir.substring(dir.lastIndexOf('/') + 1) : dir;
+    tree[parentDir].add(dirName + '/');
+  }
   
-  for (const dir of sortedDirs) {
-    const items = filesByDir[dir].sort();
+  // Recursive function to print tree
+  function printTree(path: string, indent: number) {
+    const items = tree[path];
+    if (!items) return;
     
-    if (dir === '') {
-      // Files in root directory
-      for (const item of items) {
-        if (!item.includes('/')) {
-          lines.push(`  ${item}`);
-        }
-      }
-    } else {
-      // Directory
-      lines.push(`  ${dir}/`);
+    const sortedItems = Array.from(items).sort((a, b) => {
+      // Directories first, then files
+      const aIsDir = a.endsWith('/');
+      const bIsDir = b.endsWith('/');
+      if (aIsDir && !bIsDir) return -1;
+      if (!aIsDir && bIsDir) return 1;
+      return a.localeCompare(b);
+    });
+    
+    for (const item of sortedItems) {
+      lines.push(`${'  '.repeat(indent + 1)}${item}`);
       
-      // Show a few files in the directory
-      const filesInDir = items.filter(item => item.startsWith(dir + '/'));
-      const displayCount = Math.min(3, filesInDir.length);
-      
-      for (let i = 0; i < displayCount; i++) {
-        const fileName = filesInDir[i].replace(dir + '/', '');
-        if (!fileName.includes('/')) {
-          lines.push(`    ${fileName}`);
-        }
-      }
-      
-      if (filesInDir.length > displayCount) {
-        lines.push(`    ... and ${filesInDir.length - displayCount} more`);
+      if (item.endsWith('/')) {
+        const subPath = path ? `${path}/${item.slice(0, -1)}` : item.slice(0, -1);
+        printTree(subPath, indent + 1);
       }
     }
   }
+  
+  printTree('', 0);
   
   return lines.join('\n');
 }

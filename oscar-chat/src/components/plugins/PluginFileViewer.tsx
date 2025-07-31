@@ -25,6 +25,7 @@ export const PluginFileViewer = ({ pluginId, fileName, organizationId }: Omit<Pl
     path: pluginId,
   });
 
+
   const fileId = file?._id;
   const isAuthenticated = !!session?.user?.id;
 
