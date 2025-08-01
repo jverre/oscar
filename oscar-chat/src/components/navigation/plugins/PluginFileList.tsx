@@ -27,7 +27,7 @@ export const PluginFileList = ({ pluginId, organizationId }: PluginFileListProps
         setError(null);
         
         const result = await getPluginFiles({
-          pluginId: pluginId as any,
+          pluginId: pluginId as string,
           organizationId,
         });
         

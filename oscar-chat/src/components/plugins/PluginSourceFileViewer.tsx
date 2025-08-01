@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
-import { AlertCircle, FileText, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAction } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Id } from '../../../convex/_generated/dataModel';
-import { cn } from '@/lib/utils';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -19,7 +18,7 @@ export const PluginSourceFileViewer = ({ pluginId, filePath, organizationId }: P
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [content, setContent] = useState<string>("");
-  const [metadata, setMetadata] = useState<any>(null);
+  const [metadata, setMetadata] = useState<{ lineCount?: number; isImage?: boolean } | null>(null);
   const fetchPluginFile = useAction(api.plugins.fetchPluginFile);
   const contentScrollRef = useRef<HTMLDivElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
@@ -31,7 +30,7 @@ export const PluginSourceFileViewer = ({ pluginId, filePath, organizationId }: P
         setError(null);
         
         const result = await fetchPluginFile({
-          pluginId: pluginId as any,
+          pluginId: pluginId as string,
           filePath,
           organizationId,
         });
