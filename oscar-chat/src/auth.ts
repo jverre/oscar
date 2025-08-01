@@ -55,7 +55,7 @@ const getAuthUrl = () => {
 };
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  debug: true,
+  debug: false,
   ...(getAuthUrl() && { url: getAuthUrl() }),
   providers: [
     Google({

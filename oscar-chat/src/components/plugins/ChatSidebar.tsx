@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { MessageSquare, ArrowUp, CheckCircle } from "lucide-react";
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { useSession } from 'next-auth/react';
 import { api } from '../../../convex/_generated/api';
 import { useTenant } from '@/components/providers/TenantProvider';
@@ -29,6 +29,9 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
       organizationId: organizationId 
     } : "skip"
   );
+  
+  // Mutation to clear messages
+  const clearMessages = useMutation(api.chats.clearMessagesByPlugin);
   
   // Input state management (now handled manually in v5)
   const [input, setInput] = useState('');
@@ -72,6 +75,24 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
     setInput(e.target.value);
   };
 
+  // Handle clear chat
+  const handleClearChat = async () => {
+    if (!pluginId || !organizationId || isMarketplacePlugin) return;
+    
+    try {
+      // Clear messages from backend
+      await clearMessages({
+        pluginId: pluginId,
+        organizationId: organizationId
+      });
+      
+      // Clear local state
+      setMessages([]);
+    } catch (error) {
+      console.error('Failed to clear chat:', error);
+    }
+  };
+
 
   // Show setup message if no auth or organization
   if (!session) {
@@ -95,6 +116,20 @@ export function ChatSidebar({ pluginId }: { pluginId?: string }) {
 
   return (
     <div className="h-full bg-card border-l border-border flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 border-b border-border">
+        <span className="text-xs text-muted-foreground font-medium">AI Chat</span>
+        {messages.length > 0 && (
+          <button
+            onClick={handleClearChat}
+            disabled={isStreamingOrSubmitted || isMarketplacePlugin || isQueryLoading}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            clear
+          </button>
+        )}
+      </div>
+      
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-3">
         <div className="space-y-3">

@@ -17,6 +17,7 @@
     "@convex-dev/auth": "^0.0.87",
     "@headless-tree/core": "^1.2.1",
     "@headless-tree/react": "^1.2.1",
+    "@openrouter/ai-sdk-provider": "^1.0.0-beta.6",
     "@radix-ui/react-collapsible": "^1.1.11",
     "@radix-ui/react-context-menu": "^2.2.15",
     "@radix-ui/react-dialog": "^1.1.14",

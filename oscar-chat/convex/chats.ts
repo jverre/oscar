@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { requireOrgMember } from "./authUtils";
 
 // Load all messages for a plugin
@@ -31,6 +31,11 @@ export const addMessages = internalMutation({
   },
   handler: async (ctx, args) => {
     for (const message of args.messages) {
+      // Skip messages with empty or undefined IDs
+      if (!message.id || message.id.trim() === '') {
+        continue;
+      }
+      
       // Check if message already exists
       const existing = await ctx.db
         .query("messages")
@@ -47,6 +52,28 @@ export const addMessages = internalMutation({
           aiSDKMessage: message, // Store complete message as-is
         });
       }
+    }
+  },
+});
+
+// Clear all messages for a plugin
+export const clearMessagesByPlugin = mutation({
+  args: { 
+    pluginId: v.string(),
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    // Require user to be a member of the organization
+    await requireOrgMember(ctx, args.organizationId);
+    
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_plugin", (q) => q.eq("pluginId", args.pluginId))
+      .collect();
+    
+    // Delete all messages for this plugin
+    for (const message of messages) {
+      await ctx.db.delete(message._id);
     }
   },
 });
