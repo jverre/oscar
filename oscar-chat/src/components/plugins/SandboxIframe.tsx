@@ -100,6 +100,20 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
       const expiresAt = sandbox.expiresAt;
       const timeUntilExpiry = expiresAt - now;
       
+      // Check if sandbox is already expired
+      if (timeUntilExpiry < 0) {
+        // Sandbox has expired, refresh immediately
+        if (fileId && organizationId) {
+          refreshSandbox({
+            fileId: fileId as Id<"files">,
+            organizationId: organizationId
+          }).catch(error => {
+            console.error('Failed to refresh expired sandbox:', error);
+          });
+        }
+        return;
+      }
+      
       // Refresh 2 minutes before expiry (58 minutes after creation)
       const refreshTime = timeUntilExpiry - (2 * 60 * 1000);
       
@@ -117,6 +131,16 @@ export function SandboxIframe({ pluginId }: SandboxIframeProps) {
             }
           }
         }, refreshTime);
+      } else {
+        // Less than 2 minutes until expiry, refresh immediately
+        if (fileId && organizationId) {
+          refreshSandbox({
+            fileId: fileId as Id<"files">,
+            organizationId: organizationId
+          }).catch(error => {
+            console.error('Failed to refresh sandbox near expiry:', error);
+          });
+        }
       }
     }
 
