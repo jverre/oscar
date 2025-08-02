@@ -63,7 +63,11 @@ export function getToolsForAI(toolContext: ToolContext) {
         return result;
         } catch (error) {
           console.error(`Tool ${name} error:`, error);
-          return { success: false, error: `Tool execution failed: ${error}` };
+          return { 
+            success: false, 
+            data: null,  // AI SDK requires data field even on error
+            error: `Tool execution failed: ${error}` 
+          };
         }
       },
     });
