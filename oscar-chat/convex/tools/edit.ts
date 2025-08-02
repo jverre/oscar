@@ -18,6 +18,31 @@ const editFile = {
     ctx: ToolContext
   ): Promise<ToolResult> => {
     try {
+      // Validate required parameters
+      if (!params.file_path) {
+        return { 
+          success: false, 
+          data: null,
+          error: "Missing required parameter: file_path. Please provide the absolute path to the file to modify." 
+        };
+      }
+
+      if (params.old_string === undefined || params.old_string === null) {
+        return { 
+          success: false, 
+          data: null,
+          error: "Missing required parameter: old_string. Please provide the text to replace." 
+        };
+      }
+
+      if (params.new_string === undefined || params.new_string === null) {
+        return { 
+          success: false, 
+          data: null,
+          error: "Missing required parameter: new_string. Please provide the text to replace it with." 
+        };
+      }
+
       // Validate sandbox context
       const validationError = validateSandboxContext(ctx);
       if (validationError) {
@@ -28,6 +53,7 @@ const editFile = {
       if (params.old_string === params.new_string) {
         return {
           success: false,
+          data: null,
           error: "old_string and new_string must be different"
         };
       }
@@ -35,6 +61,7 @@ const editFile = {
       if (params.old_string.length === 0) {
         return {
           success: false,
+          data: null,
           error: "old_string cannot be empty"
         };
       }
@@ -43,11 +70,11 @@ const editFile = {
       const readResult = await executeCommand(ctx, `cat "${params.file_path}"`);
       
       if (!readResult.success) {
-        return { success: false, error: readResult.error };
+        return { success: false, data: null, error: readResult.error };
       }
 
       if (readResult.data.returncode !== 0) {
-        return { success: false, error: `File not found or cannot be read: ${readResult.data.stderr}` };
+        return { success: false, data: null, error: `File not found or cannot be read: ${readResult.data.stderr}` };
       }
 
       const fileContent = readResult.data.stdout;
@@ -80,11 +107,11 @@ const editFile = {
       const writeResult = await executeCommand(ctx, `cat > "${params.file_path}" << 'EOF'\\n${newContent}\\nEOF`);
       
       if (!writeResult.success) {
-        return { success: false, error: writeResult.error };
+        return { success: false, data: null, error: writeResult.error };
       }
 
       if (writeResult.data.returncode !== 0) {
-        return { success: false, error: `Failed to write file: ${writeResult.data.stderr}` };
+        return { success: false, data: null, error: `Failed to write file: ${writeResult.data.stderr}` };
       }
 
       // Create a snapshot after editing the file
@@ -105,7 +132,7 @@ const editFile = {
         }
       };
     } catch (error) {
-      return { success: false, error: `Error editing file: ${error}` };
+      return { success: false, data: null, error: `Error editing file: ${error}` };
     }
   },
 };

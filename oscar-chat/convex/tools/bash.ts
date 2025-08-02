@@ -27,6 +27,15 @@ const bashExecute = {
     ctx: ToolContext
   ): Promise<ToolResult> => {
     try {
+      // Validate required parameters
+      if (!params.command) {
+        return { 
+          success: false, 
+          data: null,
+          error: "Missing required parameter: command. Please provide the bash command to execute." 
+        };
+      }
+
       // Validate sandbox context
       const validationError = validateSandboxContext(ctx);
       if (validationError) {
@@ -40,7 +49,7 @@ const bashExecute = {
       const result = await executeCommand(ctx, params.command, timeoutSeconds);
       
       if (!result.success) {
-        return { success: false, error: result.error };
+        return { success: false, data: null, error: result.error };
       }
 
       const data = result.data;

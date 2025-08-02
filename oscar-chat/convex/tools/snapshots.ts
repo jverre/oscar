@@ -11,7 +11,7 @@ const createSnapshot = {
   execute: async (params: { description?: string }, ctx: ToolContext): Promise<ToolResult> => {
     try {
       if (!ctx.sandboxId) {
-        return { success: false, error: "No sandbox ID provided" };
+        return { success: false, data: null, error: "No sandbox ID provided" };
       }
 
       const response = await fetch(
@@ -30,7 +30,7 @@ const createSnapshot = {
       );
 
       if (!response.ok) {
-        return { success: false, error: `Failed to create snapshot: ${response.statusText}` };
+        return { success: false, data: null, error: `Failed to create snapshot: ${response.statusText}` };
       }
 
       const data = await response.json();
@@ -43,7 +43,7 @@ const createSnapshot = {
         }
       };
     } catch (error) {
-      return { success: false, error: `Error creating snapshot: ${error}` };
+      return { success: false, data: null, error: `Error creating snapshot: ${error}` };
     }
   },
 };

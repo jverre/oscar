@@ -25,6 +25,15 @@ const webFetch = {
     ctx: ToolContext
   ): Promise<ToolResult> => {
     try {
+      // Validate required parameters
+      if (!params.url) {
+        return { 
+          success: false, 
+          data: null,
+          error: "Missing required parameter: url. Please provide the URL to fetch content from." 
+        };
+      }
+
       // Validate sandbox context
       const validationError = validateSandboxContext(ctx);
       if (validationError) {
@@ -35,6 +44,7 @@ const webFetch = {
       if (!params.url.startsWith('http://') && !params.url.startsWith('https://')) {
         return {
           success: false,
+          data: null,
           error: "URL must start with http:// or https://"
         };
       }
@@ -68,7 +78,7 @@ const webFetch = {
       const result = await executeCommand(ctx, curlCommand, timeout + 10);
       
       if (!result.success) {
-        return { success: false, error: result.error };
+        return { success: false, data: null, error: result.error };
       }
 
       const data = result.data;
@@ -94,7 +104,7 @@ const webFetch = {
           }
         }
         
-        return { success: false, error: errorMessage };
+        return { success: false, data: null, error: errorMessage };
       }
 
       const content = data.stdout;
@@ -145,7 +155,7 @@ const webFetch = {
         }
       };
     } catch (error) {
-      return { success: false, error: `Error fetching web content: ${error}` };
+      return { success: false, data: null, error: `Error fetching web content: ${error}` };
     }
   },
 };

@@ -43,6 +43,15 @@ const listDirectory = {
     ctx: ToolContext
   ): Promise<ToolResult> => {
     try {
+      // Validate required parameters
+      if (!params.path) {
+        return { 
+          success: false, 
+          data: null,
+          error: "Missing required parameter: path. Please provide the absolute path to the directory to list." 
+        };
+      }
+
       // Validate sandbox context
       const validationError = validateSandboxContext(ctx);
       if (validationError) {
@@ -53,6 +62,7 @@ const listDirectory = {
       if (!params.path.startsWith('/')) {
         return {
           success: false,
+          data: null,
           error: "Path must be absolute (start with /), not relative"
         };
       }
@@ -61,11 +71,11 @@ const listDirectory = {
       const checkResult = await executeCommand(ctx, `test -d "${params.path}" && echo "exists" || echo "notfound"`);
       
       if (!checkResult.success) {
-        return { success: false, error: checkResult.error };
+        return { success: false, data: null, error: checkResult.error };
       }
 
       if (checkResult.data.stdout.trim() === "notfound") {
-        return { success: false, error: `Directory not found: ${params.path}` };
+        return { success: false, data: null, error: `Directory not found: ${params.path}` };
       }
 
       // Combine default ignore patterns with user-provided ones
@@ -89,11 +99,11 @@ const listDirectory = {
       const listResult = await executeCommand(ctx, findCommand);
       
       if (!listResult.success) {
-        return { success: false, error: listResult.error };
+        return { success: false, data: null, error: listResult.error };
       }
 
       if (listResult.data.returncode !== 0) {
-        return { success: false, error: `Failed to list directory: ${listResult.data.stderr}` };
+        return { success: false, data: null, error: `Failed to list directory: ${listResult.data.stderr}` };
       }
 
       const output = listResult.data.stdout.trim();
@@ -120,7 +130,7 @@ const listDirectory = {
         }
       };
     } catch (error) {
-      return { success: false, error: `Error listing directory: ${error}` };
+      return { success: false, data: null, error: `Error listing directory: ${error}` };
     }
   },
 };

@@ -7,6 +7,7 @@ export function validateSandboxContext(ctx: ToolContext): ToolResult | null {
   if (!ctx.sandboxId) {
     return { 
       success: false, 
+      data: null,
       error: "No active sandbox available. Please create a sandbox first to use this tool." 
     };
   }
@@ -14,6 +15,7 @@ export function validateSandboxContext(ctx: ToolContext): ToolResult | null {
   if (!ctx.modalAuthToken) {
     return {
       success: false,
+      data: null,
       error: "Modal authentication token not configured. Please check server configuration."
     };
   }
@@ -93,6 +95,7 @@ export async function executeCommand(
     if (!response.ok) {
       return { 
         success: false, 
+        data: null,
         error: `Failed to execute command: ${response.statusText}` 
       };
     }
@@ -102,6 +105,7 @@ export async function executeCommand(
   } catch (error) {
     return { 
       success: false, 
+      data: null,
       error: `Error executing command: ${error}` 
     };
   }

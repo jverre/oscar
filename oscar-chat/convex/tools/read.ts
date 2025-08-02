@@ -21,6 +21,15 @@ const readFile = {
     ctx: ToolContext
   ): Promise<ToolResult> => {
     try {
+      // Validate required parameters
+      if (!params.file_path) {
+        return { 
+          success: false, 
+          data: null,
+          error: "Missing required parameter: file_path. Please provide the absolute path to the file to read." 
+        };
+      }
+
       // Validate sandbox context
       const validationError = validateSandboxContext(ctx);
       if (validationError) {
@@ -36,11 +45,11 @@ const readFile = {
         const result = await executeCommand(ctx, `file "${params.file_path}" && ls -la "${params.file_path}"`);
         
         if (!result.success) {
-          return { success: false, error: result.error };
+          return { success: false, data: null, error: result.error };
         }
 
         if (result.data.returncode !== 0) {
-          return { success: false, error: `Image file not found or cannot be read: ${result.data.stderr}` };
+          return { success: false, data: null, error: `Image file not found or cannot be read: ${result.data.stderr}` };
         }
 
         return {
@@ -83,7 +92,7 @@ const readFile = {
       }
 
       if (result.data.returncode !== 0) {
-        return { success: false, error: `File not found or cannot be read: ${result.data.stderr}` };
+        return { success: false, data: null, error: `File not found or cannot be read: ${result.data.stderr}` };
       }
 
       let content = result.data.stdout;
@@ -118,7 +127,7 @@ const readFile = {
         }
       };
     } catch (error) {
-      return { success: false, error: `Error reading file: ${error}` };
+      return { success: false, data: null, error: `Error reading file: ${error}` };
     }
   },
 };

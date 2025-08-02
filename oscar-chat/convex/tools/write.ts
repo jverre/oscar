@@ -16,6 +16,23 @@ const writeFile = {
     ctx: ToolContext
   ): Promise<ToolResult> => {
     try {
+      // Validate required parameters
+      if (!params.file_path) {
+        return { 
+          success: false, 
+          data: null,
+          error: "Missing required parameter: file_path. Please provide the absolute path to the file to write." 
+        };
+      }
+      
+      if (params.content === undefined || params.content === null) {
+        return { 
+          success: false, 
+          data: null,
+          error: "Missing required parameter: content. Please provide the content to write to the file." 
+        };
+      }
+
       // Validate sandbox context
       const validationError = validateSandboxContext(ctx);
       if (validationError) {
@@ -26,7 +43,7 @@ const writeFile = {
       const checkResult = await executeCommand(ctx, `test -f "${params.file_path}" && echo "exists" || echo "new"`);
       
       if (!checkResult.success) {
-        return { success: false, error: checkResult.error };
+        return { success: false, data: null, error: checkResult.error };
       }
 
       const fileExists = checkResult.data.stdout.trim() === "exists";
@@ -36,7 +53,7 @@ const writeFile = {
       if (dirname) {
         const mkdirResult = await executeCommand(ctx, `mkdir -p "${dirname}"`);
         if (!mkdirResult.success) {
-          return { success: false, error: `Failed to create parent directories: ${mkdirResult.error}` };
+          return { success: false, data: null, error: `Failed to create parent directories: ${mkdirResult.error}` };
         }
       }
 
@@ -44,18 +61,18 @@ const writeFile = {
       const writeResult = await executeCommand(ctx, `cat > "${params.file_path}" << 'EOF'\n${params.content}\nEOF`);
       
       if (!writeResult.success) {
-        return { success: false, error: writeResult.error };
+        return { success: false, data: null, error: writeResult.error };
       }
 
       if (writeResult.data.returncode !== 0) {
-        return { success: false, error: `Failed to write file: ${writeResult.data.stderr}` };
+        return { success: false, data: null, error: `Failed to write file: ${writeResult.data.stderr}` };
       }
 
       // Verify the file was written correctly
       const verifyResult = await executeCommand(ctx, `test -f "${params.file_path}" && echo "success" || echo "failed"`);
       
       if (!verifyResult.success || verifyResult.data.stdout.trim() !== "success") {
-        return { success: false, error: "File write verification failed" };
+        return { success: false, data: null, error: "File write verification failed" };
       }
 
       // Create a snapshot after writing the file
@@ -73,7 +90,7 @@ const writeFile = {
         }
       };
     } catch (error) {
-      return { success: false, error: `Error writing file: ${error}` };
+      return { success: false, data: null, error: `Error writing file: ${error}` };
     }
   },
 };
