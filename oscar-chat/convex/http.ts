@@ -153,7 +153,7 @@ export const chat = httpAction(async (ctx, request) => {
       messages: cleanedMessages,
       tools: aiTools,
       toolChoice: 'auto',
-      stopWhen: stepCountIs(5),    
+      stopWhen: stepCountIs(50),    
     });
 
     return result.toUIMessageStreamResponse({
