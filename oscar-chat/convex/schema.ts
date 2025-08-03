@@ -119,6 +119,15 @@ export default defineSchema({
     pluginId: v.string(), // Plugin identifier (can be regular ID or marketplace_<id>)
     msgId: v.string(), // AI SDK message ID for deduplication/updates
     aiSDKMessage: v.any(), // Complete raw AI SDK message
+    status: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("streaming"), 
+      v.literal("complete"),
+      v.literal("error"),
+      v.literal("cancelled")
+    )),
+    streamingBody: v.optional(v.string()), // Progressive text content during streaming
+    error: v.optional(v.string()), // Error message if generation failed
   })
     .index("by_plugin", ["pluginId"])
     .index("by_plugin_msgId", ["pluginId", "msgId"]),

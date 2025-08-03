@@ -16,6 +16,7 @@ import type {
 import type * as auth from "../auth.js";
 import type * as authAdapter from "../authAdapter.js";
 import type * as authUtils from "../authUtils.js";
+import type * as chatGeneration from "../chatGeneration.js";
 import type * as chats from "../chats.js";
 import type * as constants from "../constants.js";
 import type * as fileMessages from "../fileMessages.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   authAdapter: typeof authAdapter;
   authUtils: typeof authUtils;
+  chatGeneration: typeof chatGeneration;
   chats: typeof chats;
   constants: typeof constants;
   fileMessages: typeof fileMessages;

@@ -2,9 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { streamText, convertToModelMessages, stepCountIs } from 'ai';
-import { getToolsForAI, ToolContext, systemPrompt } from './tools';
+import { ToolContext } from './tools';
 
 const http = httpRouter();
 
@@ -49,10 +47,6 @@ http.route({
 	}),
 });
 
-// Create OpenRouter provider instance
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-});
 
 export const chat = httpAction(async (ctx, request) => {
   // Enable CORS
@@ -111,13 +105,11 @@ export const chat = httpAction(async (ctx, request) => {
     const toolContext: ToolContext = {
       sandboxId: sandbox.modalSandboxId,
       pluginId,
-      organizationId,
+      organizationId: plugin.organizationId,
       modalAuthToken: process.env.MODAL_AUTH_TOKEN,
       convexUrl: process.env.CONVEX_SITE_URL,
       authToken: authHeader.replace("Bearer ", ""),
     };
-
-    const aiTools = getToolsForAI(toolContext);
 
     // Save new user messages to database - AI SDK format, no transformation
     await ctx.runMutation(internal.chats.addMessages, {
@@ -125,51 +117,57 @@ export const chat = httpAction(async (ctx, request) => {
       messages: [messages[messages.length - 1]],
     });
 
-    // Add system message at the beginning
-    const systemMessage = {
-      role: 'system' as const,
-      parts: [{ type: 'text', text: systemPrompt }]
-    };
-    const messagesWithSystem = [systemMessage, ...messages];
+    // Generate a unique ID for the assistant message
+    const assistantMessageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Convert UI messages to model format for AI SDK v5
-    const modelMessages = convertToModelMessages(messagesWithSystem);
-    
-    // Fix duplicate IDs by removing ID from duplicates
-    const seenIds = new Set();
-    const cleanedMessages = modelMessages.map(msg => {
-      if ('id' in msg && msg.id && seenIds.has(msg.id)) {
-        const { id, ...msgWithoutId } = msg;
-        return msgWithoutId;
-      }
-      if ('id' in msg && msg.id) {
-        seenIds.add(msg.id);
-      }
-      return msg;
+    // Create placeholder assistant message with pending status
+    await ctx.runMutation(internal.chats.addMessages, {
+      pluginId: pluginId as any,
+      messages: [{
+        id: assistantMessageId,
+        role: 'assistant',
+        content: '',
+        status: 'pending',
+      }],
     });
 
-    const result = streamText({
-      model: openrouter.chat('anthropic/claude-sonnet-4'),
-      messages: cleanedMessages,
-      tools: aiTools,
-      toolChoice: 'auto',
-      stopWhen: stepCountIs(50),    
-    });
+    // Schedule background generation
+    try {
+      await ctx.scheduler.runAfter(0, internal.chatGeneration.generateChatResponse, {
+        messages,
+        pluginId,
+        assistantMessageId,
+        toolContext,
+      });
+    } catch (error) {
+      console.error('Failed to schedule background job:', error);
+      
+      // Fallback: mark as error
+      await ctx.runMutation(internal.chats.updateMessageStatus, {
+        pluginId: pluginId as any,
+        messageId: assistantMessageId,
+        status: "error",
+        error: "Failed to schedule background generation",
+      });
+    }
 
-    return result.toUIMessageStreamResponse({
-      originalMessages: messages,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      },
-      onFinish: async ({messages}) => {
-        await ctx.runMutation(internal.chats.addMessages, {
-          pluginId: pluginId as any,
-          messages: messages,
-        });
-      },
-    });
+    // Return immediately with the message ID
+    return new Response(
+      JSON.stringify({ 
+        messageId: assistantMessageId,
+        status: 'pending',
+        message: 'Generation started in background',
+      }), 
+      { 
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+      }
+    );
 
   } catch (error) {
     console.error('Error in chat action:', error);
