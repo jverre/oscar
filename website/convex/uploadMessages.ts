@@ -1,4 +1,4 @@
-import { httpAction, internalMutation } from './_generated/server'
+import { httpAction, internalMutation, mutation } from './_generated/server'
 import { internal } from './_generated/api'
 import { v } from 'convex/values'
 
@@ -100,6 +100,39 @@ export const uploadMessages = httpAction(async (ctx, request) => {
 
 // Internal mutation to insert messages into the database
 export const insertMessages = internalMutation({
+  args: {
+    conversationId: v.string(),
+    messages: v.array(v.object({
+      messageId: v.string(),
+      role: v.union(v.literal('system'), v.literal('user'), v.literal('assistant'), v.literal('tool')),
+      content: v.any(), // Allow string or complex content structures
+      timestamp: v.optional(v.number()),
+      conversationId: v.optional(v.string()),
+      messageOrder: v.number()
+    }))
+  },
+  handler: async (ctx, args) => {
+    const insertPromises = args.messages.map(message => {
+      return ctx.db.insert('messages', {
+        messageId: message.messageId,
+        role: message.role,
+        content: message.content,
+        timestamp: message.timestamp,
+        conversationId: args.conversationId,
+        messageOrder: message.messageOrder
+      })
+    })
+    
+    await Promise.all(insertPromises)
+    
+    return {
+      insertedCount: args.messages.length
+    }
+  }
+})
+
+// Public mutation for server-side calls from TanStack Start
+export const insertMessagesFromAPI = mutation({
   args: {
     conversationId: v.string(),
     messages: v.array(v.object({

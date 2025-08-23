@@ -8,10 +8,14 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createServerRootRoute } from '@tanstack/react-start/server'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
-import { Route as ApiUpload_messagesRouteImport } from './routes/api/upload_messages'
+import { ServerRoute as ApiUpload_messagesServerRouteImport } from './routes/api/upload_messages'
+
+const rootServerRouteImport = createServerRootRoute()
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,40 +27,58 @@ const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
   path: '/chat/$conversationId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiUpload_messagesRoute = ApiUpload_messagesRouteImport.update({
-  id: '/api/upload_messages',
-  path: '/api/upload_messages',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const ApiUpload_messagesServerRoute =
+  ApiUpload_messagesServerRouteImport.update({
+    id: '/api/upload_messages',
+    path: '/api/upload_messages',
+    getParentRoute: () => rootServerRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/upload_messages': typeof ApiUpload_messagesRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/upload_messages': typeof ApiUpload_messagesRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/upload_messages': typeof ApiUpload_messagesRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/upload_messages' | '/chat/$conversationId'
+  fullPaths: '/' | '/chat/$conversationId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/upload_messages' | '/chat/$conversationId'
-  id: '__root__' | '/' | '/api/upload_messages' | '/chat/$conversationId'
+  to: '/' | '/chat/$conversationId'
+  id: '__root__' | '/' | '/chat/$conversationId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiUpload_messagesRoute: typeof ApiUpload_messagesRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
+}
+export interface FileServerRoutesByFullPath {
+  '/api/upload_messages': typeof ApiUpload_messagesServerRoute
+}
+export interface FileServerRoutesByTo {
+  '/api/upload_messages': typeof ApiUpload_messagesServerRoute
+}
+export interface FileServerRoutesById {
+  __root__: typeof rootServerRouteImport
+  '/api/upload_messages': typeof ApiUpload_messagesServerRoute
+}
+export interface FileServerRouteTypes {
+  fileServerRoutesByFullPath: FileServerRoutesByFullPath
+  fullPaths: '/api/upload_messages'
+  fileServerRoutesByTo: FileServerRoutesByTo
+  to: '/api/upload_messages'
+  id: '__root__' | '/api/upload_messages'
+  fileServerRoutesById: FileServerRoutesById
+}
+export interface RootServerRouteChildren {
+  ApiUpload_messagesServerRoute: typeof ApiUpload_messagesServerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,21 +97,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatConversationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+  }
+}
+declare module '@tanstack/react-start/server' {
+  interface ServerFileRoutesByPath {
     '/api/upload_messages': {
       id: '/api/upload_messages'
       path: '/api/upload_messages'
       fullPath: '/api/upload_messages'
-      preLoaderRoute: typeof ApiUpload_messagesRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof ApiUpload_messagesServerRouteImport
+      parentRoute: typeof rootServerRouteImport
     }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiUpload_messagesRoute: ApiUpload_messagesRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+const rootServerRouteChildren: RootServerRouteChildren = {
+  ApiUpload_messagesServerRoute: ApiUpload_messagesServerRoute,
+}
+export const serverRouteTree = rootServerRouteImport
+  ._addFileChildren(rootServerRouteChildren)
+  ._addFileTypes<FileServerRouteTypes>()
