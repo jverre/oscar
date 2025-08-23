@@ -3,7 +3,7 @@ import { json } from '@tanstack/react-start'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '../../../convex/_generated/api'
 
-const convex = new ConvexHttpClient(process.env.CONVEX_URL!)
+const convex = new ConvexHttpClient(process.env.VITE_CONVEX_URL!)
 
 export const ServerRoute = createServerFileRoute('/api/upload_messages').methods({
   POST: async ({ request }) => {
