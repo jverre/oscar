@@ -31,19 +31,27 @@ const toolResultPart = v.object({
   type: v.literal('tool-result'),
   toolCallId: v.string(),
   toolName: v.string(),
-  result: v.any(), // JSON-serializable object
-  experimental_content: v.optional(v.array(v.union(
+  output: v.union(
+    v.object({ type: v.literal('text'), value: v.string() }),
+    v.object({ type: v.literal('json'), value: v.any() }),
+    v.object({ type: v.literal('error-text'), value: v.string() }),
+    v.object({ type: v.literal('error-json'), value: v.any() }),
     v.object({
-      type: v.literal('text'),
-      text: v.string(),
-    }),
-    v.object({
-      type: v.literal('image'),
-      data: v.string(), // base64 encoded
-      mediaType: v.optional(v.string()),
+      type: v.literal('content'),
+      value: v.array(v.union(
+        v.object({
+          type: v.literal('text'),
+          text: v.string(),
+        }),
+        v.object({
+          type: v.literal('media'),
+          data: v.string(), // base64 encoded
+          mediaType: v.string(),
+        })
+      ))
     })
-  ))),
-  isError: v.optional(v.boolean()),
+  ),
+  providerOptions: v.optional(v.any()),
 })
 
 // Define content types for different message roles
@@ -83,7 +91,8 @@ export default defineSchema({
     // Optional metadata fields
     timestamp: v.optional(v.number()),
     conversationId: v.optional(v.string()), // To group messages by conversation
+    messageOrder: v.number(), // Position in conversation (0, 1, 2, ...)
   })
     .index("by_conversation_id", ["conversationId"])
-    .index("by_conversation_and_timestamp", ["conversationId", "timestamp"]),
+    .index("by_conversation_and_order", ["conversationId", "messageOrder"]),
 })

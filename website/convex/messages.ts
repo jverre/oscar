@@ -6,7 +6,7 @@ export const getMessagesByConversation = query({
   handler: async (ctx, args) => {
     const messages = await ctx.db
       .query('messages')
-      .withIndex('by_conversation_id', (q) => 
+      .withIndex('by_conversation_and_order', (q) => 
         q.eq('conversationId', args.conversationId)
       )
       .order('asc')
