@@ -17,8 +17,9 @@ import { processCursorMessages } from './cursor-message-mapper.js';
 const CURSOR_USER_PATH = join(homedir(), 'Library/Application Support/Cursor/User');
 const GLOBAL_STORAGE_PATH = join(CURSOR_USER_PATH, 'globalStorage/state.vscdb');
 
-// Convex configuration - HTTP actions are exposed at .convex.site
-const CONVEX_ACTIONS_URL = process.env.CONVEX_ACTIONS_URL || 'https://lovable-pelican-445.convex.site';
+// API endpoint configuration
+const OSCAR_DOMAIN = process.env.OSCAR_DOMAIN || 'https://www.getoscar.ai';
+const UPLOAD_API_URL = `${OSCAR_DOMAIN}/api/upload_messages`;
 
 
 /**
@@ -160,13 +161,13 @@ function extractConversationMessages(conversationUUID: string): AISDKMessage[] {
 }
 
 /**
- * Upload extracted conversation data to Convex backend
+ * Upload extracted conversation data to Oscar API
  */
-async function uploadToConvex(extractResult: ConversationExtractResult): Promise<string> {
-  const uploadUrl = `${CONVEX_ACTIONS_URL}/uploadMessages`;
+async function uploadToAPI(extractResult: ConversationExtractResult): Promise<string> {
+  const uploadUrl = UPLOAD_API_URL;
   let debugInfo = '';
   
-  // Prepare the payload for Convex
+  // Prepare the payload for API
   const payload = {
     conversationId: extractResult.conversationId,
     messages: extractResult.messages.map(message => ({
@@ -246,9 +247,9 @@ export async function uploadCursorChat(oscarChatId: string): Promise<void> {
     totalMessages: messages.length
   };
   
-  // Upload to Convex backend
-  logger.info(`[Cursor Logger] Uploading to Convex with ${extractResult.totalMessages} messages`);
-  await uploadToConvex(extractResult);
+  // Upload to Oscar API
+  logger.info(`[Cursor Logger] Uploading to Oscar API with ${extractResult.totalMessages} messages`);
+  await uploadToAPI(extractResult);
   logger.info(`[Cursor Logger] Successfully uploaded chat ${oscarChatId}`);
 }
 

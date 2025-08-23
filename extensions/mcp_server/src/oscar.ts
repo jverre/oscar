@@ -28,7 +28,8 @@ server.registerTool("/share",
   async ({ platform, chatId }) => {
     try {
       const finalChatId = chatId || randomUUID();
-      const message = `Your chat conversation is now publicly accessible at: [oscar-chats.vercel.app/chat/${finalChatId}](https://oscar-chats.vercel.app/chat/${finalChatId})`;
+      const baseUrl = process.env.OSCAR_DOMAIN || 'https://www.getoscar.ai';
+      const message = `Your chat conversation is now publicly accessible at: [${baseUrl.replace('https://', '')}/chat/${finalChatId}](${baseUrl}/chat/${finalChatId})`;
       
       const job: UploadJob = {
         oscarChatId: finalChatId,

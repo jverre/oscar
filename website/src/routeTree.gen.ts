@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
+import { Route as ApiUpload_messagesRouteImport } from './routes/api/upload_messages'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,30 +23,39 @@ const ChatConversationIdRoute = ChatConversationIdRouteImport.update({
   path: '/chat/$conversationId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiUpload_messagesRoute = ApiUpload_messagesRouteImport.update({
+  id: '/api/upload_messages',
+  path: '/api/upload_messages',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/upload_messages': typeof ApiUpload_messagesRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/upload_messages': typeof ApiUpload_messagesRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/upload_messages': typeof ApiUpload_messagesRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat/$conversationId'
+  fullPaths: '/' | '/api/upload_messages' | '/chat/$conversationId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chat/$conversationId'
-  id: '__root__' | '/' | '/chat/$conversationId'
+  to: '/' | '/api/upload_messages' | '/chat/$conversationId'
+  id: '__root__' | '/' | '/api/upload_messages' | '/chat/$conversationId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiUpload_messagesRoute: typeof ApiUpload_messagesRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
 }
 
@@ -65,11 +75,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatConversationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/upload_messages': {
+      id: '/api/upload_messages'
+      path: '/api/upload_messages'
+      fullPath: '/api/upload_messages'
+      preLoaderRoute: typeof ApiUpload_messagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiUpload_messagesRoute: ApiUpload_messagesRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
 }
 export const routeTree = rootRouteImport
