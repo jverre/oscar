@@ -6,7 +6,7 @@
   "framework": null,
   "functions": {
     ".output/server/index.mjs": {
-      "runtime": "nodejs20.x"
+      "runtime": "@vercel/node@3.2.24"
     }
   },
   "routes": [
