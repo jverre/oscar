@@ -1,10 +1,17 @@
-name: Publish to npm
+name: Publish MCP Server to npm
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
   publish:
@@ -12,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -19,13 +28,30 @@ jobs:
           node-version: '18'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Install dependencies
         run: npm ci
+        working-directory: extensions/mcp_server
 
       - name: Build
         run: npm run build
+        working-directory: extensions/mcp_server
+
+      - name: Bump version and create tag
+        run: npm version ${{ inputs.version_type }}
+        working-directory: extensions/mcp_server
+
+      - name: Push changes and tags
+        run: |
+          git push
+          git push --tags
 
       - name: Publish to npm
         run: npm publish --access public
+        working-directory: extensions/mcp_server
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
