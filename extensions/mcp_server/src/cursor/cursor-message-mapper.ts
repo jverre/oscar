@@ -106,13 +106,16 @@ export function convertCursorUserMessage(
     content = text;
   }
   
-  // For now, keep user messages as simple strings
+  // User messages now use consistent array format
   // Future enhancement: could parse richText into structured content parts
   
   return {
     messageId: cursorMessage.bubbleId,
     role: 'user',
-    content,
+    content: [{
+      type: 'text',
+      text: content
+    }],
     conversationId,
     messageOrder,
     timestamp: cursorMessage.timingInfo?.clientStartTime
@@ -176,7 +179,7 @@ export function convertCursorAssistantMessage(
     const assistantMessage: AISDKMessage = {
       messageId: cursorMessage.bubbleId,
       role: 'assistant',
-      content: content.length === 1 && content[0].type === 'text' ? content[0].text : content,
+      content: content,
       conversationId,
       messageOrder: baseMessageOrder,
       timestamp: cursorMessage.timingInfo?.clientStartTime
