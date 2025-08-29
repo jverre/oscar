@@ -11,12 +11,18 @@
 import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as R404RouteImport } from './routes/_404'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
 import { ServerRoute as ApiUpload_messagesServerRouteImport } from './routes/api/upload_messages'
+import { ServerRoute as ApiCreate_conversationServerRouteImport } from './routes/api/create_conversation'
 
 const rootServerRouteImport = createServerRootRoute()
 
+const R404Route = R404RouteImport.update({
+  id: '/_404',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -33,6 +39,12 @@ const ApiUpload_messagesServerRoute =
     path: '/api/upload_messages',
     getParentRoute: () => rootServerRouteImport,
   } as any)
+const ApiCreate_conversationServerRoute =
+  ApiCreate_conversationServerRouteImport.update({
+    id: '/api/create_conversation',
+    path: '/api/create_conversation',
+    getParentRoute: () => rootServerRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -45,6 +57,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_404': typeof R404Route
   '/chat/$conversationId': typeof ChatConversationIdRoute
 }
 export interface FileRouteTypes {
@@ -52,37 +65,49 @@ export interface FileRouteTypes {
   fullPaths: '/' | '/chat/$conversationId'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/chat/$conversationId'
-  id: '__root__' | '/' | '/chat/$conversationId'
+  id: '__root__' | '/' | '/_404' | '/chat/$conversationId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  R404Route: typeof R404Route
   ChatConversationIdRoute: typeof ChatConversationIdRoute
 }
 export interface FileServerRoutesByFullPath {
+  '/api/create_conversation': typeof ApiCreate_conversationServerRoute
   '/api/upload_messages': typeof ApiUpload_messagesServerRoute
 }
 export interface FileServerRoutesByTo {
+  '/api/create_conversation': typeof ApiCreate_conversationServerRoute
   '/api/upload_messages': typeof ApiUpload_messagesServerRoute
 }
 export interface FileServerRoutesById {
   __root__: typeof rootServerRouteImport
+  '/api/create_conversation': typeof ApiCreate_conversationServerRoute
   '/api/upload_messages': typeof ApiUpload_messagesServerRoute
 }
 export interface FileServerRouteTypes {
   fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/upload_messages'
+  fullPaths: '/api/create_conversation' | '/api/upload_messages'
   fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/upload_messages'
-  id: '__root__' | '/api/upload_messages'
+  to: '/api/create_conversation' | '/api/upload_messages'
+  id: '__root__' | '/api/create_conversation' | '/api/upload_messages'
   fileServerRoutesById: FileServerRoutesById
 }
 export interface RootServerRouteChildren {
+  ApiCreate_conversationServerRoute: typeof ApiCreate_conversationServerRoute
   ApiUpload_messagesServerRoute: typeof ApiUpload_messagesServerRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_404': {
+      id: '/_404'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof R404RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -108,17 +133,26 @@ declare module '@tanstack/react-start/server' {
       preLoaderRoute: typeof ApiUpload_messagesServerRouteImport
       parentRoute: typeof rootServerRouteImport
     }
+    '/api/create_conversation': {
+      id: '/api/create_conversation'
+      path: '/api/create_conversation'
+      fullPath: '/api/create_conversation'
+      preLoaderRoute: typeof ApiCreate_conversationServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  R404Route: R404Route,
   ChatConversationIdRoute: ChatConversationIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 const rootServerRouteChildren: RootServerRouteChildren = {
+  ApiCreate_conversationServerRoute: ApiCreate_conversationServerRoute,
   ApiUpload_messagesServerRoute: ApiUpload_messagesServerRoute,
 }
 export const serverRouteTree = rootServerRouteImport

@@ -13,13 +13,12 @@ import {
 } from '../types.js';
 import { logger } from '../logger.js';
 import { processCursorMessages } from './cursor-message-mapper.js';
+import { oscarClient } from '../oscar.js';
 
 const CURSOR_USER_PATH = join(homedir(), 'Library/Application Support/Cursor/User');
 const GLOBAL_STORAGE_PATH = join(CURSOR_USER_PATH, 'globalStorage/state.vscdb');
 
-// API endpoint configuration
-const OSCAR_DOMAIN = process.env.OSCAR_DOMAIN || 'https://www.getoscar.ai';
-const UPLOAD_API_URL = `${OSCAR_DOMAIN}/api/upload_messages`;
+// Oscar client is imported from oscar.js
 
 
 /**
@@ -164,54 +163,7 @@ function extractConversationMessages(conversationUUID: string): AISDKMessage[] {
  * Upload extracted conversation data to Oscar API
  */
 async function uploadToAPI(extractResult: ConversationExtractResult): Promise<string> {
-  const uploadUrl = UPLOAD_API_URL;
-  let debugInfo = '';
-  
-  // Prepare the payload for API
-  const payload = {
-    conversationId: extractResult.conversationId,
-    messages: extractResult.messages.map(message => ({
-      messageId: message.messageId,
-      role: message.role,
-      content: message.content, // Keep as string since it's already extracted as text
-      timestamp: message.timestamp,
-      conversationId: message.conversationId,
-      messageOrder: message.messageOrder
-    }))
-  };
-  
-  debugInfo += `📤 HTTP POST to: ${uploadUrl}\n`;
-  debugInfo += `📦 Payload size: ${JSON.stringify(payload).length} bytes\n`;
-  debugInfo += `📦 Messages count: ${payload.messages.length}\n`;
-  debugInfo += `📦 Conversation ID: ${payload.conversationId}\n`;
-  
-  const response = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload)
-  });
-  
-  debugInfo += `📥 Response status: ${response.status} ${response.statusText}\n`;
-  debugInfo += `📥 Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}\n`;
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    debugInfo += `❌ Error response: ${errorText}\n`;
-    throw new Error(`HTTP ${response.status}: ${errorText}\n${debugInfo}`);
-  }
-  
-  const result = await response.json();
-  debugInfo += `📥 Response body: ${JSON.stringify(result)}\n`;
-  
-  if (!result.success) {
-    debugInfo += `❌ Upload marked as failed in response\n`;
-    throw new Error(`Upload failed: ${result.error || 'Unknown error'}\n${debugInfo}`);
-  }
-  
-  debugInfo += `✅ Upload successful - inserted ${result.insertedCount || 'unknown'} messages\n`;
-  return debugInfo;
+  return await oscarClient.uploadMessages(extractResult);
 }
 
 /**
@@ -249,7 +201,8 @@ export async function uploadCursorChat(oscarChatId: string): Promise<void> {
   
   // Upload to Oscar API
   logger.info(`[Cursor Logger] Uploading to Oscar API with ${extractResult.totalMessages} messages`);
-  await uploadToAPI(extractResult);
+  const uploadResult = await uploadToAPI(extractResult);
+  logger.info(`[Cursor Logger] Upload result: ${uploadResult}`);
   logger.info(`[Cursor Logger] Successfully uploaded chat ${oscarChatId}`);
 }
 

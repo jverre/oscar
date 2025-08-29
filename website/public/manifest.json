@@ -1,6 +1,7 @@
 {
-  "short_name": "TanStack App",
-  "name": "Create TanStack App Sample",
+  "short_name": "Oscar Chat",
+  "name": "Oscar Chat - AI Conversation Viewer",
+  "description": "View and browse AI chat conversations with support for tool calls and real-time updates",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,18 +9,18 @@
       "type": "image/x-icon"
     },
     {
-      "src": "logo192.png",
-      "type": "image/png",
+      "src": "logo192.svg",
+      "type": "image/svg+xml",
       "sizes": "192x192"
     },
     {
-      "src": "logo512.png",
-      "type": "image/png",
+      "src": "logo512.svg", 
+      "type": "image/svg+xml",
       "sizes": "512x512"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#1f2937",
+  "background_color": "#0f172a"
 }

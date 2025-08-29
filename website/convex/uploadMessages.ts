@@ -77,6 +77,12 @@ export const uploadMessages = httpAction(async (ctx, request) => {
       messages
     })
     
+    // Mark conversation as completed
+    await ctx.runMutation(internal.conversations.markCompleted, {
+      conversationId,
+      messageCount: messages.length
+    })
+    
     return new Response(JSON.stringify({ 
       success: true, 
       insertedCount: result.insertedCount,

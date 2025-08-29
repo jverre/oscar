@@ -1,0 +1,191 @@
+import { User } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import type { UserContent, TextPart, ImagePart, FilePart } from '../../../convex/schema'
+
+const markdownComponents = {
+  a: ({ href, children, ...props }: any) => (
+    <a
+      href={href}
+      className="text-primary underline-offset-2 hover:underline transition-colors"
+      target="_blank"
+      rel="noopener noreferrer"
+      {...props}
+    >
+      {children}
+    </a>
+  ),
+  code: ({ node, inline, children, ...props }: any) => {
+    const isInline = inline || !node?.parent || node.parent.tagName !== 'pre'
+    
+    if (isInline) {
+      return (
+        <code
+          className="bg-muted px-1.5 py-0.5 rounded-sm text-sm font-mono border border-border/50"
+          {...props}
+        >
+          {children}
+        </code>
+      )
+    }
+    return (
+      <code
+        className="block bg-muted/50 p-2 rounded text-sm font-mono overflow-x-auto whitespace-pre"
+        {...props}
+      >
+        {children}
+      </code>
+    )
+  },
+  pre: ({ children, ...props }: any) => (
+    <pre className="bg-muted/50 p-2 rounded my-2 overflow-x-auto" {...props}>
+      {children}
+    </pre>
+  ),
+  blockquote: ({ children, ...props }: any) => (
+    <blockquote
+      className="border-l-2 border-primary/30 pl-4 py-3 my-4 text-muted-foreground italic"
+      {...props}
+    >
+      {children}
+    </blockquote>
+  ),
+  h1: ({ children, ...props }: any) => (
+    <h1 className="text-lg font-semibold mt-6 mb-3 text-foreground border-b border-border/50 pb-2" {...props}>
+      {children}
+    </h1>
+  ),
+  h2: ({ children, ...props }: any) => (
+    <h2 className="text-base font-semibold mt-5 mb-2 text-foreground" {...props}>
+      {children}
+    </h2>
+  ),
+  h3: ({ children, ...props }: any) => (
+    <h3 className="text-sm font-semibold mt-4 mb-1.5 text-foreground" {...props}>
+      {children}
+    </h3>
+  ),
+  ul: ({ children, ...props }: any) => (
+    <ul className="list-disc ml-4 space-y-1 my-3" {...props}>
+      {children}
+    </ul>
+  ),
+  ol: ({ children, ...props }: any) => (
+    <ol className="list-decimal ml-4 space-y-1 my-3" {...props}>
+      {children}
+    </ol>
+  ),
+  li: ({ children, ...props }: any) => (
+    <li className="text-foreground pl-1" {...props}>
+      {children}
+    </li>
+  ),
+  p: ({ children, ...props }: any) => (
+    <p className="mb-3 leading-relaxed text-foreground" {...props}>
+      {children}
+    </p>
+  ),
+  strong: ({ children, ...props }: any) => (
+    <strong className="font-medium text-foreground" {...props}>
+      {children}
+    </strong>
+  ),
+  em: ({ children, ...props }: any) => (
+    <em className="italic text-foreground" {...props}>
+      {children}
+    </em>
+  ),
+}
+
+interface UserMessageProps {
+  content: UserContent
+  timestamp?: number
+  messageOrder?: number
+}
+
+export function UserMessage({ content, timestamp, messageOrder }: UserMessageProps) {
+  const renderContent = () => {
+    if (typeof content === 'string') {
+      return <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
+    }
+
+    return (
+      <div className="space-y-1">
+        {content.map((part, index) => {
+          switch (part.type) {
+            case 'text':
+              return (
+                <ReactMarkdown key={index} components={markdownComponents}>
+                  {part.text}
+                </ReactMarkdown>
+              )
+
+            case 'image': {
+              const imageUrl = typeof part.image === 'string' 
+                ? part.image 
+                : part.image.url
+              return (
+                <div key={index} className="my-3">
+                  <img
+                    src={imageUrl}
+                    alt="User uploaded image"
+                    className="max-w-full h-auto rounded-md border border-border"
+                  />
+                </div>
+              )
+            }
+
+            case 'file': {
+              const fileUrl = typeof part.data === 'string' 
+                ? `data:${part.mediaType};base64,${part.data}`
+                : part.data.url
+              return (
+                <div key={index} className="inline-flex items-center gap-2 px-3 py-2 bg-muted rounded-md">
+                  <span className="font-mono text-sm">
+                    {part.filename || 'Attached file'}
+                  </span>
+                  <a
+                    href={fileUrl}
+                    download={part.filename}
+                    className="text-xs text-primary hover:text-primary/80 underline"
+                  >
+                    Download
+                  </a>
+                </div>
+              )
+            }
+
+            default:
+              return null
+          }
+        })}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex">
+      <div className="w-4 flex justify-center pt-1">
+        <div className="w-4 h-4 rounded-full bg-background border border-primary/20 flex items-center justify-center relative z-10">
+          <User className="h-2.5 w-2.5 text-primary" />
+        </div>
+      </div>
+      
+      <div className="flex-1 min-w-0 pl-3 pb-6">
+        <div className="flex items-center gap-2 mb-1 pt-1">
+          <span className="text-xs font-medium text-muted-foreground font-mono">
+            User
+          </span>
+          {timestamp && (
+            <span className="text-xs text-muted-foreground font-mono opacity-50">
+              {new Date(timestamp).toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+        
+        <div className="text-sm text-foreground leading-relaxed">
+          {renderContent()}
+        </div>
+      </div>
+    </div>
+  )
+}

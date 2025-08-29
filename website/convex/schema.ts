@@ -1,6 +1,47 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 
+// Export type definitions
+export type TextPart = {
+  type: 'text'
+  text: string
+}
+
+export type ImagePart = {
+  type: 'image'
+  image: string | { url: string }
+  mediaType?: string
+}
+
+export type FilePart = {
+  type: 'file'
+  data: string | { url: string }
+  filename?: string
+  mediaType: string
+}
+
+export type ToolCallPart = {
+  type: 'tool-call'
+  toolCallId: string
+  toolName: string
+  args: any
+}
+
+export type ToolResultPart = {
+  type: 'tool-result'
+  toolCallId: string
+  toolName: string
+  output: {
+    type: 'text' | 'json' | 'error-text' | 'error-json' | 'content'
+    value: any
+  }
+  providerOptions?: any
+}
+
+export type UserContent = string | (TextPart | ImagePart | FilePart)[]
+export type AssistantContent = string | (TextPart | ToolCallPart)[]
+export type ToolContent = ToolResultPart[]
+
 // Define content part schemas
 const textPart = v.object({
   type: v.literal('text'),
@@ -68,6 +109,15 @@ const assistantContent = v.union(
 const toolContent = v.array(toolResultPart)
 
 export default defineSchema({
+  conversations: defineTable({
+    conversationId: v.string(),
+    status: v.union(v.literal('pending'), v.literal('completed')),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+    messageCount: v.optional(v.number()),
+  })
+    .index("by_conversation_id", ["conversationId"]),
+    
   messages: defineTable({
     // Unique message identifier
     messageId: v.string(),
