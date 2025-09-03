@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@convex-dev/react-query": "0.0.0-alpha.8",
+    "@fontsource-variable/martian-mono": "^5.2.6",
+    "@radix-ui/react-slot": "^1.2.3",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-devtools": "^0.2.2",
     "@tanstack/react-router": "^1.130.2",
@@ -26,6 +28,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.19.2",
+    "framer-motion": "^12.23.12",
     "lucide-react": "^0.476.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

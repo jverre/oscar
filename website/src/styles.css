@@ -1,3 +1,6 @@
+/* Import Martian Mono variable font for better performance */
+@import '@fontsource-variable/martian-mono';
+
 @import 'tailwindcss';
 
 @import 'tw-animate-css';
@@ -7,18 +10,28 @@
 body {
   @apply m-0;
   font-family:
-    ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 
-    Consolas, 'Courier New', monospace;
+    'Martian Mono', ui-monospace, 'SF Mono', Monaco, 
+    'Cascadia Code', Consolas, 'Courier New', monospace;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 code {
   font-family:
-    source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+    'Martian Mono', source-code-pro, Menlo, Monaco, 
+    Consolas, 'Courier New', monospace;
 }
 
 :root {
+  /* Custom Oscar color palette */
+  --sage-green: #B8D8BA;
+  --light-tan: #D9DBBC;
+  --peach: #FCDDBC;
+  --rose: #EF959D;
+  --dark-brown: #69585F;
+  
   --background: oklch(1 0 0);
   --foreground: oklch(0.15 0.005 240);
   --card: oklch(1 0 0);
