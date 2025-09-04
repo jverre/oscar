@@ -13,13 +13,6 @@ export function NotFoundPage() {
           <div className="space-y-4">
             <h1 className="text-6xl font-bold text-gray-900">404</h1>
             <p className="text-2xl text-gray-600">Humm, nothing to see here</p>
-            <p className="text-sm text-gray-500">
-              The page you're looking for doesn't exist, but here's a game of tic-tac-toe to pass the time!
-            </p>
-          </div>
-          
-          <div className="py-8">
-            <TicTacToe />
           </div>
           
           <div className="space-y-4">
