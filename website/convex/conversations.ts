@@ -1,9 +1,9 @@
 import { v } from "convex/values";
-import { mutation, query, httpAction, internalMutation } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { mutation, query, httpAction } from "./_generated/server";
+import { api } from "./_generated/api";
 
-// Internal mutation for HTTP actions
-export const createInternal = internalMutation({
+// Public mutation for creating conversations (used by both HTTP actions and API routes)
+export const create = mutation({
   args: {
     conversationId: v.string(),
   },
@@ -14,14 +14,16 @@ export const createInternal = internalMutation({
       .first();
     
     if (existing) {
-      return existing._id;
+      return { id: existing._id, existed: true };
     }
     
-    return await ctx.db.insert("conversations", {
+    const id = await ctx.db.insert("conversations", {
       conversationId: args.conversationId,
       status: "pending",
       createdAt: Date.now(),
     });
+    
+    return { id, existed: false };
   },
 });
 
@@ -77,14 +79,15 @@ export const createConversation = httpAction(async (ctx, request) => {
       });
     }
     
-    const result = await ctx.runMutation(internal.conversations.createInternal, {
+    const result = await ctx.runMutation(api.conversations.create, {
       conversationId: body.conversationId
     });
     
     return new Response(JSON.stringify({ 
       success: true,
       conversationId: body.conversationId,
-      id: result
+      id: result.id,
+      existed: result.existed
     }), {
       status: 200,
       headers: {

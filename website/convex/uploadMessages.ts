@@ -164,6 +164,20 @@ export const insertMessagesFromAPI = mutation({
     
     await Promise.all(insertPromises)
     
+    // Mark conversation as completed
+    const conversation = await ctx.db
+      .query("conversations")
+      .withIndex("by_conversation_id", (q) => q.eq("conversationId", args.conversationId))
+      .first();
+    
+    if (conversation) {
+      await ctx.db.patch(conversation._id, {
+        status: "completed",
+        completedAt: Date.now(),
+        messageCount: args.messages.length,
+      });
+    }
+    
     return {
       insertedCount: args.messages.length
     }

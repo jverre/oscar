@@ -12,7 +12,9 @@
     "test": "vitest run",
     "lint": "eslint",
     "format": "prettier",
-    "check": "prettier --write . && eslint --fix"
+    "check": "prettier --write . && eslint --fix",
+    "demo:dev": "node scripts/upload-demo.js",
+    "demo:prod": "API_URL=https://getoscar.ai/api node scripts/upload-demo.js"
   },
   "dependencies": {
     "@convex-dev/react-query": "0.0.0-alpha.8",

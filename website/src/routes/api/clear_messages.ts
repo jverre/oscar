@@ -5,7 +5,7 @@ import { api } from '../../../convex/_generated/api'
 
 const convex = new ConvexHttpClient(process.env.VITE_CONVEX_URL!)
 
-export const ServerRoute = createServerFileRoute('/api/create_conversation').methods({
+export const ServerRoute = createServerFileRoute('/api/clear_messages').methods({
   POST: async ({ request }) => {
     try {
       // Parse the request body
@@ -23,19 +23,19 @@ export const ServerRoute = createServerFileRoute('/api/create_conversation').met
         return json({ error: 'conversationId is required and must be a string' }, { status: 400 })
       }
       
-      // Call Convex mutation to create conversation
-      const result = await convex.mutation(api.conversations.create, {
+      // Call Convex mutation to clear messages
+      const result = await convex.mutation(api.messages.clearByConversation, {
         conversationId
       })
       
       return json({ 
         success: true, 
         conversationId,
-        result
+        deletedCount: result.deletedCount
       })
       
     } catch (error) {
-      console.error('Create conversation error:', error)
+      console.error('Clear messages error:', error)
       return json({ 
         error: 'Internal server error',
         details: error instanceof Error ? error.message : String(error)

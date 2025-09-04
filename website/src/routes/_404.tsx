@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { TicTacToe } from '@/components/TicTacToe'
 
 export const Route = createFileRoute('/_404')({
   component: NotFoundPage,
@@ -6,37 +7,28 @@ export const Route = createFileRoute('/_404')({
 
 export function NotFoundPage() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        <div className="bg-zinc-900 rounded-lg shadow-2xl overflow-hidden border border-zinc-800">
-          <div className="bg-zinc-800 px-4 py-2 flex items-center space-x-2">
-            <div className="flex space-x-2">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            </div>
-            <div className="flex-1 text-center text-sm text-zinc-400 font-mono">
-              404 - Not Found
-            </div>
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="container mx-auto px-4">
+        <div className="text-center space-y-8">
+          <div className="space-y-4">
+            <h1 className="text-6xl font-bold text-gray-900">404</h1>
+            <p className="text-2xl text-gray-600">Humm, nothing to see here</p>
+            <p className="text-sm text-gray-500">
+              The page you're looking for doesn't exist, but here's a game of tic-tac-toe to pass the time!
+            </p>
           </div>
-          <div className="p-6 font-mono text-sm">
-            <div className="text-zinc-400 mb-2">
-              <span className="text-green-400">~</span>
-              <span className="text-zinc-500"> $ </span>
-              <span>curl https://oscar.dev</span>
-              <span className="text-zinc-400">{typeof window !== 'undefined' ? window.location.pathname : '/unknown-path'}</span>
-            </div>
-            <div className="text-red-400 mb-4">
-              Error: 404 - Resource not found
-            </div>
-            <div className="border-t border-zinc-700 pt-4 mt-4">
-              <a 
-                href="/" 
-                className="text-cyan-400 hover:text-cyan-300 underline underline-offset-4 text-sm"
-              >
-                # Navigate back to safety
-              </a>
-            </div>
+          
+          <div className="py-8">
+            <TicTacToe />
+          </div>
+          
+          <div className="space-y-4">
+            <a 
+              href="/" 
+              className="inline-flex items-center px-6 py-3 border border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white transition-colors font-medium"
+            >
+              ← Back to Home
+            </a>
           </div>
         </div>
       </div>

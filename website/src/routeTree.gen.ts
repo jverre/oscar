@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
 import { ServerRoute as ApiUpload_messagesServerRouteImport } from './routes/api/upload_messages'
 import { ServerRoute as ApiCreate_conversationServerRouteImport } from './routes/api/create_conversation'
+import { ServerRoute as ApiClear_messagesServerRouteImport } from './routes/api/clear_messages'
 
 const rootServerRouteImport = createServerRootRoute()
 
@@ -45,6 +46,11 @@ const ApiCreate_conversationServerRoute =
     path: '/api/create_conversation',
     getParentRoute: () => rootServerRouteImport,
   } as any)
+const ApiClear_messagesServerRoute = ApiClear_messagesServerRouteImport.update({
+  id: '/api/clear_messages',
+  path: '/api/clear_messages',
+  getParentRoute: () => rootServerRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -74,27 +80,41 @@ export interface RootRouteChildren {
   ChatConversationIdRoute: typeof ChatConversationIdRoute
 }
 export interface FileServerRoutesByFullPath {
+  '/api/clear_messages': typeof ApiClear_messagesServerRoute
   '/api/create_conversation': typeof ApiCreate_conversationServerRoute
   '/api/upload_messages': typeof ApiUpload_messagesServerRoute
 }
 export interface FileServerRoutesByTo {
+  '/api/clear_messages': typeof ApiClear_messagesServerRoute
   '/api/create_conversation': typeof ApiCreate_conversationServerRoute
   '/api/upload_messages': typeof ApiUpload_messagesServerRoute
 }
 export interface FileServerRoutesById {
   __root__: typeof rootServerRouteImport
+  '/api/clear_messages': typeof ApiClear_messagesServerRoute
   '/api/create_conversation': typeof ApiCreate_conversationServerRoute
   '/api/upload_messages': typeof ApiUpload_messagesServerRoute
 }
 export interface FileServerRouteTypes {
   fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/create_conversation' | '/api/upload_messages'
+  fullPaths:
+    | '/api/clear_messages'
+    | '/api/create_conversation'
+    | '/api/upload_messages'
   fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/create_conversation' | '/api/upload_messages'
-  id: '__root__' | '/api/create_conversation' | '/api/upload_messages'
+  to:
+    | '/api/clear_messages'
+    | '/api/create_conversation'
+    | '/api/upload_messages'
+  id:
+    | '__root__'
+    | '/api/clear_messages'
+    | '/api/create_conversation'
+    | '/api/upload_messages'
   fileServerRoutesById: FileServerRoutesById
 }
 export interface RootServerRouteChildren {
+  ApiClear_messagesServerRoute: typeof ApiClear_messagesServerRoute
   ApiCreate_conversationServerRoute: typeof ApiCreate_conversationServerRoute
   ApiUpload_messagesServerRoute: typeof ApiUpload_messagesServerRoute
 }
@@ -140,6 +160,13 @@ declare module '@tanstack/react-start/server' {
       preLoaderRoute: typeof ApiCreate_conversationServerRouteImport
       parentRoute: typeof rootServerRouteImport
     }
+    '/api/clear_messages': {
+      id: '/api/clear_messages'
+      path: '/api/clear_messages'
+      fullPath: '/api/clear_messages'
+      preLoaderRoute: typeof ApiClear_messagesServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
   }
 }
 
@@ -152,6 +179,7 @@ export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 const rootServerRouteChildren: RootServerRouteChildren = {
+  ApiClear_messagesServerRoute: ApiClear_messagesServerRoute,
   ApiCreate_conversationServerRoute: ApiCreate_conversationServerRoute,
   ApiUpload_messagesServerRoute: ApiUpload_messagesServerRoute,
 }
