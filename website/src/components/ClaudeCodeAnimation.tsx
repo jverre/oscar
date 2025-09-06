@@ -87,7 +87,7 @@ export function ClaudeCodeAnimation() {
         setMcpIndex(0)
         setResponseIndex(0)
         setStreamingComplete(false)
-      }, 1500)
+      }, 2140)
       return () => clearTimeout(timer)
     }
   }, [streamingComplete])

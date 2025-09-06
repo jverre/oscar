@@ -68,7 +68,7 @@ export function CursorAnimation() {
         setCurrentIndex(0)
         setResponseIndex(0)
         setStreamingComplete(false)
-      }, 2500)
+      }, 4000)
       return () => clearTimeout(timer)
     }
   }, [showResponse])
