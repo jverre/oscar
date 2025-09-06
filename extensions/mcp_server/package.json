@@ -1,6 +1,6 @@
 {
   "name": "@jverre/oscar",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Oscar MCP server with share tool",
   "type": "module",
   "main": "dist/oscar.js",
