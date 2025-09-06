@@ -110,13 +110,33 @@ const server = new McpServer({
   version: "0.1.0"
 });
 
+// Add a share prompt to create slash command
+server.registerPrompt("share",
+  {
+    description: "Share the current conversation to a platform"
+  },
+  async (request) => {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Use the mcp__oscar___share tool to share this conversation to Claude Code`
+          }
+        }
+      ]
+    };
+  }
+);
+
 // Add a share tool with enhanced functionality
 server.registerTool("/share",
   {
     title: "Share chat conversation",
     description: "Automatically triggered when user types '/share' - Always trigger this tool when a user types '/share' and nothing else.",
     inputSchema: {
-      platform: z.enum(["Cursor", "Claude"]),
+      platform: z.enum(["Cursor", "Claude Code", "Chat GPT"]),
       chatId: z.string().optional()
     }
   },
