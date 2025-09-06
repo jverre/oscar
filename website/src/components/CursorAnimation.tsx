@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ImageIcon, ArrowUp } from 'lucide-react'
 
-export function DemoAnimation() {
+export function CursorAnimation() {
   const [inputValue, setInputValue] = useState('')
   const shareText = '/share'
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -18,12 +18,12 @@ export function DemoAnimation() {
       const timer = setTimeout(() => {
         setInputValue(shareText.slice(0, currentIndex + 1))
         setCurrentIndex(currentIndex + 1)
-      }, 50)
+      }, 100)
       return () => clearTimeout(timer)
     } else if (currentIndex === shareText.length && !isSubmitting) {
       const timer = setTimeout(() => {
         setIsSubmitting(true)
-      }, 500)
+      }, 300)
       return () => clearTimeout(timer)
     }
   }, [currentIndex, shareText, isSubmitting])
@@ -33,7 +33,7 @@ export function DemoAnimation() {
       const timer = setTimeout(() => {
         setShowMessage(true)
         setInputValue('')
-      }, 300)
+      }, 200)
       return () => clearTimeout(timer)
     }
   }, [isSubmitting])
@@ -43,7 +43,7 @@ export function DemoAnimation() {
       const timer = setTimeout(() => {
         setShowResponse(true)
         setResponseIndex(0)
-      }, 1000)
+      }, 500)
       return () => clearTimeout(timer)
     }
   }, [showMessage, showResponse])
@@ -52,7 +52,7 @@ export function DemoAnimation() {
     if (showResponse && responseIndex < responseText.length) {
       const timer = setTimeout(() => {
         setResponseIndex(responseIndex + 1)
-      }, 30)
+      }, 25)
       return () => clearTimeout(timer)
     } else if (showResponse && responseIndex === responseText.length && !streamingComplete) {
       setStreamingComplete(true)
@@ -68,7 +68,7 @@ export function DemoAnimation() {
         setCurrentIndex(0)
         setResponseIndex(0)
         setStreamingComplete(false)
-      }, 8000)
+      }, 2500)
       return () => clearTimeout(timer)
     }
   }, [showResponse])
