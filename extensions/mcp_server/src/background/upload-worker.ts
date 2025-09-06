@@ -86,6 +86,7 @@ class UploadWorker {
         break;
       
       case 'Claude':
+      case 'Claude Code':
         await uploadClaudeChat(job.oscarChatId);
         break;
       

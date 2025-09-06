@@ -48,6 +48,11 @@ jobs:
         run: npm version ${{ inputs.version_type }}
         working-directory: extensions/mcp_server
 
+      - name: Commit version changes
+        run: |
+          git add extensions/mcp_server/package.json extensions/mcp_server/package-lock.json
+          git commit -m "Bump version to $(node -p "require('./extensions/mcp_server/package.json').version")" || echo "No changes to commit"
+
       - name: Push changes and tags
         run: |
           git push
