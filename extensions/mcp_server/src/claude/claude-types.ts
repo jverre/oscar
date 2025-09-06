@@ -2,6 +2,29 @@
  * Type definitions for Claude Code conversation format
  */
 
+export interface ClaudeToolUse {
+  type: 'tool_use';
+  id: string;
+  name: string;
+  input: any;
+}
+
+export interface ClaudeToolResult {
+  type: 'tool_result';
+  tool_use_id: string;
+  content: Array<{
+    type: 'text';
+    text: string;
+  }>;
+}
+
+export interface ClaudeTextContent {
+  type: 'text';
+  text: string;
+}
+
+export type ClaudeContentPart = ClaudeTextContent | ClaudeToolUse | ClaudeToolResult;
+
 export interface ClaudeMessage {
   parentUuid: string | null;
   isSidechain: boolean;
@@ -13,11 +36,7 @@ export interface ClaudeMessage {
   type: 'user' | 'assistant';
   message?: {
     role: 'user' | 'assistant';
-    content: string | Array<{
-      type: string;
-      text?: string;
-      [key: string]: any;
-    }>;
+    content: string | Array<ClaudeContentPart>;
     id?: string;
     model?: string;
     stop_reason?: string | null;
@@ -34,6 +53,7 @@ export interface ClaudeMessage {
   uuid: string;
   timestamp: string;
   requestId?: string;
+  toolUseResult?: any;
 }
 
 export interface ClaudeConversation {
