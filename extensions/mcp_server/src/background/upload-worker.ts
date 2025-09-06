@@ -5,6 +5,7 @@
 import { uploadQueue } from './upload-queue.js';
 import { UploadJob } from '../types.js';
 import { uploadCursorChat } from '../cursor/cursor-logger.js';
+import { uploadClaudeChat } from '../claude/claude-logger.js';
 import { logger } from '../logger.js';
 
 class UploadWorker {
@@ -84,9 +85,9 @@ class UploadWorker {
         await uploadCursorChat(job.oscarChatId);
         break;
       
-      case 'Claude Code':
-        // TODO: Implement Claude Code upload
-        throw new Error('Claude Code upload not implemented yet');
+      case 'Claude':
+        await uploadClaudeChat(job.oscarChatId);
+        break;
       
       case 'Chat GPT':
         // TODO: Implement Chat GPT upload

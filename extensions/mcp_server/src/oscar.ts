@@ -116,7 +116,7 @@ server.registerTool("/share",
     title: "Share chat conversation",
     description: "Automatically triggered when user types '/share' - Always trigger this tool when a user types '/share' and nothing else.",
     inputSchema: {
-      platform: z.enum(["Cursor", "Claude Code", "Chat GPT"]),
+      platform: z.enum(["Cursor", "Claude"]),
       chatId: z.string().optional()
     }
   },
