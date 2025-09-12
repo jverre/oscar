@@ -1,30 +1,32 @@
-import { Button } from './ui/button'
-import { OscarLogo } from './OscarLogo'
+import { CircleDot } from 'lucide-react'
+import { GridCircles } from './GridCircles'
 
 export function Header() {
-  const handleInstallInCursor = () => {
-    // Use the correct Cursor deeplink
-    const deeplinkUrl = 'cursor://anysphere.cursor-deeplink/mcp/install?name=oscar&config=eyJjb21tYW5kIjoibnB4IEBqdmVycmUvb3NjYXIifQ%3D%3D'
-    
-    // Open the deeplink
-    window.location.href = deeplinkUrl
-  }
-
   return (
-    <header className="bg-white">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <OscarLogo className="w-24 sm:w-32 md:w-40 sm:h-10 md:h-12" />
-          
-          <Button 
-            onClick={handleInstallInCursor}
-            className="font-mono text-sm sm:text-base border border-[var(--sage-green)] bg-[var(--light-tan)] text-[var(--dark-brown)] hover:bg-[var(--sage-green)] transition-all duration-200 rounded-none cursor-pointer"
-          >
-            <span className="hidden sm:inline">Install in Cursor</span>
-            <span className="sm:hidden">Install</span>
-          </Button>
-        </div>
+    <div className='sticky top-0 z-50 bg-cream-50/60 backdrop-blur-sm border-b border-sage-green-200'>
+      <div className="nav-background grid-border-color relative mx-3 flex border-x md:mx-8 lg:mx-12">
+        {/* Grid line decorative circles */}
+        <GridCircles />
+        
+        <nav 
+          aria-label="Site's main navigation" 
+          data-orientation="horizontal" 
+          dir="ltr" 
+          className="relative z-2 w-full px-6 py-3 flex justify-start gap-4"
+        >
+          {/* Logo section */}
+          <div className="flex flex-none items-center gap-3">
+            <a 
+              aria-label="Go back to oscar chat homepage" 
+              className="fv-style size-[26px] rounded-sm transition-transform hover:scale-105" 
+              href="/"
+            >
+              <CircleDot className="w-6 h-6 text-sage-green-600" />
+            </a>
+            <span className="hidden md:block text-foreground">Oscar</span>
+          </div>
+        </nav>
       </div>
-    </header>
+    </div>
   )
 }

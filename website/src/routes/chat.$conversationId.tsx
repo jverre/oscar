@@ -8,6 +8,10 @@ import { UserMessage } from '../components/messages/UserMessage'
 import { AssistantMessage } from '../components/messages/AssistantMessage'
 import { SystemMessage } from '../components/messages/SystemMessage'
 import { ToolCallDisplay } from '../components/messages/ToolCallDisplay'
+import { Header } from '@/components/Header'
+import { PageContainer } from '@/components/PageContainer'
+import { Footer } from '@/components/Footer'
+import { GridCircles } from '@/components/GridCircles'
 import type { Doc } from '../../convex/_generated/dataModel'
 import type { ToolCallPart, ToolResultPart } from '../../convex/schema'
 
@@ -100,8 +104,10 @@ function ChatPage() {
   }, [messages])
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto">
+    <PageContainer>
+      <Header />
+      
+      <div className="flex-1 mx-3 md:mx-8 lg:mx-12 my-8 px-4 md:px-6 border-b border-sage-green-200/60 relative">
         <div className="mb-8 border-b border-border pb-4">
           <h1 className="text-2xl font-mono font-semibold text-foreground">
             <span className="text-muted-foreground">$</span> {conversationId}
@@ -158,7 +164,11 @@ function ChatPage() {
             End of conversation
           </p>
         </div>
+        
+        <GridCircles />
       </div>
-    </div>
+      
+      <Footer />
+    </PageContainer>
   )
 }
