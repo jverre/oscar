@@ -107,20 +107,21 @@ function ChatPage() {
     <PageContainer>
       <Header />
       
-      <div className="flex-1 mx-3 md:mx-8 lg:mx-12 my-8 px-4 md:px-6 border-b border-sage-green-200/60 relative">
-        <div className="mb-8 border-b border-border pb-4">
-          <h1 className="text-2xl font-mono font-semibold text-foreground">
-            <span className="text-muted-foreground">$</span> {conversationId}
-          </h1>
-          <p className="text-sm text-muted-foreground font-mono mt-1">
-            {messages.length} messages
-          </p>
-        </div>
-        
-        <div className="relative">
-          <div className="w-px bg-border absolute top-0 left-2" style={{height: '100%'}} />
-          <div className="">
-            {processedMessages.map((message, index) => (
+      <div className="flex-1 my-8 relative">
+        <div className="max-w-4xl mx-auto px-4 md:px-6">
+          <div className="mb-8 border-b border-border pb-4">
+            <h1 className="text-2xl font-mono font-semibold text-foreground">
+              <span className="text-muted-foreground">$</span> {conversationId}
+            </h1>
+            <p className="text-sm text-muted-foreground font-mono mt-1">
+              {messages.length} messages
+            </p>
+          </div>
+          
+          <div className="relative">
+            <div className="w-px bg-border absolute top-0 left-2" style={{height: '100%'}} />
+            <div className="">
+              {processedMessages.map((message, index) => (
               <div key={message._id}>
                 {message.role === 'user' && (
                   <UserMessage 
@@ -156,16 +157,17 @@ function ChatPage() {
                 )}
               </div>
             ))}
+            </div>
           </div>
+          
+          <div className="mt-8 pb-8 text-center">
+            <p className="text-sm text-muted-foreground font-mono">
+              End of conversation
+            </p>
+          </div>
+          
+          <GridCircles />
         </div>
-        
-        <div className="mt-8 pb-8 text-center">
-          <p className="text-sm text-muted-foreground font-mono">
-            End of conversation
-          </p>
-        </div>
-        
-        <GridCircles />
       </div>
       
       <Footer />

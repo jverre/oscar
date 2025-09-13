@@ -74,7 +74,7 @@ export function CursorAnimation() {
   }, [showResponse])
 
   return (
-    <section className="container mx-auto h-[500px] overflow-hidden">
+    <section className="container mx-auto h-[600px] overflow-hidden">
       <div className="h-full bg-gray-100 rounded-lg border shadow-lg mx-auto flex flex-col overflow-hidden">
         {/* Mac-style header */}
         <div className="flex items-center px-3 py-2 bg-gray-50 rounded-t-lg border-b">
@@ -89,7 +89,7 @@ export function CursorAnimation() {
           <div className="flex-1 p-6 hidden md:block">
             {/* Main content area */}
           </div>
-          <aside className="h-full w-full md:w-84 p-4 md:border-l overflow-hidden" style={{ backgroundColor: 'rgb(248, 248, 248)' }}>
+          <aside className="h-full w-full md:w-150 p-4 md:border-l overflow-hidden" style={{ backgroundColor: 'rgb(248, 248, 248)' }}>
             <div className="h-full flex flex-col justify-between relative overflow-hidden">
               <div className="flex items-start justify-center">
                 <div className="w-full max-w-3xl flex flex-col items-start space-y-2">
