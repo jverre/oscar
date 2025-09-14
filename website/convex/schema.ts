@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
+import { authTables } from "@convex-dev/auth/server"
 
 // Export type definitions
 export type TextPart = {
@@ -109,6 +110,7 @@ const assistantContent = v.union(
 const toolContent = v.array(toolResultPart)
 
 export default defineSchema({
+  ...authTables,
   conversations: defineTable({
     conversationId: v.string(),
     status: v.union(v.literal('pending'), v.literal('completed')),

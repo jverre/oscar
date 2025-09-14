@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Download } from 'lucide-react'
+import { Button } from './ui/button'
 
 export function DownloadDropdown() {
   const [isOpen, setIsOpen] = useState(false)
@@ -18,16 +19,15 @@ export function DownloadDropdown() {
 
   return (
     <div className="relative w-full sm:w-fit">
-      <button 
+      <Button
         onClick={() => setIsOpen(!isOpen)}
-        className="group select-none text-sm tracking-tight rounded-sm flex gap-1.5 items-center justify-center text-nowrap border transition-colors duration-75 lg:active:translate-y-px lg:active:scale-[.99] disabled:opacity-50 disabled:cursor-not-allowed bg-sage-green-600 border-transparent text-white shadow-[0_-2px_0_0_hsl(162,30%,30%)_inset,_0_1px_3px_0_hsl(162,30%,95%)] hover:bg-sage-green-700 active:shadow-none hover:shadow-none disabled:bg-sage-green-600 disabled:shadow-none h-9 pl-2.5 pr-3 w-full sm:w-fit"
+        variant="primary"
+        className="w-full sm:w-fit"
       >
-        <svg className="lucide lucide-download" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path>
-        </svg>
+        <Download className="w-4 h-4" />
         Download now
         <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
       
       {isOpen && (
         <>

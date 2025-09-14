@@ -8,12 +8,18 @@ interface PageContainerProps {
 
 export function PageContainer({ children, withGridLines = true }: PageContainerProps) {
   return (
-    <div className="relative min-h-screen bg-cream-50/70">
+    <div className="relative min-h-screen">
+      {/* Darker side areas extending to full viewport - inspired by zed.dev */}
+      <div className="absolute inset-0 bg-gradient-to-r from-cream-100/50 via-cream-50/70 to-cream-100/50"></div>
+
       {/* Noise texture background */}
       <div className="noise-background"></div>
-      
-      {children}
-      
+
+      {/* Content area - positioned like original but with relative layering */}
+      <div className="relative min-h-screen">
+        {children}
+      </div>
+
       {/* Vertical grid lines */}
       {withGridLines && (
         <div className="absolute inset-0 pointer-events-none">

@@ -1,4 +1,5 @@
 import { createRouter as createTanstackRouter } from '@tanstack/react-router'
+import type { AuthContext } from './auth'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'

@@ -1,15 +1,21 @@
-import { HeadContent, Scripts, createRootRoute, Outlet } from '@tanstack/react-router'
+import { HeadContent, Scripts, createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanstackDevtools } from '@tanstack/react-devtools'
 import { lazy, Suspense } from 'react'
 
 import ConvexProvider from '../integrations/convex/provider'
+import type { AuthContext } from '../auth'
+import { useAuth } from '../auth'
 
 import appCss from '../styles.css?url'
 
 const NotFoundPage = lazy(() => import('./_404').then(m => ({ default: m.Route.options.component! })))
 
-export const Route = createRootRoute({
+interface RouterContext {
+  auth: AuthContext
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => ({
     meta: [
       {
@@ -40,6 +46,7 @@ export const Route = createRootRoute({
     ],
   }),
 
+  component: RootComponent,
   shellComponent: RootDocument,
   notFoundComponent: () => (
     <Suspense fallback={<div>Loading...</div>}>
@@ -47,6 +54,10 @@ export const Route = createRootRoute({
     </Suspense>
   ),
 })
+
+function RootComponent() {
+  return <Outlet />
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
@@ -56,21 +67,33 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <ConvexProvider>
-          {children}
-          <TanstackDevtools
-            config={{
-              position: 'bottom-left',
-            }}
-            plugins={[
-              {
-                name: 'Tanstack Router',
-                render: <TanStackRouterDevtoolsPanel />,
-              },
-            ]}
-          />
+          <InnerApp>
+            {children}
+            <TanstackDevtools
+              config={{
+                position: 'bottom-left',
+              }}
+              plugins={[
+                {
+                  name: 'Tanstack Router',
+                  render: <TanStackRouterDevtoolsPanel />,
+                },
+              ]}
+            />
+          </InnerApp>
         </ConvexProvider>
         <Scripts />
       </body>
     </html>
+  )
+}
+
+function InnerApp({ children }: { children: React.ReactNode }) {
+  const auth = useAuth()
+
+  return (
+    <>
+      {children}
+    </>
   )
 }

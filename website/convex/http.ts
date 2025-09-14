@@ -1,8 +1,11 @@
 import { httpRouter } from "convex/server";
 import { uploadMessages } from "./uploadMessages";
 import { createConversation } from "./conversations";
+import { auth } from "./auth";
 
 const http = httpRouter();
+
+auth.addHttpRoutes(http);
 
 // POST /uploadMessages - Upload chat messages to database
 http.route({

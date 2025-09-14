@@ -17,19 +17,19 @@ export function GridCircles({
     <>
       {positions.includes('left') && (
         <div 
-          className={`absolute z-10 size-2 rounded-full border border-sage-green-200 bg-cream-50 ${top ? '-top-1' : '-bottom-1'}`}
+          className={`absolute size-2 z-10 rounded-full border border-sage-green-200 bg-cream-50 ${top ? '-top-1' : '-bottom-1'}`}
           style={{ left: `-${offset}px`, [top ? 'top' : 'bottom']: `-${offset}px` }}
         ></div>
       )}
       {positions.includes('right') && (
         <div 
-          className={`absolute z-10 size-2 rounded-full border border-sage-green-200 bg-cream-50 ${top ? '-top-1' : '-bottom-1'}`}
+          className={`absolute size-2 z-10 rounded-full border border-sage-green-200 bg-cream-50 ${top ? '-top-1' : '-bottom-1'}`}
           style={{ right: `-${offset}px`, [top ? 'top' : 'bottom']: `-${offset}px` }}
         ></div>
       )}
       {positions.includes('center') && (
         <div 
-          className={`absolute left-1/2 -translate-x-1/2 z-10 size-2 rounded-full border border-sage-green-200 bg-cream-50 ${top ? '-top-1' : '-bottom-1'}`}
+          className={`absolute left-1/2 -translate-x-1/2 size-2 rounded-full border border-sage-green-200 bg-cream-50 ${top ? '-top-1' : '-bottom-1'}`}
           style={{ [top ? 'top' : 'bottom']: `-${offset}px` }}
         ></div>
       )}

@@ -11,6 +11,8 @@
 import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as R404RouteImport } from './routes/_404'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
@@ -20,6 +22,16 @@ import { ServerRoute as ApiClear_messagesServerRouteImport } from './routes/api/
 
 const rootServerRouteImport = createServerRootRoute()
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const R404Route = R404RouteImport.update({
   id: '/_404',
   getParentRoute: () => rootRouteImport,
@@ -54,29 +66,43 @@ const ApiClear_messagesServerRoute = ApiClear_messagesServerRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_404': typeof R404Route
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
   '/chat/$conversationId': typeof ChatConversationIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat/$conversationId'
+  fullPaths: '/' | '/dashboard' | '/login' | '/chat/$conversationId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chat/$conversationId'
-  id: '__root__' | '/' | '/_404' | '/chat/$conversationId'
+  to: '/' | '/dashboard' | '/login' | '/chat/$conversationId'
+  id:
+    | '__root__'
+    | '/'
+    | '/_404'
+    | '/dashboard'
+    | '/login'
+    | '/chat/$conversationId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   R404Route: typeof R404Route
+  DashboardRoute: typeof DashboardRoute
+  LoginRoute: typeof LoginRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
 }
 export interface FileServerRoutesByFullPath {
@@ -121,6 +147,20 @@ export interface RootServerRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_404': {
       id: '/_404'
       path: ''
@@ -173,6 +213,8 @@ declare module '@tanstack/react-start/server' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   R404Route: R404Route,
+  DashboardRoute: DashboardRoute,
+  LoginRoute: LoginRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
 }
 export const routeTree = rootRouteImport
