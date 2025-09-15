@@ -1,6 +1,4 @@
 import { HeadContent, Scripts, createRootRouteWithContext, Outlet } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanstackDevtools } from '@tanstack/react-devtools'
 import { lazy, Suspense } from 'react'
 
 import ConvexProvider from '../integrations/convex/provider'
@@ -69,22 +67,33 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <ConvexProvider>
           <AuthProvider>
             {children}
-            <TanstackDevtools
-              config={{
-                position: 'bottom-left',
-              }}
-              plugins={[
-                {
-                  name: 'Tanstack Router',
-                  render: <TanStackRouterDevtoolsPanel />,
-                },
-              ]}
-            />
+            {import.meta.env.DEV && <DevtoolsContainer />}
           </AuthProvider>
         </ConvexProvider>
         <Scripts />
       </body>
     </html>
+  )
+}
+
+function DevtoolsContainer() {
+  const TanstackDevtools = lazy(() => import('@tanstack/react-devtools').then(m => ({ default: m.TanstackDevtools })))
+  const TanStackRouterDevtoolsPanel = lazy(() => import('@tanstack/react-router-devtools').then(m => ({ default: m.TanStackRouterDevtoolsPanel })))
+
+  return (
+    <Suspense fallback={null}>
+      <TanstackDevtools
+        config={{
+          position: 'bottom-left',
+        }}
+        plugins={[
+          {
+            name: 'Tanstack Router',
+            render: <TanStackRouterDevtoolsPanel />,
+          },
+        ]}
+      />
+    </Suspense>
   )
 }
 
