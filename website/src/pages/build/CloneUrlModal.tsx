@@ -56,8 +56,8 @@ export function CloneUrlModal({ open, onOpenChange }: CloneUrlModalProps) {
           <DialogTitle>Clone from URL</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
+        <div className="space-y-2 py-4">
+          <div className="space-y-6">
             <label htmlFor="repo-url" className="text-sm font-medium text-foreground cursor-pointer">
               Repo
             </label>
@@ -65,6 +65,7 @@ export function CloneUrlModal({ open, onOpenChange }: CloneUrlModalProps) {
               id="repo-url"
               type="url"
               placeholder="https://github.com/username/repository.git"
+              className="mt-1"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => {
