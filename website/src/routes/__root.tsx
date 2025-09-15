@@ -4,15 +4,15 @@ import { TanstackDevtools } from '@tanstack/react-devtools'
 import { lazy, Suspense } from 'react'
 
 import ConvexProvider from '../integrations/convex/provider'
-import type { AuthContext } from '../auth'
-import { useAuth } from '../auth'
+import type { AuthContextType } from '../auth'
+import { AuthProvider } from '../auth'
 
 import appCss from '../styles.css?url'
 
 const NotFoundPage = lazy(() => import('./_404').then(m => ({ default: m.Route.options.component! })))
 
 interface RouterContext {
-  auth: AuthContext
+  auth: AuthContextType
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
@@ -67,7 +67,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <ConvexProvider>
-          <InnerApp>
+          <AuthProvider>
             {children}
             <TanstackDevtools
               config={{
@@ -80,7 +80,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 },
               ]}
             />
-          </InnerApp>
+          </AuthProvider>
         </ConvexProvider>
         <Scripts />
       </body>
@@ -88,12 +88,3 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   )
 }
 
-function InnerApp({ children }: { children: React.ReactNode }) {
-  const auth = useAuth()
-
-  return (
-    <>
-      {children}
-    </>
-  )
-}

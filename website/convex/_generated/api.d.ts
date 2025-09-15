@@ -17,6 +17,7 @@ import type * as auth from "../auth.js";
 import type * as conversations from "../conversations.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
+import type * as repositories from "../repositories.js";
 import type * as uploadMessages from "../uploadMessages.js";
 import type * as user from "../user.js";
 
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   conversations: typeof conversations;
   http: typeof http;
   messages: typeof messages;
+  repositories: typeof repositories;
   uploadMessages: typeof uploadMessages;
   user: typeof user;
 }>;

@@ -1,5 +1,5 @@
 import { CircleGauge, Brain, UsersRound } from 'lucide-react'
-import { CursorAnimation } from './CursorAnimation'
+import { CursorAnimation } from '../chat/CursorAnimation'
 import { GridCircles } from './GridCircles'
 
 const features = [

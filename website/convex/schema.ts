@@ -119,27 +119,27 @@ export default defineSchema({
     messageCount: v.optional(v.number()),
   })
     .index("by_conversation_id", ["conversationId"]),
-    
+
   messages: defineTable({
     // Unique message identifier
     messageId: v.string(),
-    
+
     // Message role (system, user, assistant, tool)
     role: v.union(
       v.literal('system'),
-      v.literal('user'), 
+      v.literal('user'),
       v.literal('assistant'),
       v.literal('tool')
     ),
-    
+
     // Content based on role type
     content: v.union(
       v.string(), // For system messages and simple text content
       userContent, // For user messages
-      assistantContent, // For assistant messages  
+      assistantContent, // For assistant messages
       toolContent // For tool messages
     ),
-    
+
     // Optional metadata fields
     timestamp: v.optional(v.number()),
     conversationId: v.optional(v.string()), // To group messages by conversation
@@ -147,4 +147,12 @@ export default defineSchema({
   })
     .index("by_conversation_id", ["conversationId"])
     .index("by_conversation_and_order", ["conversationId", "messageOrder"]),
+
+  repositories: defineTable({
+    name: v.string(),
+    repositoryUrl: v.string(),
+    ownerId: v.id("users"),
+    cloneSource: v.union(v.literal('url')), // Union ready for future expansion
+    createdAt: v.number(),
+  }),
 })

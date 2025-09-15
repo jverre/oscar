@@ -1,5 +1,5 @@
-import { DownloadDropdown } from './DownloadDropdown'
-import { Button } from './ui/button'
+import { DownloadDropdown } from '../shared/DownloadDropdown'
+import { Button } from '@/components/ui/button'
 
 export function HeroSection() {
   return (

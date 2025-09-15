@@ -1,29 +1,26 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useAuthActions } from "@convex-dev/auth/react"
-import { useConvexAuth } from "convex/react"
 import { useEffect } from 'react'
 import { Button } from '../components/ui/button'
 import { PageContainer } from '../components/PageContainer'
+import { useAuth } from '../auth'
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
 })
 
 function LoginPage() {
-  const { signIn } = useAuthActions()
-  const { isAuthenticated } = useConvexAuth()
+  const { isAuthenticated, login } = useAuth()
   const navigate = useNavigate()
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate({ to: '/dashboard' })
+      navigate({ to: '/build' })
     }
   }, [isAuthenticated, navigate])
 
   const handleGitHubLogin = () => {
-    void signIn("github"),
-    { redirectTo: "/dashboard" }
+    login()
   }
 
   return (

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, Download } from 'lucide-react'
-import { Button } from './ui/button'
+import { Button } from '@/components/ui/button'
 
 export function DownloadDropdown() {
   const [isOpen, setIsOpen] = useState(false)

@@ -24,16 +24,15 @@ export function AccountDropdown({ currentUser, onSignOut }: AccountDropdownProps
           <NavigationMenuTrigger className="bg-transparent hover:bg-accent/50 data-[state=open]:bg-accent/50">
             Account
           </NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <div className="w-56">
-              <div className="py-1 m-0 px-0 space-y-1 border-b">
-                <p className="text-xs text-muted-foreground">Signed in as</p>
+          <NavigationMenuContent className="px-0 py-0">
+            <div>
+              <div className="py-2 m-0 px-2 space-y-1 border-b">
+                <p className="text-xs py-0 text-muted-foreground">Signed in as</p>
                 <p className="text-sm font-medium">{currentUser?.name || 'User'}</p>
-                <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
               </div>
               <button
                 onClick={onSignOut}
-                className="w-full flex items-center gap-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                className="w-full flex items-center gap-2 py-2 px-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
               >
                 <LogOut className="h-4 w-4 text-sage-green-600" />
                 Sign out

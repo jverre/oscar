@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { TicTacToe } from '@/components/TicTacToe'
 
 export const Route = createFileRoute('/_404')({
   component: NotFoundPage,
