@@ -1,12 +1,18 @@
 import { useState } from 'react'
 import { PageContainer } from '@/components/PageContainer'
+import { PageContent } from '@/components/FullWidth'
 import { Header } from '@/components/header/Header'
 import { BuildCard } from '@/components/BuildCard'
 import { Github, Link, Plus } from 'lucide-react'
 import { CloneUrlModal } from './CloneUrlModal'
+import { RepositorySidebar } from './RepositorySidebar'
+import { RepositoryDropdown } from './RepositoryDropdown'
+import { useQuery } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
 
 export function BuildPage() {
   const [showCloneUrlModal, setShowCloneUrlModal] = useState(false)
+  const repositories = useQuery(api.repositories.getUserRepositories)
 
   const handleGithubClone = () => {
     // TODO: Implement GitHub clone functionality
@@ -22,46 +28,63 @@ export function BuildPage() {
     console.log('New project clicked')
   }
 
+  const hasRepositories = repositories && repositories.length > 0
+
   return (
-    <PageContainer>
-      <Header />
-      <div className="min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground">Build</h2>
-            <p className="mt-4 text-muted-foreground">
-              Choose how you'd like to start your next project
-            </p>
-          </div>
+    <div className="min-h-screen flex flex-col">
+      <PageContainer>
+        <Header />
+        <div className="flex-1">
+          <PageContent className="px-6 md:px-8 h-full">
+            {/* Mobile Repository Dropdown */}
+            {hasRepositories && <RepositoryDropdown />}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <BuildCard
-              title="Clone from GitHub"
-              icon={Github}
-              onClick={handleGithubClone}
-              comingSoon={true}
-            />
+            {/* Conditional layout based on repositories */}
+            {/* TODO: Remove the min-h-[calc(100vh-8rem-1px)] */}
+            <div className={hasRepositories ? "flex min-h-[calc(100vh-8rem-1px)]" : ""}>
+            {/* Desktop Sidebar */}
+            {hasRepositories && <RepositorySidebar />}
 
-            <BuildCard
-              title="Clone from URL"
-              icon={Link}
-              onClick={handleUrlClone}
-            />
+            {/* Main content area */}
+            <div className="flex-1 flex flex-col items-center mx-4 xl:mx-auto">
+              <div className="text-center my-12">
+                <h2 className="text-3xl font-bold text-foreground">Build</h2>
+                <p className="mt-4 text-muted-foreground">
+                  Choose how you'd like to start your next project
+                </p>
+              </div>
 
-            <BuildCard
-              title="New Project"
-              icon={Plus}
-              onClick={handleNewProject}
-              comingSoon={true}
-            />
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl">
+                <BuildCard
+                  title="Clone from GitHub"
+                  icon={Github}
+                  onClick={handleGithubClone}
+                  comingSoon={true}
+                />
+
+                <BuildCard
+                  title="Clone from URL"
+                  icon={Link}
+                  onClick={handleUrlClone}
+                />
+
+                <BuildCard
+                  title="New Project"
+                  icon={Plus}
+                  onClick={handleNewProject}
+                  comingSoon={true}
+                />
+              </div>
+              </div>
+            </div>
+          </PageContent>
         </div>
-      </div>
 
-      <CloneUrlModal
-        open={showCloneUrlModal}
-        onOpenChange={setShowCloneUrlModal}
-      />
-    </PageContainer>
+        <CloneUrlModal
+          open={showCloneUrlModal}
+          onOpenChange={setShowCloneUrlModal}
+        />
+      </PageContainer>
+    </div>
   )
 }

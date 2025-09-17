@@ -1,10 +1,12 @@
 import { DownloadDropdown } from '../shared/DownloadDropdown'
 import { Button } from '@/components/ui/button'
+import { PageContent } from '@/components/FullWidth'
 
 export function HeroSection() {
   return (
-    <div className="mx-3 md:mx-8 lg:mx-12 relative">
-      <section className="relative isolate px-4 pt-20 pb-[12rem] sm:px-6 sm:pt-28 md:pb-[10.2rem] bg-gradient-to-t from-sage-green-100/5 border-b border-sage-green-200">
+    <div className="relative bg-gradient-to-t from-sage-green-100/5 border-b border-sage-green-200">
+      <PageContent>
+        <section className="relative isolate px-4 pt-20 pb-[12rem] sm:px-6 sm:pt-28 md:pb-[10.2rem]">
         {/* Grid circles at bottom border aligned with margin boundaries */}
         <div 
           className="absolute z-10 size-2 rounded-full border border-sage-green-200 bg-cream-50"
@@ -62,7 +64,8 @@ export function HeroSection() {
           </defs>
           <rect width="100%" height="100%" strokeWidth="0" fill="url(#grid-pattern)"></rect>
         </svg>
-      </section>
+        </section>
+      </PageContent>
     </div>
   )
 }

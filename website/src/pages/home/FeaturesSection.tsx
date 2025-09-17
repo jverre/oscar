@@ -1,6 +1,7 @@
 import { CircleGauge, Brain, UsersRound } from 'lucide-react'
 import { CursorAnimation } from '../chat/CursorAnimation'
 import { GridCircles } from './GridCircles'
+import { PageContent } from '@/components/FullWidth'
 
 const features = [
   {
@@ -42,9 +43,10 @@ function FeatureItem({ feature, className = '' }: { feature: typeof features[0],
 
 export function FeaturesSection() {
   return (
-    <div className="mx-3 md:mx-8 lg:mx-12 relative border-b border-sage-green-200">
+    <div className="relative border-b border-sage-green-200">
       <GridCircles />
-      <section className="-mt-[8rem] origin-top px-4 pb-8 sm:px-6 sm:pb-20 md:-mt-[6.5rem] lg:-mt-[5rem]" style={{ opacity: 1, transform: 'none', transformOrigin: '50% 0% 0px' }}>
+      <PageContent>
+        <section className="-mt-[8rem] origin-top px-4 pb-8 sm:px-6 sm:pb-20 md:-mt-[6.5rem] lg:-mt-[5rem]" style={{ opacity: 1, transform: 'none', transformOrigin: '50% 0% 0px' }}>
       <div className="mx-auto w-full group sh-default relative overflow-hidden rounded-sm bg-gray-50/80 dark:bg-[hsl(218,_13%,_6%,_.95)] border border-gray-300/90 dark:border-gray-600/60" style={{ boxShadow: '6px 6px 0 #6b7a6b0f, -6px -6px 0 #6b7a6b0f' }}>
         <div 
           style={{ backgroundImage: 'url(/_next/static/media/noise.0e24d0e5.png)' }} 
@@ -70,7 +72,8 @@ export function FeaturesSection() {
           <FeatureItem key={index} feature={feature} className="p-0" />
         ))}
       </div>
-      </section>
+        </section>
+      </PageContent>
     </div>
   )
 }

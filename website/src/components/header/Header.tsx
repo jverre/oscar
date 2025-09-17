@@ -9,8 +9,8 @@ export function Header() {
   const { isAuthenticated, isLoading, user, logout } = useAuth()
 
   return (
-    <div className='sticky top-0 z-50 bg-cream-50/60 backdrop-blur-sm border-b border-sage-green-200'>
-      <div className="nav-background grid-border-color relative mx-3 flex border-x md:mx-8 lg:mx-12">
+    <div className='sticky top-0 z-50 border-b border-sage-green-200'>
+      <div className="nav-background grid-border-color relative flex border-x bg-cream-50/60 backdrop-blur-sm mx-3 md:mx-8 lg:mx-12">
         {/* Grid line decorative circles */}
         <GridCircles />
 
