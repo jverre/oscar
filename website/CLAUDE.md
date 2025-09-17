@@ -11,7 +11,7 @@ Oscar is a code building app with an option to share chats.
 # Development
 
 1. Never run "npm run dev" - I always have this running and so can tell you if there is an issue.
-
+2. There are no "npm run typecheck" command. Don't use it
 
 # Features
 

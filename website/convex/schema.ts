@@ -155,4 +155,13 @@ export default defineSchema({
     cloneSource: v.union(v.literal('url')), // Union ready for future expansion
     createdAt: v.number(),
   }),
+
+  featureBranches: defineTable({
+    name: v.string(),
+    repositoryId: v.id("repositories"),
+    ownerId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_repository", ["repositoryId"])
+    .index("by_owner", ["ownerId"]),
 })

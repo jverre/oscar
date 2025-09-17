@@ -9,6 +9,7 @@ import { api } from '../../../convex/_generated/api'
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { GridCircles } from '../home/GridCircles'
+import { FeatureBranchList } from '@/components/FeatureBranchList'
 
 export function RepositorySidebar() {
   const repositories = useQuery(api.repositories.getUserRepositories)
@@ -95,10 +96,11 @@ export function RepositorySidebar() {
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="ml-6 mt-1 p-3 bg-sage-green-50/30 dark:bg-sage-green-900/10 rounded-sm border-l-2 border-sage-green-200/40">
-                  <div className="text-xs text-muted-foreground">
-                    Added: {new Date(repo.createdAt).toLocaleDateString()}
-                  </div>
+                <div className="ml-6 mt-1 p-3 bg-sage-green-50/30 dark:bg-sage-green-900/10 rounded-sm border-l-2 border-sage-green-200/40 space-y-2">
+                  <FeatureBranchList
+                    repositoryId={repo._id}
+                    repositoryName={repo.name}
+                  />
                 </div>
               </CollapsibleContent>
             </Collapsible>

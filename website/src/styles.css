@@ -74,6 +74,18 @@ code {
   --color-sage-green-700: #4f6652;
   --color-sage-green-800: #3f5142;
   --color-sage-green-900: #2f3d31;
+
+  /* Muted red color palette - compatible with Oscar theme */
+  --color-muted-red-50: #fdf2f2;
+  --color-muted-red-100: #fbe5e5;
+  --color-muted-red-200: #f6cfcf;
+  --color-muted-red-300: #efacac;
+  --color-muted-red-400: #e57878;
+  --color-muted-red-500: #d85555;
+  --color-muted-red-600: #c54444;
+  --color-muted-red-700: #a53838;
+  --color-muted-red-800: #883232;
+  --color-muted-red-900: #712f2f;
   
   /* Navigation background - adapted from #f7f7f2f5 to match cream theme */
   --nav-bg-color: rgba(248, 248, 245, 0.96);
@@ -209,6 +221,18 @@ code {
   --color-sage-green-700: var(--color-sage-green-700);
   --color-sage-green-800: var(--color-sage-green-800);
   --color-sage-green-900: var(--color-sage-green-900);
+
+  /* Muted red color palette for Tailwind utilities */
+  --color-muted-red-50: var(--color-muted-red-50);
+  --color-muted-red-100: var(--color-muted-red-100);
+  --color-muted-red-200: var(--color-muted-red-200);
+  --color-muted-red-300: var(--color-muted-red-300);
+  --color-muted-red-400: var(--color-muted-red-400);
+  --color-muted-red-500: var(--color-muted-red-500);
+  --color-muted-red-600: var(--color-muted-red-600);
+  --color-muted-red-700: var(--color-muted-red-700);
+  --color-muted-red-800: var(--color-muted-red-800);
+  --color-muted-red-900: var(--color-muted-red-900);
 }
 
 @layer base {
