@@ -6,13 +6,15 @@ import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
 import { FeatureBranchModal } from './FeatureBranchModal'
 import { ConfirmDeleteModal } from './ConfirmDeleteModal'
+import { Link } from '@tanstack/react-router'
 
 interface FeatureBranchListProps {
   repositoryId: Id<"repositories">
   repositoryName: string
+  currentFeature?: string
 }
 
-export function FeatureBranchList({ repositoryId, repositoryName }: FeatureBranchListProps) {
+export function FeatureBranchList({ repositoryId, repositoryName, currentFeature }: FeatureBranchListProps) {
   const [showModal, setShowModal] = useState(false)
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; branchId?: Id<"featureBranches">; branchName?: string }>({ open: false })
   const [isDeleting, setIsDeleting] = useState(false)
@@ -40,28 +42,46 @@ export function FeatureBranchList({ repositoryId, repositoryName }: FeatureBranc
   return (
     <>
       <div className="space-y-1">
-        {featureBranches?.map((branch) => (
-          <div key={branch._id} className="group relative">
-            <Button
-              variant="ghost"
-              className="w-full justify-start px-2 py-1.5 h-auto text-xs text-muted-foreground font-medium hover:bg-sage-green-100 dark:hover:bg-sage-green-800/30"
-            >
-              <GitBranch className="w-3 h-3 shrink-0 text-sage-green-500 mr-2" />
-              <span className="truncate">{branch.name}</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 h-5 w-5 p-0 border-0 text-muted-red-600 hover:text-muted-red-700 hover:bg-transparent hover:scale-110"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleDeleteClick(branch._id, branch.name)
-              }}
-            >
-              <Trash2 className="w-2.5 h-2.5 stroke-2" />
-            </Button>
-          </div>
-        ))}
+        {featureBranches?.map((branch) => {
+          const isCurrentFeature = currentFeature === branch.name
+          return (
+            <div key={branch._id} className="group relative">
+              <Link
+                to="/build/$repositoryName/$featureName"
+                params={{ repositoryName, featureName: branch.name }}
+                className="block"
+              >
+                <Button
+                  variant="ghost"
+                  className={`w-full justify-start px-2 py-1.5 h-auto text-xs font-medium hover:bg-sage-green-100 dark:hover:bg-sage-green-800/30 ${
+                    isCurrentFeature
+                      ? 'bg-sage-green-200 dark:bg-sage-green-700/70 text-sage-green-800 dark:text-sage-green-200'
+                      : 'text-muted-foreground'
+                  }`}
+                  asChild
+                >
+                  <div>
+                    <GitBranch className={`w-3 h-3 shrink-0 mr-2 ${
+                      isCurrentFeature ? 'text-sage-green-700 dark:text-sage-green-300' : 'text-sage-green-500'
+                    }`} />
+                    <span className="truncate">{branch.name}</span>
+                  </div>
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 h-5 w-5 p-0 border-0 text-muted-red-600 hover:text-muted-red-700 hover:bg-transparent hover:scale-110"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDeleteClick(branch._id, branch.name)
+                }}
+              >
+                <Trash2 className="w-2.5 h-2.5 stroke-2" />
+              </Button>
+            </div>
+          )
+        })}
       </div>
 
       <Button

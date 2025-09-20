@@ -17,6 +17,7 @@ import { Route as R404RouteImport } from './routes/_404'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatConversationIdRouteImport } from './routes/chat.$conversationId'
 import { Route as AuthenticatedBuildRouteImport } from './routes/_authenticated/build'
+import { Route as AuthenticatedBuildRepositoryNameFeatureNameRouteImport } from './routes/_authenticated/build.$repositoryName.$featureName'
 import { ServerRoute as ApiUpload_messagesServerRouteImport } from './routes/api/upload_messages'
 import { ServerRoute as ApiCreate_conversationServerRouteImport } from './routes/api/create_conversation'
 import { ServerRoute as ApiClear_messagesServerRouteImport } from './routes/api/clear_messages'
@@ -51,6 +52,12 @@ const AuthenticatedBuildRoute = AuthenticatedBuildRouteImport.update({
   path: '/build',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedBuildRepositoryNameFeatureNameRoute =
+  AuthenticatedBuildRepositoryNameFeatureNameRouteImport.update({
+    id: '/$repositoryName/$featureName',
+    path: '/$repositoryName/$featureName',
+    getParentRoute: () => AuthenticatedBuildRoute,
+  } as any)
 const ApiUpload_messagesServerRoute =
   ApiUpload_messagesServerRouteImport.update({
     id: '/api/upload_messages',
@@ -72,14 +79,16 @@ const ApiClear_messagesServerRoute = ApiClear_messagesServerRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/build': typeof AuthenticatedBuildRoute
+  '/build': typeof AuthenticatedBuildRouteWithChildren
   '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/build/$repositoryName/$featureName': typeof AuthenticatedBuildRepositoryNameFeatureNameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/build': typeof AuthenticatedBuildRoute
+  '/build': typeof AuthenticatedBuildRouteWithChildren
   '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/build/$repositoryName/$featureName': typeof AuthenticatedBuildRepositoryNameFeatureNameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -87,14 +96,25 @@ export interface FileRoutesById {
   '/_404': typeof R404Route
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/_authenticated/build': typeof AuthenticatedBuildRoute
+  '/_authenticated/build': typeof AuthenticatedBuildRouteWithChildren
   '/chat/$conversationId': typeof ChatConversationIdRoute
+  '/_authenticated/build/$repositoryName/$featureName': typeof AuthenticatedBuildRepositoryNameFeatureNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/build' | '/chat/$conversationId'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/build'
+    | '/chat/$conversationId'
+    | '/build/$repositoryName/$featureName'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/build' | '/chat/$conversationId'
+  to:
+    | '/'
+    | '/login'
+    | '/build'
+    | '/chat/$conversationId'
+    | '/build/$repositoryName/$featureName'
   id:
     | '__root__'
     | '/'
@@ -103,6 +123,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/build'
     | '/chat/$conversationId'
+    | '/_authenticated/build/$repositoryName/$featureName'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -196,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBuildRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/build/$repositoryName/$featureName': {
+      id: '/_authenticated/build/$repositoryName/$featureName'
+      path: '/$repositoryName/$featureName'
+      fullPath: '/build/$repositoryName/$featureName'
+      preLoaderRoute: typeof AuthenticatedBuildRepositoryNameFeatureNameRouteImport
+      parentRoute: typeof AuthenticatedBuildRoute
+    }
   }
 }
 declare module '@tanstack/react-start/server' {
@@ -224,12 +252,24 @@ declare module '@tanstack/react-start/server' {
   }
 }
 
+interface AuthenticatedBuildRouteChildren {
+  AuthenticatedBuildRepositoryNameFeatureNameRoute: typeof AuthenticatedBuildRepositoryNameFeatureNameRoute
+}
+
+const AuthenticatedBuildRouteChildren: AuthenticatedBuildRouteChildren = {
+  AuthenticatedBuildRepositoryNameFeatureNameRoute:
+    AuthenticatedBuildRepositoryNameFeatureNameRoute,
+}
+
+const AuthenticatedBuildRouteWithChildren =
+  AuthenticatedBuildRoute._addFileChildren(AuthenticatedBuildRouteChildren)
+
 interface AuthenticatedRouteChildren {
-  AuthenticatedBuildRoute: typeof AuthenticatedBuildRoute
+  AuthenticatedBuildRoute: typeof AuthenticatedBuildRouteWithChildren
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedBuildRoute: AuthenticatedBuildRoute,
+  AuthenticatedBuildRoute: AuthenticatedBuildRouteWithChildren,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
