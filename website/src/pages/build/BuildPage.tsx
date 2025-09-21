@@ -3,8 +3,8 @@ import { PageContent } from '@/components/FullWidth'
 import { Header } from '@/components/header/Header'
 import { BuildHome } from './BuildHome'
 import { BuildFeature } from './BuildFeature'
-import { RepositorySidebar } from './RepositorySidebar'
-import { RepositoryDropdown } from './RepositoryDropdown'
+import { RepositorySidebar } from './components/pageStructure/RepositorySidebar'
+import { RepositoryDropdown } from './components/pageStructure/RepositoryDropdown'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { useParams } from '@tanstack/react-router'
@@ -28,7 +28,7 @@ export function BuildPage() {
 
             {/* Conditional layout based on repositories */}
             {/* TODO: Remove the min-h-[calc(100vh-8rem-1px)] */}
-            <div className={hasRepositories ? "flex min-h-[calc(100vh-8rem-1px)]" : ""}>
+            <div className={hasRepositories ? "flex h-full" : ""}>
               {/* Desktop Sidebar */}
               {hasRepositories && <RepositorySidebar />}
 

@@ -1,0 +1,28 @@
+{
+  "name": "sandbox-server",
+  "version": "1.0.0",
+  "description": "oscar-sandbox-server",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "serve": "node dist/index.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.32",
+    "ai": "^5.0.48",
+    "ai-sdk-provider-claude-code": "^1.1.4",
+    "better-sqlite3": "^12.2.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.5.2",
+    "express": "^5.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}

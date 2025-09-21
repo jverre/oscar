@@ -16,9 +16,6 @@ export function PageContainer({ children, withGridLines = true }: PageContainerP
         '--page-padding-lg': '3rem'
       } as React.CSSProperties}
     >
-      {/* Darker side areas extending to full viewport - inspired by zed.dev */}
-      <div className="absolute inset-0 bg-gradient-to-r from-cream-100/50 via-cream-50/70 to-cream-100/50"></div>
-
       {/* Noise texture background */}
       <div className="noise-background"></div>
 
@@ -35,7 +32,7 @@ export function PageContainer({ children, withGridLines = true }: PageContainerP
       )}
 
       {/* Content area - children are full width by default */}
-      <div className="relative min-h-screen">
+      <div className="flex flex-col h-screen bg-gradient-to-r from-cream-100/50 via-cream-50/70 to-cream-100/50">
         {children}
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { BuildCard } from '@/components/BuildCard'
 import { Github, Link, Plus } from 'lucide-react'
-import { CloneUrlModal } from './CloneUrlModal'
+import { CloneUrlModal } from './components/CloneUrlModal'
 
 export function BuildHome() {
   const [showCloneUrlModal, setShowCloneUrlModal] = useState(false)

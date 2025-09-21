@@ -1,14 +1,8 @@
 import { ChevronRight, Home, GithubIcon } from 'lucide-react'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 import { useQuery } from 'convex/react'
-import { api } from '../../../convex/_generated/api'
-import { useState } from 'react'
+import { api } from '../../../../../convex/_generated/api'
 import { Link, useParams } from '@tanstack/react-router'
-import { GridCircles } from '../home/GridCircles'
+import { GridCircles } from '../../../home/GridCircles'
 import { FeatureBranchList } from '@/components/FeatureBranchList'
 
 export function RepositorySidebar() {
