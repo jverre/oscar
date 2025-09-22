@@ -1,5 +1,9 @@
 import { HeadContent, Scripts, createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 import { lazy, Suspense } from 'react'
+import {
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query'
 
 import ConvexProvider from '../integrations/convex/provider'
 import type { AuthContextType } from '../auth'
@@ -57,6 +61,8 @@ function RootComponent() {
   return <Outlet />
 }
 
+const queryClient = new QueryClient()
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -66,8 +72,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <ConvexProvider>
           <AuthProvider>
+          <QueryClientProvider client={queryClient}>
             {children}
             {import.meta.env.DEV && <DevtoolsContainer />}
+            </QueryClientProvider>
           </AuthProvider>
         </ConvexProvider>
         <Scripts />

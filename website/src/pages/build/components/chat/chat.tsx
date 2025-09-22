@@ -21,7 +21,7 @@ export default function ChatComponent({
     messages: chatData.messages,
     resume,
     transport: new DefaultChatTransport({
-      api: 'http://localhost:3001/chat',
+      api: `http://localhost:3001/chat`,
       prepareSendMessagesRequest: ({ id, messages, trigger, messageId }) => {
         switch (trigger) {
           case 'regenerate-message':
@@ -63,8 +63,8 @@ export default function ChatComponent({
   }, []);
 
   return (
-    <div className="flex flex-col justify-between w-full stretch h-full p-4">
-      <div className="w-full">
+    <div className="flex flex-col w-full h-full p-4">
+      <div className="w-full flex-1 overflow-y-auto">
         {messages.map(message => (
           <Message
             key={message.id}
@@ -75,7 +75,7 @@ export default function ChatComponent({
           />
         ))}
       </div>
-      <div >
+      <div className="w-full">
         <ChatInput
           status={status}
           stop={stop}

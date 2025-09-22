@@ -1,7 +1,7 @@
 import { claudeCode } from 'ai-sdk-provider-claude-code';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { readChat, saveChat, saveStreamChunk, readStreamChunks } from './utils/chat-store';
+import { readChat, createChat, saveChat, saveStreamChunk, readStreamChunks } from './utils/chat-store';
 import {
     convertToModelMessages,
     generateId,
@@ -27,6 +27,12 @@ interface chatMessageRequest {
     id: string;
   }
 
+app.delete('/chat/:id', (req: Request<{id: string}>, res: Response) => {
+    const {id} = req.params;
+    deleteChat(id);
+    res.status(204).send();
+});
+
 app.post('/chat', (req: Request<{}, {}, chatMessageRequest>, res: Response) => {
     const {message, id} = req.body
 
@@ -38,13 +44,20 @@ app.post('/chat', (req: Request<{}, {}, chatMessageRequest>, res: Response) => {
 
     const result = streamText({
         model: model,
-        messages: convertToModelMessages(messages),
+        messages: convertToModelMessages(messages)
     });
 
     result.pipeUIMessageStreamToResponse(res, {
         onFinish: ({ messages }) => {
-            saveChat({ id, messages: messages.map(message => message as MyUIMessage), activeStreamId: null });
-            console.log('finished stream');
+            // this differs slightly from the 
+            const chat = readChat(id);
+            messages = messages.map(message => {
+                message.id = generateId();
+                return message;
+            });
+
+            const finalMessages = [...chat!.messages, ...messages.map(message => message as MyUIMessage)];
+            saveChat({ id, messages: finalMessages, activeStreamId: null });
         },
         consumeSseStream: async ({ stream }: { stream: ReadableStream<string> }) => {
             const streamId = generateId();
@@ -61,13 +74,18 @@ app.post('/chat', (req: Request<{}, {}, chatMessageRequest>, res: Response) => {
                 
                 saveStreamChunk({ streamId, chunk: value });
             }
-
-            console.log('finished stream');
         }
     });
   });
 
 app.get('/chat/:id', (req: Request<{id: string}>, res: Response) => {
+    const {id} = req.params;
+    const chat = readChat(id);
+    res.json(chat);
+});
+
+
+app.get('/chat/:id/stream', (req: Request<{id: string}>, res: Response) => {
     const {id} = req.params;
     const chat = readChat(id);
     if (!chat?.activeStreamId) {

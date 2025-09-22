@@ -17,7 +17,6 @@ export default function Message({
     messageId?: string;
   }) => void;
 }) {
-  console.log(status);
   const date = message.metadata?.createdAt
     ? new Date(message.metadata.createdAt).toLocaleString()
     : '';
@@ -43,7 +42,7 @@ export default function Message({
       </div>
 
       <div className="text-sm text-foreground leading-relaxed ml-6">
-      {message.parts
+        {message.parts
           .map(part => (part.type === 'text' ? part.text : ''))
           .join('')}
       </div>

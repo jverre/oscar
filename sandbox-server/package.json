@@ -13,7 +13,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^2.0.32",
     "ai": "^5.0.48",
-    "ai-sdk-provider-claude-code": "^1.1.4",
+    "ai-sdk-provider-claude-code": "github:ben-vargas/ai-sdk-provider-claude-code#feat-tool-streaming",
     "better-sqlite3": "^12.2.0",
     "cors": "^2.8.5"
   },

@@ -48,8 +48,12 @@ const readStreamChunksStatement = db.prepare(`
     order by created_at asc
 `);
 
-export function createChat(): string {
-    const id = generateId();
+const deleteChatStatement = db.prepare(`
+    DELETE FROM chats
+    WHERE id = ?
+`);
+
+export function createChat({id}: {id: string}): string {
     createChatStatement.run(id, JSON.stringify([]), Date.now());
     return id;
 }
@@ -70,15 +74,16 @@ export function readChat(id: string): ChatData | null {
 
 export function saveChat({
     id,
-    activeStreamId,
-    messages
+    messages,
+    activeStreamId
 }: {
-    id: string
-    activeStreamId?: string | null
+    id: string,
     messages?: MyUIMessage[]
+    activeStreamId?: string | null
 }) {
     let chat = readChat(id);
     if (!chat) {
+        createChat({id});
         chat = {
             id: id,
             messages: [],
@@ -95,7 +100,7 @@ export function saveChat({
         chat.activeStreamId = activeStreamId;
     }
 
-    updateChatStatement.run(chat.id, JSON.stringify(chat.messages), chat.activeStreamId);
+    updateChatStatement.run(JSON.stringify(chat.messages), chat.activeStreamId, chat.id);
 }
 
 export function saveStreamChunk({
@@ -115,4 +120,8 @@ export function saveStreamChunk({
 export function readStreamChunks(streamId: string): string[] {
     const result = readStreamChunksStatement.all(streamId);
     return result.map((row: { chunk: string }) => row.chunk);
+}
+
+export function deleteChat(id: string) {
+    deleteChatStatement.run(id);
 }

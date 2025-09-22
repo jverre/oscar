@@ -42,7 +42,7 @@ export function RepositoryDropdown() {
   const currentRepository = repositories?.find(r => r.name === currentRepo)
 
   return (
-    <div className="md:hidden my-4">
+    <div className="flex md:hidden my-4">
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
