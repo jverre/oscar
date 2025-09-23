@@ -6,7 +6,7 @@ import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
 import { FeatureBranchModal } from './FeatureBranchModal'
 import { ConfirmDeleteModal } from './ConfirmDeleteModal'
-import { Link } from '@tanstack/react-router'
+import { Link, useLocation, useNavigate  } from '@tanstack/react-router'
 
 interface FeatureBranchListProps {
   repositoryId: Id<"repositories">
@@ -20,6 +20,8 @@ export function FeatureBranchList({ repositoryId, repositoryName, currentFeature
   const [isDeleting, setIsDeleting] = useState(false)
   const featureBranches = useQuery(api.featureBranches.getByRepository, { repositoryId })
   const deleteFeatureBranch = useMutation(api.featureBranches.deleteFeatureBranch)
+  const navigate = useNavigate()
+  const location = useLocation()
 
   const handleDeleteClick = (branchId: Id<"featureBranches">, branchName: string) => {
     setDeleteModal({ open: true, branchId, branchName })
@@ -36,6 +38,10 @@ export function FeatureBranchList({ repositoryId, repositoryName, currentFeature
       console.error('Failed to delete feature branch:', error)
     } finally {
       setIsDeleting(false)
+      if (location.pathname.endsWith(`/${repositoryName}/${currentFeature}`)) {
+        console.log('redirecting')
+        navigate({ to: '/build' })
+      }
     }
   }
 

@@ -8,6 +8,7 @@ Oscar is a code building app with an option to share chats.
 4. Use shadcn components whenever possible, update the styling to match the look and feel
    of existing components
 5. Keep Tailwind classes to the bare minimum - prefer updating styles.css or modifying components
+6. Priorities using flex, flex-1, etc to organize children.
 
 # Development
 
