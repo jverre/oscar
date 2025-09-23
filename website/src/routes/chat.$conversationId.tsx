@@ -107,7 +107,7 @@ function ChatPage() {
     <PageContainer>
       <Header />
       
-      <div className="flex-1 my-8 relative">
+      <div className="flex flex-col flex-1 my-8 relative h-full overflow-y-auto overflow-x-hidden">
         <div className="max-w-4xl mx-auto px-4 md:px-6">
           <div className="mb-8 border-b border-border pb-4">
             <h1 className="text-2xl font-mono font-semibold text-foreground">
@@ -169,8 +169,6 @@ function ChatPage() {
           <GridCircles />
         </div>
       </div>
-      
-      <Footer />
     </PageContainer>
   )
 }

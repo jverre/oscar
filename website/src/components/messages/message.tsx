@@ -1,4 +1,4 @@
-import type { MyUIMessage } from './utils';
+import type { MyUIMessage } from '../../pages/build/components/chat/utils';
 import { ChatStatus } from 'ai';
 import { User, Bot } from 'lucide-react'
 
