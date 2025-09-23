@@ -12,6 +12,7 @@ import {
 import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
+import { useNavigate } from '@tanstack/react-router'
 
 interface FeatureBranchModalProps {
   open: boolean
@@ -69,6 +70,7 @@ export function FeatureBranchModal({ open, onOpenChange, repositoryId, repositor
   const [name, setName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const createFeatureBranch = useMutation(api.featureBranches.create)
+  const navigate = useNavigate()
 
   const validation = validateGitHubBranchName(name)
   const formattedName = formatBranchName(name)
@@ -91,6 +93,7 @@ export function FeatureBranchModal({ open, onOpenChange, repositoryId, repositor
       console.error('Failed to create feature branch:', error)
     } finally {
       setIsCreating(false)
+      navigate({ to: '/build/$repositoryName/$featureName', params: { repositoryName, featureName: formattedName } })
     }
   }
 

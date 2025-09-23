@@ -1,7 +1,6 @@
 import type { MyUIMessage } from './utils';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { useEffect, useRef } from 'react';
 import ChatInput from './chat-input';
 import Message from './message';
 
@@ -14,7 +13,6 @@ export default function ChatComponent({
   isNewChat?: boolean;
   resume?: boolean;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const { status, sendMessage, messages, regenerate, stop } = useChat({
     id: chatData.id,
@@ -49,18 +47,8 @@ export default function ChatComponent({
     }),
     onFinish(options) {
       console.log('onFinish', options);
-
-      // focus the input field again after the response is finished
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
     },
   });
-
-  // activate the input field
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
 
   return (
     <div className="flex flex-col w-full h-full p-4">
@@ -86,7 +74,6 @@ export default function ChatComponent({
               window.history.pushState(null, '', `/chat/${chatData.id}`);
             }
           }}
-          inputRef={inputRef}
         />
       </div>
     </div>

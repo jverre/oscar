@@ -5,12 +5,10 @@ import { useHotkeys } from 'react-hotkeys-hook'
 export default function ChatInput({
   status,
   onSubmit,
-  inputRef,
   stop,
 }: {
   status: string;
   onSubmit: (text: string) => void;
-  inputRef: React.RefObject<HTMLInputElement>;
   stop: () => void;
 }) {
   const [text, setText] = useState('');
