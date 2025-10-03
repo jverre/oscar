@@ -19,6 +19,7 @@ import type * as featureBranches from "../featureBranches.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as repositories from "../repositories.js";
+import type * as sandbox from "../sandbox.js";
 import type * as uploadMessages from "../uploadMessages.js";
 import type * as user from "../user.js";
 
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   messages: typeof messages;
   repositories: typeof repositories;
+  sandbox: typeof sandbox;
   uploadMessages: typeof uploadMessages;
   user: typeof user;
 }>;

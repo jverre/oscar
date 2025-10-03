@@ -6,10 +6,14 @@ import Message from '@/components/messages/message';
 
 export default function ChatComponent({
   chatData,
+  chatUrl,
+  previewToken,
   isNewChat = false,
   resume = false,
 }: {
   chatData: { id: string; messages: MyUIMessage[] };
+  chatUrl: string;
+  previewToken: string;
   isNewChat?: boolean;
   resume?: boolean;
 }) {
@@ -19,7 +23,12 @@ export default function ChatComponent({
     messages: chatData.messages,
     resume,
     transport: new DefaultChatTransport({
-      api: `http://localhost:3001/chat`,
+      api: chatUrl,
+      headers: {
+        'x-daytona-preview-token': previewToken,
+        'x-daytona-skip-preview-warning': 'true',
+        'X-Daytona-Disable-CORS': 'true'
+      },
       prepareSendMessagesRequest: ({ id, messages, trigger, messageId }) => {
         switch (trigger) {
           case 'regenerate-message':

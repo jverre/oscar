@@ -1,12 +1,13 @@
 {
   "name": "sandbox-server",
-  "version": "1.0.0",
+  "version": "1.0.12",
   "description": "oscar-sandbox-server",
   "main": "src/index.js",
   "scripts": {
     "start": "ts-node src/index.ts",
     "build": "tsc",
-    "serve": "node dist/index.js"
+    "serve": "node dist/index.js",
+    "build:daytona_image": "ts-node build_daytona_image.ts"
   },
   "author": "",
   "license": "MIT",
@@ -18,6 +19,7 @@
     "cors": "^2.8.5"
   },
   "devDependencies": {
+    "@daytonaio/sdk": "^0.103.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^24.5.2",

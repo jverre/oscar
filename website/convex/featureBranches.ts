@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const create = mutation({
@@ -26,7 +27,29 @@ export const create = mutation({
       createdAt: Date.now(),
     });
 
+    await ctx.scheduler.runAfter(0, internal.sandbox.createSandbox, {
+      featureBranchId: featureBranchId,
+    });
+
     return featureBranchId;
+  },
+});
+
+export const getByName = query({
+  args: {
+    repositoryName: v.string(),
+    featureName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const repository = await ctx.db.query("repositories").filter((q) => q.eq(q.field("name"), args.repositoryName)).first();
+    if (!repository) {
+      return null;
+    }
+    const featureBranch = await ctx.db.query("featureBranches").filter((q) => q.eq(q.field("name"), args.featureName)).first();
+    if (!featureBranch || featureBranch.repositoryId !== repository._id) {
+      return null;
+    }
+    return featureBranch;
   },
 });
 
@@ -72,5 +95,23 @@ export const deleteFeatureBranch = mutation({
     }
 
     await ctx.db.delete(args.featureBranchId);
+  },
+});
+
+export const updateSandbox = internalMutation({
+  args: {
+    featureBranchId: v.id("featureBranches"),
+    sandboxId: v.string(),
+    sandboxStatus: v.string(),
+    sandboxUrl: v.optional(v.string()),
+    sandboxUrlToken: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.featureBranchId, {
+      sandboxId: args.sandboxId,
+      sandboxStatus: args.sandboxStatus,
+      sandboxUrl: args.sandboxUrl || undefined,
+      sandboxUrlToken: args.sandboxUrlToken || undefined,
+    });
   },
 });

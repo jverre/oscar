@@ -1,7 +1,7 @@
 import { claudeCode } from 'ai-sdk-provider-claude-code';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { readChat, createChat, saveChat, saveStreamChunk, readStreamChunks } from './utils/chat-store';
+import { readChat, deleteChat, saveChat, saveStreamChunk, readStreamChunks } from './utils/chat-store';
 import {
     convertToModelMessages,
     generateId,
@@ -10,15 +10,15 @@ import {
 import { MyUIMessage } from './utils/chat-schema';
 
 const app = express();
-app.use(cors(
-    {
-        origin: 'http://localhost:3000',
-        methods: ['POST', 'GET'],
-        allowedHeaders: ['Content-Type'],
-    }
-));
+
+// Simplest CORS configuration - handles pre-flight automatically
+app.use(cors({
+    origin: ['http://localhost:3000', 'https://www.getoscar.ai'],
+    credentials: true
+}));
+
 app.use(express.json())
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 43021;
 
 const model = claudeCode('opus');
 
@@ -26,6 +26,10 @@ interface chatMessageRequest {
     message: MyUIMessage | undefined;
     id: string;
   }
+
+app.get('/health', (req: Request, res: Response) => {
+    res.status(200).send('OK');
+});
 
 app.delete('/chat/:id', (req: Request<{id: string}>, res: Response) => {
     const {id} = req.params;

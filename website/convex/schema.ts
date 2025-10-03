@@ -161,6 +161,10 @@ export default defineSchema({
     repositoryId: v.id("repositories"),
     ownerId: v.id("users"),
     createdAt: v.number(),
+    sandboxId: v.optional(v.string()),
+    sandboxStatus: v.optional(v.string()),
+    sandboxUrl: v.optional(v.string()),
+    sandboxUrlToken: v.optional(v.string()),
   })
     .index("by_repository", ["repositoryId"])
     .index("by_owner", ["ownerId"]),

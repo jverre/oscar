@@ -1,0 +1,40 @@
+name: Build Daytona Image
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'sandbox-server/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'sandbox-server/**'
+
+jobs:
+  build-daytona-image:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: 'sandbox-server/package-lock.json'
+        
+    - name: Install dependencies
+      run: |
+        cd sandbox-server
+        npm ci
+        
+    - name: Build Daytona Image
+      run: |
+        cd sandbox-server
+        npm run build:daytona_image
+      env:
+        # Add any required environment variables for Daytona SDK here
+        # DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+        # DAYTONA_API_URL: ${{ secrets.DAYTONA_API_URL }}
