@@ -1,6 +1,8 @@
 import { claudeCode } from 'ai-sdk-provider-claude-code';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import * as pty from 'node-pty';
+import { WebSocketServer, WebSocket } from 'ws';
 import { readChat, deleteChat, saveChat, saveStreamChunk, readStreamChunks } from './utils/chat-store';
 import {
     convertToModelMessages,
@@ -26,6 +28,9 @@ interface chatMessageRequest {
     message: MyUIMessage | undefined;
     id: string;
   }
+
+// Store active terminal sessions (PTY-based for WebSocket)
+const ptyTerminals = new Map<string, pty.IPty>();
 
 app.get('/health', (req: Request, res: Response) => {
     res.status(200).send('OK');
@@ -123,7 +128,7 @@ app.get('/chat/:id/stream', (req: Request<{id: string}>, res: Response) => {
 
         // We need to make sure we only send the new chunks
         let chunks = readStreamChunks(chat.activeStreamId);
-        
+
         for (let i = chunkLength; i < chunks.length; i++) {
             res.write(`data: ${chunks[i]}\n\n`);
         }
@@ -131,6 +136,67 @@ app.get('/chat/:id/stream', (req: Request<{id: string}>, res: Response) => {
     }, 100);
 });
 
-app.listen(port, () => {
+
+const server = app.listen(port, () => {
 console.log(`Server running at http://localhost:${port}`);
+});
+
+// WebSocket server for terminal
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', (ws: WebSocket, req) => {
+    const url = new URL(req.url || '', `http://localhost:${port}`);
+
+    // Only handle /ws path for terminal
+    if (!url.pathname.startsWith('/ws')) {
+        ws.close(1008, 'Invalid path');
+        return;
+    }
+
+    const sessionId = url.searchParams.get('sessionId');
+
+    if (!sessionId) {
+        ws.close(1008, 'sessionId required');
+        return;
+    }
+
+    // Get or create PTY for this session
+    let terminal = ptyTerminals.get(sessionId);
+
+    if (!terminal) {
+        const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
+        terminal = pty.spawn(shell, [], {
+            name: 'xterm-color',
+            cols: 80,
+            rows: 30,
+            cwd: process.cwd(),
+            env: process.env as { [key: string]: string }
+        });
+
+        ptyTerminals.set(sessionId, terminal);
+
+        // Forward terminal output to WebSocket
+        terminal.onData((data) => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(data);
+            }
+        });
+
+        terminal.onExit(() => {
+            ptyTerminals.delete(sessionId);
+            ws.close();
+        });
+    }
+
+    // Forward WebSocket input to terminal
+    ws.on('message', (data) => {
+        if (terminal) {
+            terminal.write(data.toString());
+        }
+    });
+
+    ws.on('close', () => {
+        // Keep terminal alive even if WebSocket disconnects
+        // It will be reused if they reconnect with same sessionId
+    });
 });

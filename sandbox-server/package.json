@@ -1,6 +1,6 @@
 {
   "name": "sandbox-server",
-  "version": "1.0.12",
+  "version": "1.0.17",
   "description": "oscar-sandbox-server",
   "main": "src/index.js",
   "scripts": {
@@ -13,10 +13,14 @@
   "license": "MIT",
   "dependencies": {
     "@ai-sdk/openai": "^2.0.32",
+    "@types/ws": "^8.18.1",
     "ai": "^5.0.48",
-    "ai-sdk-provider-claude-code": "github:ben-vargas/ai-sdk-provider-claude-code#feat-tool-streaming",
+    "ai-sdk-provider-claude-code": "^1.2.0",
     "better-sqlite3": "^12.2.0",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.3",
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@daytonaio/sdk": "^0.103.0",
