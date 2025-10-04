@@ -175,18 +175,17 @@ wss.on('connection', (ws: WebSocket, req) => {
 
         ptyTerminals.set(sessionId, terminal);
 
-        // Forward terminal output to WebSocket
-        terminal.onData((data) => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(data);
-            }
-        });
-
         terminal.onExit(() => {
             ptyTerminals.delete(sessionId);
-            ws.close();
         });
     }
+
+    // Forward terminal output to this WebSocket (for both new and existing terminals)
+    const dataHandler = terminal.onData((data) => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(data);
+        }
+    });
 
     // Forward WebSocket input to terminal
     ws.on('message', (data) => {
@@ -196,7 +195,7 @@ wss.on('connection', (ws: WebSocket, req) => {
     });
 
     ws.on('close', () => {
-        // Keep terminal alive even if WebSocket disconnects
-        // It will be reused if they reconnect with same sessionId
+        // Clean up the data handler when WebSocket closes
+        dataHandler.dispose();
     });
 });

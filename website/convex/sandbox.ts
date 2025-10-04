@@ -17,7 +17,7 @@ export const createSandbox = action({
                     "Authorization": `Bearer ${process.env.DAYTONA_API_KEY}`,
                 },
                 body: JSON.stringify({
-                    snapshot: "oscar-sandbox-server:1.0.17",
+                    snapshot: "oscar-sandbox-server:1.0.18",
                     language: "typescript",
                     public: true,
                 })

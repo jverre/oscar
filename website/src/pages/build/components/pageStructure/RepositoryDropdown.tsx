@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GitBranch, ChevronDown, Home, Plus, GithubIcon } from 'lucide-react'
+import { GitBranch, ChevronDown, Home, Plus, GithubIcon, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -17,7 +17,6 @@ export function RepositoryDropdown() {
   const repositories = useQuery(api.repositories.getUserRepositories)
   const navigate = useNavigate()
   const params = useParams({ strict: false })
-  const [selectedRepo, setSelectedRepo] = useState<string | null>(null)
   const [showFeatureBranchModal, setShowFeatureBranchModal] = useState(false)
   const [modalRepoId, setModalRepoId] = useState<string | null>(null)
   const featureBranchesByRepo = new Map<string, any[]>()
@@ -38,25 +37,24 @@ export function RepositoryDropdown() {
     return null
   }
 
-  const selectedRepository = repositories.find(r => r._id === selectedRepo)
   const currentRepository = repositories?.find(r => r.name === currentRepo)
 
   return (
     <div className="flex md:hidden my-4">
-      <DropdownMenu modal={false}>
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="secondary"
             className="w-full justify-between"
           >
             <div className="flex items-center gap-2">
-              {currentRepository || selectedRepository ? (
+              {currentRepository ? (
                 <GitBranch className="w-4 h-4" />
               ) : (
                 <Home className="w-4 h-4" />
               )}
               <span className="text-sm">
-                {currentRepository ? currentRepository.name : selectedRepository ? selectedRepository.name : 'Home'}
+                {currentRepository ? currentRepository.name : 'Home'}
                 {currentFeature && ` / ${currentFeature}`}
               </span>
             </div>
@@ -66,7 +64,6 @@ export function RepositoryDropdown() {
         <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-0">
           <DropdownMenuItem
             onClick={() => {
-              setSelectedRepo(null)
               navigate({ to: '/build' })
             }}
             className="cursor-pointer"
@@ -83,16 +80,16 @@ export function RepositoryDropdown() {
             return (
               <div key={repo._id}>
                 <DropdownMenuItem
-                  onClick={() => setSelectedRepo(repo._id)}
-                  className={`cursor-pointer ${
+                  className={`p-2 rounded-sm transition-colors hover:bg-sage-green-100 dark:hover:bg-sage-green-800/30 ${
                     isCurrentRepo ? 'bg-sage-green-100 dark:bg-sage-green-800/50' : ''
                   }`}
+                  onSelect={(e) => e.preventDefault()}
                 >
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-2">
-                      <GitBranch className="w-4 h-4" />
-                      <span className={`text-sm font-medium ${
-                        isCurrentRepo ? 'text-sage-green-700 dark:text-sage-green-300' : ''
+                      <ChevronRight className="w-4 h-4 transition-transform duration-200 text-sage-green-500 rotate-90" />
+                      <span className={`text-sm truncate ${
+                        isCurrentRepo ? 'text-sage-green-700 dark:text-sage-green-300 font-medium' : 'text-foreground'
                       }`}>{repo.name}</span>
                     </div>
                     <a
@@ -108,14 +105,16 @@ export function RepositoryDropdown() {
                 </DropdownMenuItem>
                 {/* Feature branches */}
                 {branches.length > 0 && (
-                  <div className="ml-4 border-l border-sage-green-200/40 dark:border-sage-green-700/40">
+                  <div className="ml-6 mb-1 p-2 bg-sage-green-50/30 dark:bg-sage-green-900/10 rounded-sm border-l-2 border-sage-green-200/40">
                     {branches.map(branch => {
                       const isCurrentFeature = currentFeature === branch.name && isCurrentRepo
                       return (
                         <DropdownMenuItem
                           key={branch._id}
-                          className={`cursor-pointer pl-6 py-1 text-xs ${
-                            isCurrentFeature ? 'bg-sage-green-200 dark:bg-sage-green-700/70' : ''
+                          className={`justify-start px-2 py-1.5 h-auto text-xs font-medium hover:bg-sage-green-100 dark:hover:bg-sage-green-800/30 ${
+                            isCurrentFeature
+                              ? 'bg-sage-green-200 dark:bg-sage-green-700/70 text-sage-green-800 dark:text-sage-green-200'
+                              : 'text-muted-foreground'
                           }`}
                           onClick={() => {
                             navigate({
@@ -127,46 +126,31 @@ export function RepositoryDropdown() {
                             })
                           }}
                         >
-                          <GitBranch className={`w-3 h-3 mr-2 ${
+                          <GitBranch className={`w-3 h-3 shrink-0 mr-2 ${
                             isCurrentFeature ? 'text-sage-green-700 dark:text-sage-green-300' : 'text-sage-green-500'
                           }`} />
-                          <span className={isCurrentFeature ? 'text-sage-green-800 dark:text-sage-green-200 font-medium' : 'text-muted-foreground'}>{branch.name}</span>
+                          <span className="truncate">{branch.name}</span>
                         </DropdownMenuItem>
                       )
                     })}
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault()
+                        setModalRepoId(repo._id)
+                        setShowFeatureBranchModal(true)
+                      }}
+                      className="justify-start px-2 py-1.5 h-auto text-xs text-sage-green-600 dark:text-sage-green-400 hover:text-sage-green-700 dark:hover:text-sage-green-300 hover:bg-sage-green-100 dark:hover:bg-sage-green-800/30"
+                    >
+                      <Plus className="w-3 h-3 mr-2" />
+                      New Feature
+                    </DropdownMenuItem>
                   </div>
                 )}
-                <DropdownMenuItem
-                  onClick={() => {
-                    setModalRepoId(repo._id)
-                    setShowFeatureBranchModal(true)
-                  }}
-                  className="cursor-pointer ml-4 pl-6 py-1"
-                >
-                  <Plus className="w-3 h-3 mr-2 text-sage-green-600" />
-                  <span className="text-xs text-sage-green-600">New Feature</span>
-                </DropdownMenuItem>
               </div>
             )
           })}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {selectedRepository && (
-        <div className="mt-2 p-3 bg-sage-green-50/50 dark:bg-sage-green-900/20 rounded-sm">
-          <a
-            href={selectedRepository.repositoryUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-sage-green-600 dark:text-sage-green-400 hover:underline break-all"
-          >
-            {selectedRepository.repositoryUrl}
-          </a>
-          <div className="mt-1 text-xs text-muted-foreground">
-            Added: {new Date(selectedRepository.createdAt).toLocaleDateString()}
-          </div>
-        </div>
-      )}
 
       {modalRepoId && (
         <FeatureBranchModal

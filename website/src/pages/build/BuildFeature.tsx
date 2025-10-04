@@ -59,7 +59,7 @@ export function BuildFeature({ repositoryName, featureName }: BuildFeatureProps)
             />
           </Panel>
 
-          <PanelResizeHandle className="h-1 bg-gray-300 hover:bg-blue-500 transition-colors cursor-row-resize" />
+          <PanelResizeHandle className="h-px bg-sage-green-200 hover:bg-sage-green-400 transition-colors cursor-row-resize" />
 
           <Panel defaultSize={30} minSize={20}>
             <Terminal
