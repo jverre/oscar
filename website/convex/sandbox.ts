@@ -2,12 +2,77 @@ import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 import { v } from "convex/values";
+import { SandboxStatus } from "./schema";
+
+// Configuration constants
+const SANDBOX_SNAPSHOT = "oscar-sandbox-server:1.0.24";
+const SESSION_ID = "sandbox-express-43021";
+const SERVER_PORT = 43021;
+const POLL_MAX_ATTEMPTS = 30;
+const POLL_INTERVAL = 2000;
+
+async function pollEndpoint(
+    url: string,
+    validateResponse: (response: Response) => Promise<boolean>,
+    maxAttempts: number,
+    interval: number,
+    headers?: Record<string, string>
+): Promise<void> {
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: headers,
+            });
+
+            const isValid = await validateResponse(response);
+            if (isValid) {
+                return;
+            }
+        } catch (error) {
+            console.log(`Attempt ${attempts + 1}: Endpoint not ready yet...`);
+        }
+
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, interval));
+    }
+
+    throw new Error(`Endpoint failed to become ready within timeout (${maxAttempts * interval}ms)`);
+}
+
+async function updateSandboxToFailed(
+    ctx: any,
+    featureBranchId: any,
+    sandboxId: string,
+    error: string
+) {
+    await ctx.runMutation(internal.featureBranches.updateSandbox, {
+        featureBranchId: featureBranchId,
+        sandboxId: sandboxId,
+        sandboxStatus: SandboxStatus.FAILED,
+        sandboxUrl: undefined,
+        sandboxUrlToken: undefined,
+    });
+
+    return {
+        success: false,
+        error: error,
+    };
+}
 
 export const createSandbox = action({
     args: {
         featureBranchId: v.id("featureBranches"),
     },
     handler: async (ctx, args) => {
+        await ctx.runMutation(internal.featureBranches.updateSandbox, {
+            featureBranchId: args.featureBranchId,
+            sandboxId: "",
+            sandboxStatus: SandboxStatus.CREATING,
+        });
+
         const response = await fetch(
             "https://app.daytona.io/api/sandbox",
             {
@@ -17,7 +82,7 @@ export const createSandbox = action({
                     "Authorization": `Bearer ${process.env.DAYTONA_API_KEY}`,
                 },
                 body: JSON.stringify({
-                    snapshot: "oscar-sandbox-server:1.0.18",
+                    snapshot: SANDBOX_SNAPSHOT,
                     language: "typescript",
                     public: true,
                 })
@@ -26,19 +91,10 @@ export const createSandbox = action({
 
         if (!response.ok) {
             const errorText = await response.text();
-            return {
-                success: false,
-                error: errorText,
-            }
+            return await updateSandboxToFailed(ctx, args.featureBranchId, "", errorText);
         }
 
         const sandbox = await response.json();
-
-        await ctx.runMutation(internal.featureBranches.updateSandbox, {
-            featureBranchId: args.featureBranchId,
-            sandboxId: sandbox.id,
-            sandboxStatus: sandbox.state
-        });
 
         await ctx.runAction(internal.sandbox.startSandboxServer, {
             featureBranchId: args.featureBranchId,
@@ -57,48 +113,6 @@ export const createSandbox = action({
     },
 });
 
-async function waitForSandboxHealth(url: string, maxAttempts = 30, delay = 200) {
-    let attempts = 0;
-    while (attempts < maxAttempts) {
-        const response = await fetch(url, {
-            method: 'GET',
-        });
-        if (response.ok) {
-            console.log(await response.text())
-            return true;
-        }
-        console.log("Waiting for sandbox health...");
-        attempts++;
-        await new Promise(resolve => setTimeout(resolve, delay));
-    }
-}
-
-async function waitForSandbox(url: string, maxAttempts = 30, delay = 2000) {
-    let attempts = 0;
-    
-    while (attempts < maxAttempts) {
-      try {
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            "Authorization": `Bearer ${process.env.DAYTONA_API_KEY}`,
-          }
-        });
-        const res_json = await response.json();
-        if (response.ok && res_json.state === "started") {
-          return true;
-        }
-      } catch (error) {
-        console.log(`Attempt ${attempts + 1}: Sandbox not ready yet...`);
-      }
-      
-      attempts++;
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-    
-    throw new Error('Sandbox failed to start within timeout');
-}
-
 export const startSandboxServer = action({
     args: {
         featureBranchId: v.id("featureBranches"),
@@ -106,9 +120,23 @@ export const startSandboxServer = action({
     },
     handler: async (ctx, args) => {
 
-        await waitForSandbox(`https://app.daytona.io/api/sandbox/${args.sandboxId}`);
+        await pollEndpoint(
+            `https://app.daytona.io/api/sandbox/${args.sandboxId}`,
+            async (response) => {
+                if (!response.ok) return false;
+                const data = await response.json();
+                return data.state === "started";
+            },
+            POLL_MAX_ATTEMPTS,
+            POLL_INTERVAL,
+            { "Authorization": `Bearer ${process.env.DAYTONA_API_KEY}` }
+        );
 
-        const SESSION_ID = "sandbox-express-43021";
+        await ctx.runMutation(internal.featureBranches.updateSandbox, {
+            featureBranchId: args.featureBranchId,
+            sandboxId: args.sandboxId,
+            sandboxStatus: SandboxStatus.STARTING_SERVER
+        });
         const response = await fetch(
             `https://app.daytona.io/api/toolbox/${args.sandboxId}/toolbox/process/session`,
             {
@@ -125,20 +153,8 @@ export const startSandboxServer = action({
 
         if (!response.ok) {
             const errorText = await response.text();
-            await ctx.runMutation(internal.featureBranches.updateSandbox, {
-                featureBranchId: args.featureBranchId,
-                sandboxId: args.sandboxId,
-                sandboxStatus: "failed",
-                sandboxUrl: undefined,
-                sandboxUrlToken: undefined,
-            });
-
-            return {
-                success: false,
-                error: errorText,
-            }
+            return await updateSandboxToFailed(ctx, args.featureBranchId, args.sandboxId, errorText);
         }
-        console.log('created session');
 
         const responseStartServer = await fetch(
             `https://app.daytona.io/api/toolbox/${args.sandboxId}/toolbox/process/session/${SESSION_ID}/exec`,
@@ -149,31 +165,18 @@ export const startSandboxServer = action({
                     "Authorization": `Bearer ${process.env.DAYTONA_API_KEY}`,
                 },
                 body: JSON.stringify({
-                    command: "npm run start",
+                    command: "cd /server && TERMINAL_CWD=/home npm run start",
                     runAsync: true
                 })
             }
         )
 
-        console.log(await responseStartServer.text())
-
         if (!responseStartServer.ok) {
             const errorText = await responseStartServer.text();
-            await ctx.runMutation(internal.featureBranches.updateSandbox, {
-                featureBranchId: args.featureBranchId,
-                sandboxId: args.sandboxId,
-                sandboxStatus: "failed",
-                sandboxUrl: undefined,
-                sandboxUrlToken: undefined,
-            });
-
-            return {
-                success: false,
-                error: errorText,
-            }
+            return await updateSandboxToFailed(ctx, args.featureBranchId, args.sandboxId, errorText);
         }
 
-        const previewResponse = await fetch(`https://app.daytona.io/api/sandbox/${args.sandboxId}/ports/43021/preview-url`,
+        const previewResponse = await fetch(`https://app.daytona.io/api/sandbox/${args.sandboxId}/ports/${SERVER_PORT}/preview-url`,
             {
                 headers: {
                     "Content-Type": "application/json",
@@ -184,32 +187,55 @@ export const startSandboxServer = action({
 
         if (!previewResponse.ok) {
             const errorText = await previewResponse.text();
-            
-            await ctx.runMutation(internal.featureBranches.updateSandbox, {
-                featureBranchId: args.featureBranchId,
-                sandboxId: args.sandboxId,
-                sandboxStatus: "failed",
-                sandboxUrl: undefined,
-                sandboxUrlToken: undefined,
-            });
-
-            return {
-                success: false,
-                error: errorText,
-            }
+            return await updateSandboxToFailed(ctx, args.featureBranchId, args.sandboxId, errorText);
         }
 
         const previewURL = await previewResponse.json();
 
-        await waitForSandboxHealth(previewURL.url + '/health')
+        await pollEndpoint(
+            previewURL.url + '/health',
+            async (response) => response.ok,
+            POLL_MAX_ATTEMPTS,
+            POLL_INTERVAL
+        );
 
         await ctx.runMutation(internal.featureBranches.updateSandbox, {
             featureBranchId: args.featureBranchId,
             sandboxId: args.sandboxId,
-            sandboxStatus: "running",
+            sandboxStatus: SandboxStatus.RUNNING,
             sandboxUrl: previewURL.url,
             sandboxUrlToken: previewURL.token,
         });
+
+        return {
+            success: true,
+        };
+    },
+});
+
+export const deleteSandbox = action({
+    args: {
+        sandboxId: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const response = await fetch(
+            `https://app.daytona.io/api/sandbox/${args.sandboxId}`,
+            {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${process.env.DAYTONA_API_KEY}`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Failed to delete sandbox ${args.sandboxId}:`, errorText);
+            return {
+                success: false,
+                error: errorText,
+            };
+        }
 
         return {
             success: true,

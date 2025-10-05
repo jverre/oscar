@@ -32,6 +32,11 @@ interface chatMessageRequest {
 // Store active terminal sessions (PTY-based for WebSocket)
 const ptyTerminals = new Map<string, pty.IPty>();
 
+// Store terminal output buffers (for scrollback on reconnect)
+// We'll keep last 10000 lines per session
+const terminalBuffers = new Map<string, string[]>();
+const MAX_BUFFER_LINES = 10000;
+
 app.get('/health', (req: Request, res: Response) => {
     res.status(200).send('OK');
 });
@@ -149,6 +154,7 @@ wss.on('connection', (ws: WebSocket, req) => {
 
     // Only handle /ws path for terminal
     if (!url.pathname.startsWith('/ws')) {
+        console.log('[WebSocket] Invalid path, closing connection');
         ws.close(1008, 'Invalid path');
         return;
     }
@@ -156,28 +162,67 @@ wss.on('connection', (ws: WebSocket, req) => {
     const sessionId = url.searchParams.get('sessionId');
 
     if (!sessionId) {
+        console.log('[WebSocket] No sessionId provided, closing connection');
         ws.close(1008, 'sessionId required');
         return;
     }
 
+    console.log(`[WebSocket] New connection for session: ${sessionId}`);
+
     // Get or create PTY for this session
     let terminal = ptyTerminals.get(sessionId);
+    const isExistingTerminal = !!terminal;
 
     if (!terminal) {
+        console.log(`[WebSocket] Creating new PTY terminal for session: ${sessionId}`);
         const shell = process.platform === 'win32' ? 'powershell.exe' : 'bash';
+        const terminalCwd = process.env.TERMINAL_CWD || '/home';
         terminal = pty.spawn(shell, [], {
             name: 'xterm-color',
             cols: 80,
             rows: 30,
-            cwd: process.cwd(),
+            cwd: terminalCwd,
             env: process.env as { [key: string]: string }
         });
 
         ptyTerminals.set(sessionId, terminal);
 
-        terminal.onExit(() => {
-            ptyTerminals.delete(sessionId);
+        // Initialize buffer for this session
+        if (!terminalBuffers.has(sessionId)) {
+            terminalBuffers.set(sessionId, []);
+        }
+
+        // Buffer all terminal output for scrollback
+        terminal.onData((data) => {
+            const buffer = terminalBuffers.get(sessionId);
+            if (buffer) {
+                buffer.push(data);
+                // Keep only the last MAX_BUFFER_LINES entries
+                if (buffer.length > MAX_BUFFER_LINES) {
+                    buffer.shift();
+                }
+            }
         });
+
+        terminal.onExit(() => {
+            console.log(`[WebSocket] PTY terminal exited for session: ${sessionId}`);
+            ptyTerminals.delete(sessionId);
+            terminalBuffers.delete(sessionId);
+        });
+    } else {
+        console.log(`[WebSocket] Reconnecting to existing PTY terminal for session: ${sessionId}`);
+
+        // Send buffered output to reconnecting client
+        const buffer = terminalBuffers.get(sessionId);
+        if (buffer && buffer.length > 0) {
+            console.log(`[WebSocket] Replaying ${buffer.length} buffered chunks for session: ${sessionId}`);
+            const bufferedData = buffer.join('');
+            ws.send(bufferedData);
+        }
+
+        // When reconnecting to an existing terminal, trigger the shell to show the prompt
+        // Send an empty command (just enter) to make the shell reprint its prompt
+        terminal.write('\r');
     }
 
     // Forward terminal output to this WebSocket (for both new and existing terminals)
@@ -187,15 +232,39 @@ wss.on('connection', (ws: WebSocket, req) => {
         }
     });
 
+    console.log(`[WebSocket] Data handler attached for session: ${sessionId}`);
+
     // Forward WebSocket input to terminal
     ws.on('message', (data) => {
+        const message = data.toString();
+
+        // Check if this is a resize command
+        try {
+            const parsed = JSON.parse(message);
+            if (parsed.type === 'resize' && parsed.cols && parsed.rows) {
+                console.log(`[WebSocket] Resizing terminal for session ${sessionId}: ${parsed.cols}x${parsed.rows}`);
+                if (terminal) {
+                    terminal.resize(parsed.cols, parsed.rows);
+                }
+                return;
+            }
+        } catch (e) {
+            // Not JSON, treat as regular input
+        }
+
+        console.log(`[WebSocket] Received input for session ${sessionId}:`, message.substring(0, 50));
         if (terminal) {
-            terminal.write(data.toString());
+            terminal.write(message);
         }
     });
 
     ws.on('close', () => {
+        console.log(`[WebSocket] Connection closed for session: ${sessionId}`);
         // Clean up the data handler when WebSocket closes
         dataHandler.dispose();
+    });
+
+    ws.on('error', (error) => {
+        console.error(`[WebSocket] Error for session ${sessionId}:`, error);
     });
 });

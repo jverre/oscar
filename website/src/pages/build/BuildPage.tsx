@@ -18,16 +18,16 @@ export function BuildPage() {
   const isFeatureView = params.repositoryName && params.featureName
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       <PageContainer>
         <Header />
-        <div className="flex flex-1 overflow-hidden">
-          <PageContent className="px-6 md:px-8 flex flex-col h-full w-full">
+        <div className="flex flex-1 overflow-hidden min-w-0">
+          <PageContent className="px-0 md:px-8 flex flex-col h-full w-full min-w-0">
             {/* Mobile Repository Dropdown */}
             {hasRepositories && <RepositoryDropdown />}
 
             {/* Conditional layout based on repositories */}
-            <div className={hasRepositories ? "flex flex-1 overflow-auto" : "flex-1 overflow-auto"}>
+            <div className={hasRepositories ? "flex flex-1 overflow-hidden min-w-0" : "flex-1 overflow-auto min-w-0"}>
               {/* Desktop Sidebar */}
               {hasRepositories && <RepositorySidebar />}
               {/* Main content area */}

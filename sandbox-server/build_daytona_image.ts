@@ -10,12 +10,11 @@ async function main() {
             'apt-get update && apt-get install -y git curl',
             'curl -fsSL https://deb.nodesource.com/setup_20.x | bash -',
             'apt-get install -y nodejs',
-            'mkdir -p /home/daytona/workspace/sandbox-server')
-        .workdir('/home/daytona/workspace')
-        .addLocalDir('src', '/home/daytona/workspace/sandbox-server/src')
-        .addLocalFile('package.json', '/home/daytona/workspace/sandbox-server/package.json')
-        .addLocalFile('tsconfig.json', '/home/daytona/workspace/sandbox-server/tsconfig.json')
-        .workdir('/home/daytona/workspace/sandbox-server')
+            'mkdir -p /server')
+        .workdir('/server')
+        .addLocalDir('src', '/server/src')
+        .addLocalFile('package.json', '/server/package.json')
+        .addLocalFile('tsconfig.json', '/server/tsconfig.json')
         .runCommands('npm install')
 
     console.log(`=== Creating Snapshot: ${snapshotName} ===`)

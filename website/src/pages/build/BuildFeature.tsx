@@ -1,9 +1,10 @@
 import Chat from './components/chat/chat';
 import { Terminal } from './components/terminal/Terminal';
+import { SandboxStatus } from './components/SandboxStatus';
 import { useQuery } from '@tanstack/react-query';
 import { useQuery as useConvexQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { useState } from 'react';
 
 interface BuildFeatureProps {
   repositoryName: string
@@ -13,6 +14,7 @@ interface BuildFeatureProps {
 export function BuildFeature({ repositoryName, featureName }: BuildFeatureProps) {{
     const chatId = `${repositoryName}-${featureName}`;
     const terminalSessionId = `terminal-${chatId}`;
+    const [isTerminalCollapsed, setIsTerminalCollapsed] = useState(true);
     const featureBranch = useConvexQuery(api.featureBranches.getByName, {
       repositoryName: repositoryName,
       featureName: featureName
@@ -36,39 +38,34 @@ export function BuildFeature({ repositoryName, featureName }: BuildFeatureProps)
         return await response.json();
       }
     });
-    const isLoading = chatData.isLoading || !featureBranch || featureBranch?.sandboxStatus !== "running";
-    const isError = chatData.isError;
-
-    if (isLoading || !featureBranch) {
-      return <div>Loading...</div>;
+    if (!featureBranch) {
+      return <SandboxStatus />;
     }
-    
-    if (isError) {
-      return <div>Error: {chatData.error.message}</div>;
+
+    if (featureBranch.sandboxStatus !== "running") {
+      return <SandboxStatus status={featureBranch.sandboxStatus} />;
     }
 
     return (
-      <div className="max-h-full w-full h-full">
-        <PanelGroup direction="vertical">
-          <Panel defaultSize={70} minSize={30}>
-            <Chat
-              chatData={chatData.data || { id: chatId, messages: [] }}
-              previewToken={featureBranch?.sandboxUrlToken || ''}
-              chatUrl={`${chatBaseUrl}/chat`}
-              resume={chatData.data?.activeStreamId !== null}
-            />
-          </Panel>
+      <div className="w-full h-full flex flex-col overflow-hidden">
+        <div className={isTerminalCollapsed ? 'flex-1 overflow-hidden' : 'flex-[2] overflow-hidden'}>
+          <Chat
+            chatData={chatData.data || { id: chatId, messages: [] }}
+            previewToken={featureBranch.sandboxUrlToken || ''}
+            chatUrl={`${chatBaseUrl}/chat`}
+            resume={!!chatData.data?.activeStreamId}
+          />
+        </div>
 
-          <PanelResizeHandle className="h-px bg-sage-green-200 hover:bg-sage-green-400 transition-colors cursor-row-resize" />
-
-          <Panel defaultSize={30} minSize={20}>
-            <Terminal
-              sessionId={terminalSessionId}
-              baseUrl={chatBaseUrl}
-              previewToken={featureBranch?.sandboxUrlToken || ''}
-            />
-          </Panel>
-        </PanelGroup>
+        <div className={isTerminalCollapsed ? 'flex-shrink-0' : 'flex-1 overflow-hidden'}>
+          <Terminal
+            sessionId={terminalSessionId}
+            baseUrl={chatBaseUrl}
+            previewToken={featureBranch.sandboxUrlToken || ''}
+            isCollapsed={isTerminalCollapsed}
+            onToggleCollapse={() => setIsTerminalCollapsed(!isTerminalCollapsed)}
+          />
+        </div>
       </div>
     );
   }

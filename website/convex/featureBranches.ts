@@ -94,6 +94,13 @@ export const deleteFeatureBranch = mutation({
       throw new Error("Feature branch not found or access denied");
     }
 
+    // Delete the associated sandbox if it exists
+    if (featureBranch.sandboxId) {
+      await ctx.scheduler.runAfter(0, internal.sandbox.deleteSandbox, {
+        sandboxId: featureBranch.sandboxId,
+      });
+    }
+
     await ctx.db.delete(args.featureBranchId);
   },
 });

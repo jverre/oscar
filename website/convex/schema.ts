@@ -2,6 +2,17 @@ import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 import { authTables } from "@convex-dev/auth/server"
 
+// Sandbox status enum
+export const SandboxStatus = {
+  CREATING: 'creating',
+  STARTING_SERVER: 'starting_server',
+  RUNNING: 'running',
+  FAILED: 'failed',
+  STOPPED: 'stopped',
+} as const
+
+export type SandboxStatusType = typeof SandboxStatus[keyof typeof SandboxStatus]
+
 // Export type definitions
 export type TextPart = {
   type: 'text'
@@ -162,7 +173,13 @@ export default defineSchema({
     ownerId: v.id("users"),
     createdAt: v.number(),
     sandboxId: v.optional(v.string()),
-    sandboxStatus: v.optional(v.string()),
+    sandboxStatus: v.optional(v.union(
+      v.literal('creating'),
+      v.literal('starting_server'),
+      v.literal('running'),
+      v.literal('failed'),
+      v.literal('stopped')
+    )),
     sandboxUrl: v.optional(v.string()),
     sandboxUrlToken: v.optional(v.string()),
   })
