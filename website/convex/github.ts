@@ -162,13 +162,13 @@ export const listRepositories = action({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
-      throw new Error("Not authenticated");
+      return { success: false, error: "NOT_AUTHENTICATED" };
     }
 
     const user = await ctx.runQuery(internal.github.getUserById, { userId });
 
     if (!user?.githubInstallationId) {
-      throw new Error("GitHub App not installed");
+      return { success: false, error: "NOT_INSTALLED" };
     }
 
     // Get environment variables
@@ -176,7 +176,7 @@ export const listRepositories = action({
     const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
 
     if (!appId || !privateKey) {
-      throw new Error("GitHub App credentials not configured");
+      return { success: false, error: "NOT_CONFIGURED" };
     }
 
     try {
@@ -201,28 +201,31 @@ export const listRepositories = action({
 
       if (!response.ok) {
         const error = await response.text();
-        throw new Error(`Failed to fetch repositories: ${error}`);
+        return { success: false, error: `FETCH_FAILED: ${error}` };
       }
 
       const data = await response.json();
 
       // Return simplified repository data
-      return data.repositories.map((repo: any) => ({
-        id: repo.id,
-        name: repo.name,
-        fullName: repo.full_name,
-        description: repo.description,
-        private: repo.private,
-        cloneUrl: repo.clone_url,
-        htmlUrl: repo.html_url,
-      }));
+      return {
+        success: true,
+        repositories: data.repositories.map((repo: any) => ({
+          id: repo.id,
+          name: repo.name,
+          fullName: repo.full_name,
+          description: repo.description,
+          private: repo.private,
+          cloneUrl: repo.clone_url,
+          htmlUrl: repo.html_url,
+        })),
+      };
     } catch (error) {
       // If installation not found, clear it from the user record
       if (error instanceof Error && error.message === "INSTALLATION_NOT_FOUND") {
         await ctx.runMutation(internal.github.clearInstallation);
-        throw new Error("GitHub App installation not found. Please reinstall the app.");
+        return { success: false, error: "INSTALLATION_NOT_FOUND" };
       }
-      throw error;
+      return { success: false, error: `UNKNOWN_ERROR: ${error}` };
     }
   },
 });

@@ -47,23 +47,27 @@ export function CloneGithubModal({ open, onOpenChange, onInstallRequired }: Clon
     setLoading(true)
     setError(null)
 
-    try {
-      const repos = await listRepositories()
-      setRepositories(repos)
-    } catch (err) {
-      console.error('Failed to fetch repositories:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch repositories'
+    const result = await listRepositories()
 
-      // If installation not found, show install dialog instead
-      if (errorMessage.includes('installation not found')) {
+    if (!result.success) {
+      // Handle different error cases
+      if (result.error === 'INSTALLATION_NOT_FOUND' || result.error === 'NOT_INSTALLED') {
+        // Silently transition to install dialog
         onOpenChange(false)
         onInstallRequired?.()
+      } else if (result.error === 'NOT_AUTHENTICATED') {
+        setError('Please sign in to continue')
+      } else if (result.error === 'NOT_CONFIGURED') {
+        setError('GitHub integration is not configured')
       } else {
-        setError(errorMessage)
+        setError('Failed to fetch repositories. Please try again.')
       }
-    } finally {
       setLoading(false)
+      return
     }
+
+    setRepositories(result.repositories)
+    setLoading(false)
   }
 
   const handleClone = async () => {
