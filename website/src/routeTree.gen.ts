@@ -12,6 +12,7 @@ import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as GithubCallbackRouteImport } from './routes/github-callback'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as R404RouteImport } from './routes/_404'
 import { Route as IndexRouteImport } from './routes/index'
@@ -27,6 +28,11 @@ const rootServerRouteImport = createServerRootRoute()
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GithubCallbackRoute = GithubCallbackRouteImport.update({
+  id: '/github-callback',
+  path: '/github-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -78,6 +84,7 @@ const ApiClear_messagesServerRoute = ApiClear_messagesServerRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/github-callback': typeof GithubCallbackRoute
   '/login': typeof LoginRoute
   '/build': typeof AuthenticatedBuildRouteWithChildren
   '/chat/$conversationId': typeof ChatConversationIdRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/github-callback': typeof GithubCallbackRoute
   '/login': typeof LoginRoute
   '/build': typeof AuthenticatedBuildRouteWithChildren
   '/chat/$conversationId': typeof ChatConversationIdRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_404': typeof R404Route
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/github-callback': typeof GithubCallbackRoute
   '/login': typeof LoginRoute
   '/_authenticated/build': typeof AuthenticatedBuildRouteWithChildren
   '/chat/$conversationId': typeof ChatConversationIdRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/github-callback'
     | '/login'
     | '/build'
     | '/chat/$conversationId'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/github-callback'
     | '/login'
     | '/build'
     | '/chat/$conversationId'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_404'
     | '/_authenticated'
+    | '/github-callback'
     | '/login'
     | '/_authenticated/build'
     | '/chat/$conversationId'
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   R404Route: typeof R404Route
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  GithubCallbackRoute: typeof GithubCallbackRoute
   LoginRoute: typeof LoginRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
 }
@@ -180,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/github-callback': {
+      id: '/github-callback'
+      path: '/github-callback'
+      fullPath: '/github-callback'
+      preLoaderRoute: typeof GithubCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -280,6 +300,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   R404Route: R404Route,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  GithubCallbackRoute: GithubCallbackRoute,
   LoginRoute: LoginRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
 }

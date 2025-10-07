@@ -2,12 +2,25 @@ import { useState } from 'react'
 import { BuildCard } from '@/components/BuildCard'
 import { Github, Link, Plus } from 'lucide-react'
 import { CloneUrlModal } from './components/CloneUrlModal'
+import { InstallGithubAppDialog } from './components/InstallGithubAppDialog'
+import { CloneGithubModal } from './components/CloneGithubModal'
+import { useQuery } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
 
 export function BuildHome() {
   const [showCloneUrlModal, setShowCloneUrlModal] = useState(false)
+  const [showInstallGithubDialog, setShowInstallGithubDialog] = useState(false)
+  const [showCloneGithubModal, setShowCloneGithubModal] = useState(false)
+
+  const currentUser = useQuery(api.auth.currentUser)
 
   const handleGithubClone = () => {
-    console.log('Clone from GitHub clicked')
+    // Check if user has GitHub App installed
+    if (!currentUser?.githubInstallationId) {
+      setShowInstallGithubDialog(true)
+    } else {
+      setShowCloneGithubModal(true)
+    }
   }
 
   const handleUrlClone = () => {
@@ -33,7 +46,6 @@ export function BuildHome() {
             title="Clone from GitHub"
             icon={Github}
             onClick={handleGithubClone}
-            comingSoon={true}
           />
 
           <BuildCard
@@ -54,6 +66,20 @@ export function BuildHome() {
       <CloneUrlModal
         open={showCloneUrlModal}
         onOpenChange={setShowCloneUrlModal}
+      />
+
+      <InstallGithubAppDialog
+        open={showInstallGithubDialog}
+        onOpenChange={setShowInstallGithubDialog}
+      />
+
+      <CloneGithubModal
+        open={showCloneGithubModal}
+        onOpenChange={setShowCloneGithubModal}
+        onInstallRequired={() => {
+          setShowCloneGithubModal(false)
+          setShowInstallGithubDialog(true)
+        }}
       />
     </>
   )

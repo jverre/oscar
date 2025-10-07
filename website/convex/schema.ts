@@ -159,11 +159,22 @@ export default defineSchema({
     .index("by_conversation_id", ["conversationId"])
     .index("by_conversation_and_order", ["conversationId", "messageOrder"]),
 
+  users: defineTable({
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
+    githubInstallationId: v.optional(v.string()),
+  }).index("email", ["email"]),
+
   repositories: defineTable({
     name: v.string(),
     repositoryUrl: v.string(),
     ownerId: v.id("users"),
-    cloneSource: v.union(v.literal('url')), // Union ready for future expansion
+    cloneSource: v.union(v.literal('url'), v.literal('github')),
     createdAt: v.number(),
   }),
 

@@ -12,6 +12,7 @@ export const userData = internalQuery({
             userId: user._id,
             email: user.email,
             name: user.name,
+            githubInstallationId: user.githubInstallationId,
         }
       },
 })

@@ -6,6 +6,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     repositoryUrl: v.string(),
+    cloneSource: v.optional(v.union(v.literal('url'), v.literal('github'))),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -17,7 +18,7 @@ export const create = mutation({
       name: args.name,
       repositoryUrl: args.repositoryUrl,
       ownerId: userId,
-      cloneSource: "url",
+      cloneSource: args.cloneSource || "url",
       createdAt: Date.now(),
     });
 
