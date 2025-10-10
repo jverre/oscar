@@ -18,6 +18,7 @@ import type * as conversations from "../conversations.js";
 import type * as featureBranches from "../featureBranches.js";
 import type * as github from "../github.js";
 import type * as http from "../http.js";
+import type * as lib_sandboxUtils from "../lib/sandboxUtils.js";
 import type * as messages from "../messages.js";
 import type * as repositories from "../repositories.js";
 import type * as sandbox from "../sandbox.js";
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   featureBranches: typeof featureBranches;
   github: typeof github;
   http: typeof http;
+  "lib/sandboxUtils": typeof lib_sandboxUtils;
   messages: typeof messages;
   repositories: typeof repositories;
   sandbox: typeof sandbox;

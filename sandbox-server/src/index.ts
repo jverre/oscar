@@ -219,10 +219,6 @@ wss.on('connection', (ws: WebSocket, req) => {
             const bufferedData = buffer.join('');
             ws.send(bufferedData);
         }
-
-        // When reconnecting to an existing terminal, trigger the shell to show the prompt
-        // Send an empty command (just enter) to make the shell reprint its prompt
-        terminal.write('\r');
     }
 
     // Forward terminal output to this WebSocket (for both new and existing terminals)

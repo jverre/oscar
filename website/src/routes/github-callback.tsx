@@ -21,15 +21,12 @@ function GitHubCallbackPage() {
       if (installationId && setupAction === 'install') {
         try {
           await saveInstallation({ installationId })
-          // Redirect to build page with success indicator
-          navigate({ to: '/build', search: { github_connected: 'true' } })
+          navigate({ to: '/build' })
         } catch (error) {
           console.error('Failed to save GitHub installation:', error)
-          // Redirect to build page with error indicator
-          navigate({ to: '/build', search: { github_error: 'true' } })
+          navigate({ to: '/build' })
         }
       } else {
-        // No valid installation ID, redirect to build
         navigate({ to: '/build' })
       }
     }

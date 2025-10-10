@@ -193,6 +193,7 @@ export default defineSchema({
     )),
     sandboxUrl: v.optional(v.string()),
     sandboxUrlToken: v.optional(v.string()),
+    lastHealthCheck: v.optional(v.number()),
   })
     .index("by_repository", ["repositoryId"])
     .index("by_owner", ["ownerId"]),

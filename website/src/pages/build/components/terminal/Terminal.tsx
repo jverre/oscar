@@ -14,14 +14,20 @@ interface TerminalProps {
 
 export function Terminal({ sessionId, baseUrl, previewToken, isCollapsed, onToggleCollapse }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
-  const xtermRef = useRef<XTerm | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const fitAddonRef = useRef<FitAddon | null>(null);
 
   useEffect(() => {
-    if (!terminalRef.current) return;
+    console.log('[Terminal] Effect running with:', { sessionId, baseUrl, previewToken: previewToken ? 'YES' : 'NO' });
 
+    if (!terminalRef.current) {
+      console.log('[Terminal] No terminal ref');
+      return;
+    }
+
+    console.log('[Terminal] Creating terminal and WebSocket');
+
+    // Create terminal
     const xterm = new XTerm({
       cursorBlink: true,
       fontSize: 12,
@@ -56,136 +62,79 @@ export function Terminal({ sessionId, baseUrl, previewToken, isCollapsed, onTogg
 
     const fitAddon = new FitAddon();
     xterm.loadAddon(fitAddon);
-
     xterm.open(terminalRef.current);
 
-    // Load WebGL addon for better rendering and selection support
     try {
       const webglAddon = new WebglAddon();
-      webglAddon.onContextLoss(() => {
-        webglAddon.dispose();
-      });
+      webglAddon.onContextLoss(() => webglAddon.dispose());
       xterm.loadAddon(webglAddon);
     } catch (e) {
-      console.warn('[Terminal] WebGL addon failed to load, using canvas renderer', e);
+      console.warn('[Terminal] WebGL addon failed to load', e);
     }
 
-    // Use setTimeout to ensure the terminal is fully mounted before fitting
-    setTimeout(() => {
-      fitAddon.fit();
-    }, 0);
-
-    xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
 
-    // Handle window resize
-    const handleResize = () => {
-      if (fitAddonRef.current && xtermRef.current) {
-        fitAddonRef.current.fit();
+    // Only fit if terminal is visible
+    if (!isCollapsed) {
+      setTimeout(() => fitAddon.fit(), 0);
+    }
 
-        // Send new dimensions to backend
-        const dims = {
-          cols: xtermRef.current.cols,
-          rows: xtermRef.current.rows
-        };
-
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({ type: 'resize', ...dims }));
-        }
-      }
-    };
-    window.addEventListener('resize', handleResize);
-
-    // Cleanup
-    return () => {
-      console.log('[Terminal] Component unmounting - disposing xterm');
-      window.removeEventListener('resize', handleResize);
-      if (xtermRef.current) {
-        xtermRef.current.dispose();
-        xtermRef.current = null;
-      }
-      fitAddonRef.current = null;
-    };
-  }, []);
-
-  // Separate effect for WebSocket connection
-  useEffect(() => {
-    if (!xtermRef.current) return;
-
-    const xterm = xtermRef.current;
-
-    // Create WebSocket connection
+    // Create WebSocket
     const wsUrl = baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
-    const wsUrlWithParams = `${wsUrl}/ws?sessionId=${sessionId}&DAYTONA_SANDBOX_AUTH_KEY=${previewToken}`;
+    const wsUrlFull = `${wsUrl}/ws?sessionId=${sessionId}&DAYTONA_SANDBOX_AUTH_KEY=${previewToken}`;
+    console.log('[Terminal] WebSocket URL:', wsUrlFull);
 
-    console.log('[Terminal] Connecting to WebSocket:', wsUrlWithParams);
-    const ws = new WebSocket(wsUrlWithParams);
+    const ws = new WebSocket(wsUrlFull);
 
     ws.onopen = () => {
-      console.log('[Terminal] WebSocket connected for session:', sessionId);
+      console.log('[Terminal] ✅ WebSocket CONNECTED');
       setIsConnected(true);
       xterm.writeln('Connected to terminal...\r\n');
     };
 
     ws.onmessage = (event) => {
-      console.log('[Terminal] Received message:', event.data.substring(0, 50));
       xterm.write(event.data);
-
-      // Auto-scroll to bottom when receiving new data (only if user is near bottom)
-      const isNearBottom = xterm.buffer.active.baseY + xterm.rows >= xterm.buffer.active.length - 1;
-      if (isNearBottom) {
-        xterm.scrollToBottom();
-      }
     };
 
     ws.onerror = (error) => {
-      console.error('[Terminal] WebSocket error:', error);
+      console.error('[Terminal] ❌ WebSocket ERROR:', error);
       setIsConnected(false);
     };
 
     ws.onclose = (event) => {
-      console.log('[Terminal] WebSocket closed:', event.code, event.reason);
+      console.log('[Terminal] 🔌 WebSocket CLOSED - Code:', event.code, 'Reason:', event.reason);
       setIsConnected(false);
-      xterm.writeln('\r\n\r\nConnection closed.');
     };
 
-    wsRef.current = ws;
-
-    // Send input from xterm to WebSocket
+    // Send input to WebSocket
     const dataDisposable = xterm.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(data);
       }
     });
 
-    return () => {
-      console.log('[Terminal] WebSocket cleanup for session:', sessionId);
-      dataDisposable.dispose();
-
-      // Close WebSocket if it's open or connecting
-      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-        console.log('[Terminal] Closing WebSocket for session:', sessionId);
-        ws.close();
+    // Handle resize
+    const handleResize = () => {
+      fitAddon.fit();
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'resize', cols: xterm.cols, rows: xterm.rows }));
       }
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      dataDisposable.dispose();
+      ws.close();
+      xterm.dispose();
     };
   }, [sessionId, baseUrl, previewToken]);
 
-  // Handle terminal resize when collapsed state changes
+  // Handle fit when collapsed state changes
   useEffect(() => {
-    if (!isCollapsed && fitAddonRef.current && xtermRef.current) {
-      // Wait for DOM to update before fitting
-      setTimeout(() => {
-        fitAddonRef.current?.fit();
-
-        // Send new dimensions to backend
-        if (xtermRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
-          const dims = {
-            cols: xtermRef.current.cols,
-            rows: xtermRef.current.rows
-          };
-          wsRef.current.send(JSON.stringify({ type: 'resize', ...dims }));
-        }
-      }, 100);
+    if (!isCollapsed && fitAddonRef.current) {
+      setTimeout(() => fitAddonRef.current?.fit(), 100);
     }
   }, [isCollapsed]);
 
@@ -224,9 +173,11 @@ export function Terminal({ sessionId, baseUrl, previewToken, isCollapsed, onTogg
         </div>
       </div>
 
-      {!isCollapsed && (
-        <div ref={terminalRef} className="flex-1 w-full overflow-hidden" />
-      )}
+      <div
+        ref={terminalRef}
+        className="flex-1 w-full overflow-hidden"
+        style={{ display: isCollapsed ? 'none' : 'block' }}
+      />
     </div>
   );
 }
