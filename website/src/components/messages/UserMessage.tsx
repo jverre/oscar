@@ -136,6 +136,17 @@ export function UserMessage({ content, timestamp, messageOrder }: UserMessagePro
     return { cleanText: cleanText.trim(), selections }
   }
 
+  const parseCommandTags = (text: string): string => {
+    // Remove <command-message> tags
+    let cleanText = text.replace(/<command-message>.*?<\/command-message>/gs, '')
+
+    // Extract command name from <command-name> tags
+    const commandNameRegex = /<command-name>(.*?)<\/command-name>/g
+    cleanText = cleanText.replace(commandNameRegex, '$1')
+
+    return cleanText.trim()
+  }
+
   const renderIdeSelection = (selection: IdeSelection) => {
     const fileName = selection.filePath.split('/').pop() || selection.filePath
     const lineRange = selection.startLine === selection.endLine
@@ -166,7 +177,8 @@ export function UserMessage({ content, timestamp, messageOrder }: UserMessagePro
 
   const renderContent = () => {
     if (typeof content === 'string') {
-      const { cleanText, selections } = parseIdeSelection(content)
+      let processedText = parseCommandTags(content)
+      const { cleanText, selections } = parseIdeSelection(processedText)
       return (
         <>
           <ReactMarkdown components={markdownComponents}>{cleanText}</ReactMarkdown>
@@ -187,7 +199,8 @@ export function UserMessage({ content, timestamp, messageOrder }: UserMessagePro
         {content.map((part, index) => {
           switch (part.type) {
             case 'text': {
-              const { cleanText, selections } = parseIdeSelection(part.text)
+              let processedText = parseCommandTags(part.text)
+              const { cleanText, selections } = parseIdeSelection(processedText)
               allSelections.push(...selections)
               return (
                 <ReactMarkdown key={index} components={markdownComponents}>
