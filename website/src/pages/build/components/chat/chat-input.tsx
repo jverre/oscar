@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { GridCircles } from '@/pages/home/GridCircles';
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from 'react-hotkeys-hook';
 
 export default function ChatInput({
   status,
