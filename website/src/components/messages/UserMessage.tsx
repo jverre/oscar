@@ -1,6 +1,19 @@
 import { User } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import type { UserContent, TextPart, ImagePart, FilePart } from '../../../convex/schema'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+
+interface IdeSelection {
+  filePath: string
+  startLine: number
+  endLine: number
+  content: string
+}
 
 const markdownComponents = {
   a: ({ href, children, ...props }: any) => (
@@ -80,7 +93,7 @@ const markdownComponents = {
     </li>
   ),
   p: ({ children, ...props }: any) => (
-    <p className="mb-3 leading-relaxed text-foreground" {...props}>
+    <p className="mb-0 leading-relaxed text-foreground" {...props}>
       {children}
     </p>
   ),
@@ -103,25 +116,89 @@ interface UserMessageProps {
 }
 
 export function UserMessage({ content, timestamp, messageOrder }: UserMessageProps) {
-  const renderContent = () => {
-    if (typeof content === 'string') {
-      return <ReactMarkdown components={markdownComponents}>{content}</ReactMarkdown>
+  const parseIdeSelection = (text: string): { cleanText: string; selections: IdeSelection[] } => {
+    const regex = /<ide_selection>The user selected the lines (\d+) to (\d+) from ([^:]+):\s*([\s\S]*?)(?:\n\nThis may or may not be related to the current task\.<\/ide_selection>|<\/ide_selection>)/g
+    const selections: IdeSelection[] = []
+    let cleanText = text
+
+    let match
+    while ((match = regex.exec(text)) !== null) {
+      const [fullMatch, startLine, endLine, filePath, content] = match
+      selections.push({
+        filePath: filePath.trim(),
+        startLine: parseInt(startLine),
+        endLine: parseInt(endLine),
+        content: content.trim()
+      })
+      cleanText = cleanText.replace(fullMatch, '')
     }
 
+    return { cleanText: cleanText.trim(), selections }
+  }
+
+  const renderIdeSelection = (selection: IdeSelection) => {
+    const fileName = selection.filePath.split('/').pop() || selection.filePath
+    const lineRange = selection.startLine === selection.endLine
+      ? `L${selection.startLine}`
+      : `L${selection.startLine}-L${selection.endLine}`
+
     return (
+      <TooltipProvider key={selection.filePath + selection.startLine}>
+        <Tooltip delayDuration={200}>
+          <TooltipTrigger asChild>
+            <div className="text-xs text-muted-foreground/60 font-mono cursor-default hover:text-muted-foreground/80 transition-colors inline-block">
+              {fileName}#{lineRange}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent
+            side="bottom"
+            align="start"
+            className="max-w-2xl max-h-96 overflow-auto"
+          >
+            <pre className="text-xs font-mono whitespace-pre-wrap">
+              {selection.content}
+            </pre>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
+  const renderContent = () => {
+    if (typeof content === 'string') {
+      const { cleanText, selections } = parseIdeSelection(content)
+      return (
+        <>
+          <ReactMarkdown components={markdownComponents}>{cleanText}</ReactMarkdown>
+          {selections.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-2">
+              {selections.map(renderIdeSelection)}
+            </div>
+          )}
+        </>
+      )
+    }
+
+    // Collect all selections from all text parts
+    const allSelections: IdeSelection[] = []
+
+    const renderedParts = (
       <div className="space-y-1">
         {content.map((part, index) => {
           switch (part.type) {
-            case 'text':
+            case 'text': {
+              const { cleanText, selections } = parseIdeSelection(part.text)
+              allSelections.push(...selections)
               return (
                 <ReactMarkdown key={index} components={markdownComponents}>
-                  {part.text}
+                  {cleanText}
                 </ReactMarkdown>
               )
+            }
 
             case 'image': {
-              const imageUrl = typeof part.image === 'string' 
-                ? part.image 
+              const imageUrl = typeof part.image === 'string'
+                ? part.image
                 : part.image.url
               return (
                 <div key={index} className="my-3">
@@ -135,7 +212,7 @@ export function UserMessage({ content, timestamp, messageOrder }: UserMessagePro
             }
 
             case 'file': {
-              const fileUrl = typeof part.data === 'string' 
+              const fileUrl = typeof part.data === 'string'
                 ? `data:${part.mediaType};base64,${part.data}`
                 : part.data.url
               return (
@@ -159,6 +236,17 @@ export function UserMessage({ content, timestamp, messageOrder }: UserMessagePro
           }
         })}
       </div>
+    )
+
+    return (
+      <>
+        {renderedParts}
+        {allSelections.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-2">
+            {allSelections.map(renderIdeSelection)}
+          </div>
+        )}
+      </>
     )
   }
 
