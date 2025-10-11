@@ -1,14 +1,7 @@
 name: Build Daytona Image
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths:
-      - 'sandbox-server/**'
-  pull_request:
-    branches: [ main, develop ]
-    paths:
-      - 'sandbox-server/**'
+  workflow_dispatch:
 
 jobs:
   build-daytona-image:
