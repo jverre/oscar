@@ -11,6 +11,7 @@
 import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as GithubCallbackRouteImport } from './routes/github-callback'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
@@ -25,6 +26,11 @@ import { ServerRoute as ApiClear_messagesServerRouteImport } from './routes/api/
 
 const rootServerRouteImport = createServerRootRoute()
 
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/github-callback': typeof GithubCallbackRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/build': typeof AuthenticatedBuildRouteWithChildren
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/build/$repositoryName/$featureName': typeof AuthenticatedBuildRepositoryNameFeatureNameRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/github-callback': typeof GithubCallbackRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/build': typeof AuthenticatedBuildRouteWithChildren
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/build/$repositoryName/$featureName': typeof AuthenticatedBuildRepositoryNameFeatureNameRoute
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/github-callback': typeof GithubCallbackRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/_authenticated/build': typeof AuthenticatedBuildRouteWithChildren
   '/chat/$conversationId': typeof ChatConversationIdRoute
   '/_authenticated/build/$repositoryName/$featureName': typeof AuthenticatedBuildRepositoryNameFeatureNameRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/'
     | '/github-callback'
     | '/login'
+    | '/privacy'
     | '/build'
     | '/chat/$conversationId'
     | '/build/$repositoryName/$featureName'
@@ -123,6 +133,7 @@ export interface FileRouteTypes {
     | '/'
     | '/github-callback'
     | '/login'
+    | '/privacy'
     | '/build'
     | '/chat/$conversationId'
     | '/build/$repositoryName/$featureName'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/github-callback'
     | '/login'
+    | '/privacy'
     | '/_authenticated/build'
     | '/chat/$conversationId'
     | '/_authenticated/build/$repositoryName/$featureName'
@@ -144,6 +156,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   GithubCallbackRoute: typeof GithubCallbackRoute
   LoginRoute: typeof LoginRoute
+  PrivacyRoute: typeof PrivacyRoute
   ChatConversationIdRoute: typeof ChatConversationIdRoute
 }
 export interface FileServerRoutesByFullPath {
@@ -188,6 +201,13 @@ export interface RootServerRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -302,6 +322,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   GithubCallbackRoute: GithubCallbackRoute,
   LoginRoute: LoginRoute,
+  PrivacyRoute: PrivacyRoute,
   ChatConversationIdRoute: ChatConversationIdRoute,
 }
 export const routeTree = rootRouteImport

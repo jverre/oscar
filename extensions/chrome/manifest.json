@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Chat Capture",
-  "version": "1.0",
-  "description": "Capture ChatGPT conversations when typing 'share' in the input field",
+  "name": "Oscar",
+  "version": "1.0.0",
+  "description": "Share your ChatGPT conversations with Oscar. Type /share and press Enter to create a shareable link.",
   "permissions": [
     "activeTab",
     "storage"
@@ -16,11 +16,12 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "View Captured Chats"
+    "default_title": "Oscar - View Shared Chats"
   },
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
     "128": "icon128.png"
-  }
+  },
+  "homepage_url": "https://www.getoscar.ai"
 }

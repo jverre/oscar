@@ -1,2 +1,6 @@
 .git
 .DS_Store
+
+# Chrome extension build artifacts
+extensions/chrome/*.zip
+extensions/chrome/oscar-extension.zip

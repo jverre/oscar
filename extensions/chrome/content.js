@@ -4,24 +4,19 @@ let isCapturing = false;
 
 // Monitor input field for "share" keyword
 function monitorInput() {
-  console.log('[ChatGPT Capture] Attempting to find input field...');
   const inputField = document.querySelector('#prompt-textarea');
   if (!inputField) {
-    console.log('[ChatGPT Capture] Input field not found, retrying in 1s...');
     setTimeout(monitorInput, 1000);
     return;
   }
-
-  console.log('[ChatGPT Capture] Input field found!', inputField);
 
   // Listen for Enter key press to detect submission
   inputField.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       const text = inputField.textContent || '';
-      console.log('[ChatGPT Capture] Enter pressed with text:', JSON.stringify(text));
 
       if (text.toLowerCase().trim() === '/share' && !isCapturing) {
-        console.log('[ChatGPT Capture] /share detected on submit! Preventing default and starting capture...');
+        console.log('[Oscar] /share command detected, starting capture...');
 
         // Prevent the message from being sent to ChatGPT
         event.preventDefault();
@@ -48,13 +43,11 @@ function monitorInput() {
   // Also watch for form submission
   const form = inputField.closest('form');
   if (form) {
-    console.log('[ChatGPT Capture] Form found, attaching submit listener');
     form.addEventListener('submit', (event) => {
       const text = inputField.textContent || '';
-      console.log('[ChatGPT Capture] Form submit event with text:', JSON.stringify(text));
 
       if (text.toLowerCase().trim() === '/share' && !isCapturing) {
-        console.log('[ChatGPT Capture] /share detected on form submit! Preventing default...');
+        console.log('[Oscar] /share command detected via form submit, starting capture...');
 
         // Prevent the form from submitting
         event.preventDefault();
@@ -81,13 +74,11 @@ function monitorInput() {
                        document.querySelector('button[data-testid*="send"]') ||
                        inputField.closest('form')?.querySelector('button[type="submit"]');
     if (sendButton) {
-      console.log('[ChatGPT Capture] Send button found');
       sendButton.addEventListener('click', (event) => {
         const text = inputField.textContent || '';
-        console.log('[ChatGPT Capture] Send button clicked with text:', JSON.stringify(text));
 
         if (text.toLowerCase().trim() === '/share' && !isCapturing) {
-          console.log('[ChatGPT Capture] /share detected on send button! Preventing default...');
+          console.log('[Oscar] /share command detected via send button, starting capture...');
 
           // Prevent the button click from submitting
           event.preventDefault();
@@ -117,8 +108,6 @@ function monitorInput() {
   };
 
   observeSendButton();
-
-  console.log('[ChatGPT Capture] Event listeners attached');
 }
 
 // Scroll to bottom of chat
@@ -129,9 +118,6 @@ function scrollToBottom(smooth = true) {
                           document.querySelector('[class*="overflow-y-auto"]') ||
                           document.querySelector('main [class*="react-scroll"]') ||
                           document.querySelector('main');
-
-  console.log('[ChatGPT Capture] Scrolling with container:', scrollContainer);
-  console.log('[ChatGPT Capture] scrollHeight:', scrollContainer?.scrollHeight);
 
   if (scrollContainer) {
     scrollContainer.scrollTo({
@@ -145,7 +131,7 @@ function scrollToBottom(smooth = true) {
 function insertUserMessage(text) {
   const threadContainer = document.querySelector('.flex.flex-col.text-sm');
   if (!threadContainer) {
-    console.log('[ChatGPT Capture] Thread container not found');
+    console.log('[Oscar] ERROR: Thread container not found - cannot insert user message');
     return;
   }
 
@@ -180,7 +166,7 @@ function insertUserMessage(text) {
 function insertAssistantMessage(text) {
   const threadContainer = document.querySelector('.flex.flex-col.text-sm');
   if (!threadContainer) {
-    console.log('[ChatGPT Capture] Thread container not found');
+    console.log('[Oscar] ERROR: Thread container not found - cannot insert assistant message');
     return;
   }
 
@@ -218,7 +204,7 @@ function insertAssistantMessage(text) {
 async function uploadChatToOscar(conversationId, messages) {
   try {
     // Step 1: Create conversation
-    console.log('[ChatGPT Capture] Creating conversation:', conversationId);
+    console.log('[Oscar] Creating conversation:', conversationId);
     const createResponse = await fetch('https://www.getoscar.ai/api/create_conversation', {
       method: 'POST',
       headers: {
@@ -232,7 +218,7 @@ async function uploadChatToOscar(conversationId, messages) {
     }
 
     const createResult = await createResponse.json();
-    console.log('[ChatGPT Capture] Conversation created:', createResult);
+    console.log('[Oscar] Conversation created:', createResult);
 
     // Step 2: Format messages for upload
     const formattedMessages = messages.map((msg, index) => ({
@@ -243,7 +229,7 @@ async function uploadChatToOscar(conversationId, messages) {
     }));
 
     // Step 3: Upload messages
-    console.log('[ChatGPT Capture] Uploading messages:', formattedMessages.length);
+    console.log('[Oscar] Uploading', formattedMessages.length, 'messages');
     const uploadResponse = await fetch('https://www.getoscar.ai/api/upload_messages', {
       method: 'POST',
       headers: {
@@ -260,11 +246,11 @@ async function uploadChatToOscar(conversationId, messages) {
     }
 
     const uploadResult = await uploadResponse.json();
-    console.log('[ChatGPT Capture] Messages uploaded:', uploadResult);
+    console.log('[Oscar] Messages uploaded successfully:', uploadResult);
 
     return { success: true, conversationId };
   } catch (error) {
-    console.error('[ChatGPT Capture] Upload error:', error);
+    console.error('[Oscar] Upload error:', error);
     throw error;
   }
 }
@@ -281,16 +267,17 @@ function generateUUID() {
 // Main chat capture function
 async function captureChat() {
   try {
-    console.log('Starting chat capture...');
+    console.log('[Oscar] Starting chat capture...');
 
     // Scroll to load all messages
     await loadAllMessages();
 
     // Extract chat messages
     const messages = extractChatMessages();
+    console.log('[Oscar] Extracted', messages.length, 'messages from chat');
 
     if (messages.length === 0) {
-      console.warn('No messages found to capture');
+      console.warn('[Oscar] No messages found to capture');
       insertAssistantMessage('No messages found to share.');
       isCapturing = false;
       return;
@@ -305,10 +292,11 @@ async function captureChat() {
       url: window.location.href
     };
 
+    console.log('[Oscar] Generated chat ID:', chat.id);
+    console.log('[Oscar] Chat title:', chat.title);
+
     // Store the chat locally
     await storeCapturedChat(chat);
-
-    console.log(`Captured chat with ${messages.length} messages`);
 
     // Upload to Oscar backend
     await uploadChatToOscar(chat.id, messages);
@@ -317,7 +305,7 @@ async function captureChat() {
     insertAssistantMessage(`Your conversation has been shared! You can access it at: [https://www.getoscar.ai/chat/${chat.id}](https://www.getoscar.ai/chat/${chat.id})`);
 
   } catch (error) {
-    console.error('Error capturing chat:', error);
+    console.error('[Oscar] Error capturing chat:', error);
     insertAssistantMessage('Sorry, there was an error sharing your conversation.');
   } finally {
     isCapturing = false;
@@ -326,61 +314,71 @@ async function captureChat() {
 
 // Load all messages by scrolling
 async function loadAllMessages() {
-  const scrollContainer = document.querySelector('[data-testid="conversation-turn-0"]')?.closest('div[class*="react-scroll"]') || 
-                         document.querySelector('main') || 
+  const scrollContainer = document.querySelector('[data-testid="conversation-turn-0"]')?.closest('div[class*="react-scroll"]') ||
+                         document.querySelector('main') ||
                          document.body;
-  
+
+  console.log('[Oscar] Loading all messages, scroll container:', scrollContainer?.className);
+
   // Scroll to top first
   scrollContainer.scrollTop = 0;
   await new Promise(resolve => setTimeout(resolve, 500));
-  
+
   // Scroll to bottom to load all messages
   let lastHeight = scrollContainer.scrollHeight;
   let attempts = 0;
   const maxAttempts = 10;
-  
+
   while (attempts < maxAttempts) {
     scrollContainer.scrollTop = scrollContainer.scrollHeight;
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     const newHeight = scrollContainer.scrollHeight;
     if (newHeight === lastHeight) break;
-    
+
     lastHeight = newHeight;
     attempts++;
   }
-  
-  console.log(`Loaded messages after ${attempts} scroll attempts`);
+
+  console.log('[Oscar] Loaded messages after', attempts, 'scroll attempts');
 }
 
 // Extract chat messages from DOM
 function extractChatMessages() {
   const messages = [];
   const articles = document.querySelectorAll('article[data-testid^="conversation-turn-"]');
-  
+
+  console.log('[Oscar] Found', articles.length, 'conversation turn articles');
+
   articles.forEach((article, index) => {
     try {
       const authorElement = article.querySelector('[data-message-author-role]');
-      if (!authorElement) return;
-      
+      if (!authorElement) {
+        console.log('[Oscar] Article', index, 'has no author element');
+        return;
+      }
+
       const role = authorElement.getAttribute('data-message-author-role');
-      
+      console.log('[Oscar] Article', index, 'role:', role);
+
       if (role === 'user') {
         const content = extractUserMessage(article);
         if (content) {
           messages.push({ role: 'user', content: content.trim() });
+          console.log('[Oscar] Extracted user message:', content.substring(0, 50) + '...');
         }
       } else if (role === 'assistant') {
         const content = extractAssistantMessage(article);
         if (content) {
           messages.push({ role: 'assistant', content: content.trim() });
+          console.log('[Oscar] Extracted assistant message:', content.substring(0, 50) + '...');
         }
       }
     } catch (error) {
-      console.warn(`Error extracting message from article ${index}:`, error);
+      console.warn('[Oscar] Error extracting message from article', index, ':', error);
     }
   });
-  
+
   return messages;
 }
 
@@ -521,15 +519,12 @@ function showCaptureNotification(messageCount) {
 }
 
 // Initialize when DOM is ready
-console.log('[ChatGPT Capture] Extension script starting... readyState:', document.readyState);
-console.log('[ChatGPT Capture] URL:', window.location.href);
+console.log('[Oscar] Extension initializing on', window.location.href);
 
 if (document.readyState === 'loading') {
-  console.log('[ChatGPT Capture] Waiting for DOMContentLoaded...');
   document.addEventListener('DOMContentLoaded', monitorInput);
 } else {
-  console.log('[ChatGPT Capture] DOM already ready, starting monitor...');
   monitorInput();
 }
 
-console.log('[ChatGPT Capture] Extension loaded successfully!');
+console.log('[Oscar] Extension loaded');
