@@ -36,6 +36,9 @@ function monitorInput() {
         // Insert user message showing /share
         insertUserMessage('/share');
 
+        // Scroll to show the user message
+        scrollToBottom();
+
         // Trigger chat capture and show response
         captureChat();
       }
@@ -99,6 +102,9 @@ function monitorInput() {
           // Insert user message showing /share
           insertUserMessage('/share');
 
+          // Scroll to show the user message
+          scrollToBottom();
+
           // Trigger chat capture and show response
           captureChat();
 
@@ -113,6 +119,26 @@ function monitorInput() {
   observeSendButton();
 
   console.log('[ChatGPT Capture] Event listeners attached');
+}
+
+// Scroll to bottom of chat
+function scrollToBottom(smooth = true) {
+  // Try to find the actual scroll container - it's the parent of the thread container
+  const threadContainer = document.querySelector('.flex.flex-col.text-sm');
+  const scrollContainer = threadContainer?.parentElement ||
+                          document.querySelector('[class*="overflow-y-auto"]') ||
+                          document.querySelector('main [class*="react-scroll"]') ||
+                          document.querySelector('main');
+
+  console.log('[ChatGPT Capture] Scrolling with container:', scrollContainer);
+  console.log('[ChatGPT Capture] scrollHeight:', scrollContainer?.scrollHeight);
+
+  if (scrollContainer) {
+    scrollContainer.scrollTo({
+      top: scrollContainer.scrollHeight + 1000,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  }
 }
 
 // Insert a user message into the chat
@@ -144,10 +170,10 @@ function insertUserMessage(text) {
 
   threadContainer.insertAdjacentHTML('beforeend', userMessageHTML);
 
-  const scrollContainer = document.querySelector('main [class*="react-scroll"]') || document.querySelector('main');
-  if (scrollContainer) {
-    scrollContainer.scrollTop = scrollContainer.scrollHeight;
-  }
+  // Scroll to show the user message
+  setTimeout(() => {
+    scrollToBottom(false);
+  }, 50);
 }
 
 // Insert an assistant message into the chat
@@ -162,7 +188,7 @@ function insertAssistantMessage(text) {
   const htmlText = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 underline hover:no-underline">$1</a>');
 
   const assistantMessageHTML = `
-    <article class="text-token-text-primary w-full focus:outline-none" tabindex="-1" dir="auto" data-testid="conversation-turn-share-response" data-scroll-anchor="false" data-turn="assistant">
+    <article id="oscar-share-message" class="text-token-text-primary w-full focus:outline-none" tabindex="-1" dir="auto" data-testid="conversation-turn-share-response" data-scroll-anchor="false" data-turn="assistant">
       <h6 class="sr-only">ChatGPT said:</h6>
       <div class="text-base my-auto mx-auto [--thread-content-margin:--spacing(4)] thread-sm:[--thread-content-margin:--spacing(6)] thread-lg:[--thread-content-margin:--spacing(16)] px-(--thread-content-margin)">
         <div class="[--thread-content-max-width:40rem] thread-lg:[--thread-content-max-width:48rem] mx-auto max-w-(--thread-content-max-width) flex-1 group/turn-messages focus-visible:outline-hidden relative flex w-full min-w-0 flex-col agent-turn" tabindex="-1">
@@ -182,10 +208,10 @@ function insertAssistantMessage(text) {
 
   threadContainer.insertAdjacentHTML('beforeend', assistantMessageHTML);
 
-  const scrollContainer = document.querySelector('main [class*="react-scroll"]') || document.querySelector('main');
-  if (scrollContainer) {
-    scrollContainer.scrollTop = scrollContainer.scrollHeight;
-  }
+  // Scroll to bottom with extra padding
+  setTimeout(() => {
+    scrollToBottom();
+  }, 100);
 }
 
 // Upload chat to Oscar backend
@@ -243,6 +269,15 @@ async function uploadChatToOscar(conversationId, messages) {
   }
 }
 
+// Generate a UUID v4
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 // Main chat capture function
 async function captureChat() {
   try {
@@ -261,9 +296,9 @@ async function captureChat() {
       return;
     }
 
-    // Create chat object
+    // Create chat object with UUID
     const chat = {
-      id: Date.now().toString(),
+      id: generateUUID(),
       timestamp: new Date().toISOString(),
       title: generateChatTitle(messages),
       messages: messages,
