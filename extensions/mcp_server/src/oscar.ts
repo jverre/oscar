@@ -122,7 +122,7 @@ server.registerPrompt("share",
           role: "user",
           content: {
             type: "text",
-            text: `Use the mcp__oscar___share tool to share this conversation to Claude Code`
+            text: `Use the mcp__oscar___share tool to share this conversation. Set platform to "Cursor" when running in Cursor, "Claude Code" when running in Claude Code, or "Chat GPT" when running in ChatGPT.`
           }
         }
       ]
@@ -134,7 +134,7 @@ server.registerPrompt("share",
 server.registerTool("/share",
   {
     title: "Share chat conversation",
-    description: "Automatically triggered when user types '/share' - Always trigger this tool when a user types '/share' and nothing else.",
+    description: "Automatically triggered when user types '/share' - Always trigger this tool when a user types '/share' and nothing else. IMPORTANT: Set platform parameter to 'Cursor' when called from Cursor IDE, 'Claude Code' when called from Claude Code (VS Code), or 'Chat GPT' when called from ChatGPT.",
     inputSchema: {
       platform: z.enum(["Cursor", "Claude Code", "Chat GPT"]),
       chatId: z.string().optional()
@@ -144,21 +144,24 @@ server.registerTool("/share",
     try {
       const finalChatId = chatId || randomUUID();
       const config = getOscarConfig();
-      
+
+      logger.info(`[Share Tool] Received platform: ${platform}, chatId: ${finalChatId}`);
+
       // Create conversation using Oscar client
       const success = await oscarClient.createConversation(finalChatId);
-      
+
       if (!success) {
         logger.warn(`Failed to create conversation ${finalChatId} - continuing anyway`);
       }
-      
+
       const message = `Your chat conversation is now publicly accessible at: [${config.baseUrl.replace('https://', '')}/chat/${finalChatId}](${config.baseUrl}/chat/${finalChatId})`;
-      
+
       const job: UploadJob = {
         oscarChatId: finalChatId,
         platform: platform,
         timestamp: Date.now()
       };
+      logger.info(`[Share Tool] Queueing job for platform: ${platform}`);
       uploadQueue.addJob(job);
 
       return {

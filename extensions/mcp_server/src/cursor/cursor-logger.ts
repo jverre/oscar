@@ -3,7 +3,8 @@
  * Background upload process for Cursor conversations
  */
 
-import Database from 'better-sqlite3';
+import sqlite3 from 'node-sqlite3-wasm';
+const { Database } = sqlite3;
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
@@ -30,21 +31,26 @@ async function findConversationByToolResponse(oscarChatId: string): Promise<stri
   // Try immediately first (no delay)
   logger.info(`[Cursor Logger] Searching for oscar chat ID: ${oscarChatId}`);
   try {
-    const db = new Database(GLOBAL_STORAGE_PATH, { readonly: true });
-    const result = db.prepare(`
+    const db = new Database(GLOBAL_STORAGE_PATH, { readOnly: true });
+    const stmt = db.prepare(`
       SELECT substr(key, 10, 36) as conversation_id
-      FROM cursorDiskKV 
+      FROM cursorDiskKV
       WHERE key LIKE 'bubbleId:%'
       AND value LIKE ?
       LIMIT 1
-    `).get(`%${oscarChatId}%`) as { conversation_id: string } | undefined;
-    db.close();
-    
-    if (result?.conversation_id) {
-      logger.info(`[Cursor Logger] Found conversation immediately: ${result.conversation_id}`);
-      return result.conversation_id;
-    } else {
-      logger.info(`[Cursor Logger] Not found immediately, starting polling...`);
+    `);
+    try {
+      const result = stmt.get(`%${oscarChatId}%`) as { conversation_id: string } | undefined;
+
+      if (result?.conversation_id) {
+        logger.info(`[Cursor Logger] Found conversation immediately: ${result.conversation_id}`);
+        return result.conversation_id;
+      } else {
+        logger.info(`[Cursor Logger] Not found immediately, starting polling...`);
+      }
+    } finally {
+      stmt.finalize();
+      db.close();
     }
   } catch (error) {
     logger.error(`[Cursor Logger] Error in immediate search: ${error}`);
@@ -60,26 +66,31 @@ async function findConversationByToolResponse(oscarChatId: string): Promise<stri
   
   while (Date.now() - startTime < maxWaitTime) {
     try {
-      const db = new Database(GLOBAL_STORAGE_PATH, { readonly: true });
-      const result = db.prepare(`
+      const db = new Database(GLOBAL_STORAGE_PATH, { readOnly: true });
+      const stmt = db.prepare(`
         SELECT substr(key, 10, 36) as conversation_id
-        FROM cursorDiskKV 
+        FROM cursorDiskKV
         WHERE key LIKE 'bubbleId:%'
         AND value LIKE ?
         LIMIT 1
-      `).get(`%${oscarChatId}%`) as { conversation_id: string } | undefined;
-      db.close();
-      
-      if (result?.conversation_id) {
-        logger.info(`[Cursor Logger] Found conversation after ${pollCount} polls: ${result.conversation_id}`);
-        return result.conversation_id;
+      `);
+      try {
+        const result = stmt.get(`%${oscarChatId}%`) as { conversation_id: string } | undefined;
+
+        if (result?.conversation_id) {
+          logger.info(`[Cursor Logger] Found conversation after ${pollCount} polls: ${result.conversation_id}`);
+          return result.conversation_id;
+        }
+
+        pollCount++;
+        if (pollCount % 50 === 0) { // Log every 5 seconds
+          logger.info(`[Cursor Logger] Still polling... ${pollCount}/${maxPolls} attempts`);
+        }
+      } finally {
+        stmt.finalize();
+        db.close();
       }
-      
-      pollCount++;
-      if (pollCount % 50 === 0) { // Log every 5 seconds
-        logger.info(`[Cursor Logger] Still polling... ${pollCount}/${maxPolls} attempts`);
-      }
-      
+
       await new Promise(resolve => setTimeout(resolve, pollInterval));
     } catch (error) {
       logger.error(`[Cursor Logger] Error polling for conversation: ${error}`);
@@ -99,59 +110,71 @@ function extractConversationMessages(conversationUUID: string): AISDKMessage[] {
   if (!existsSync(GLOBAL_STORAGE_PATH)) return [];
   
   try {
-    const db = new Database(GLOBAL_STORAGE_PATH, { readonly: true });
-    
-    // First, get the ordered list of messages from composerData
-    const composerData = db.prepare(`
-      SELECT json_extract(value, '$.fullConversationHeadersOnly') as messageOrder
-      FROM cursorDiskKV 
-      WHERE key = 'composerData:' || ?
-    `).get(conversationUUID) as { messageOrder: string } | undefined;
-    
-    if (!composerData || !composerData.messageOrder) {
-      logger.error(`[Cursor Logger] No composerData found for conversation ${conversationUUID}`);
-      db.close();
-      return [];
-    }
-    
-    const orderedMessages = JSON.parse(composerData.messageOrder) as Array<{
-      bubbleId: string;
-      type: number;
-    }>;
-    
-    logger.info(`[Cursor Logger] Processing ${orderedMessages.length} messages for conversation ${conversationUUID}`);
-    
-    // Get all raw message data in order
-    const rawMessages: unknown[] = [];
-    
-    for (const messageHeader of orderedMessages) {
+    const db = new Database(GLOBAL_STORAGE_PATH, { readOnly: true });
+
+    try {
+      // First, get the ordered list of messages from composerData
+      const composerStmt = db.prepare(`
+        SELECT json_extract(value, '$.fullConversationHeadersOnly') as messageOrder
+        FROM cursorDiskKV
+        WHERE key = 'composerData:' || ?
+      `);
+      let composerData: { messageOrder: string } | undefined;
       try {
-        // Get the complete message data
-        const rawMessage = db.prepare(`
-          SELECT value
-          FROM cursorDiskKV 
-          WHERE key = 'bubbleId:' || ? || ':' || ?
-        `).get(conversationUUID, messageHeader.bubbleId) as { value?: string } | undefined;
-        
-        if (rawMessage?.value) {
-          // Parse the JSON value
-          const parsedMessage = JSON.parse(rawMessage.value);
-          rawMessages.push(parsedMessage);
-        }
-      } catch (e) {
-        logger.warn(`[Cursor Logger] Failed to parse message ${messageHeader.bubbleId}: ${e}`);
-        continue;
+        composerData = composerStmt.get(conversationUUID) as { messageOrder: string } | undefined;
+      } finally {
+        composerStmt.finalize();
       }
+
+      if (!composerData || !composerData.messageOrder) {
+        logger.error(`[Cursor Logger] No composerData found for conversation ${conversationUUID}`);
+        return [];
+      }
+
+      const orderedMessages = JSON.parse(composerData.messageOrder) as Array<{
+        bubbleId: string;
+        type: number;
+      }>;
+
+      logger.info(`[Cursor Logger] Processing ${orderedMessages.length} messages for conversation ${conversationUUID}`);
+
+      // Get all raw message data in order
+      const rawMessages: unknown[] = [];
+
+      for (const messageHeader of orderedMessages) {
+        try {
+          // Get the complete message data
+          const msgStmt = db.prepare(`
+            SELECT value
+            FROM cursorDiskKV
+            WHERE key = 'bubbleId:' || ? || ':' || ?
+          `);
+          try {
+            const rawMessage = msgStmt.get([conversationUUID, messageHeader.bubbleId]) as { value?: string } | undefined;
+
+            if (rawMessage?.value) {
+              // Parse the JSON value
+              const parsedMessage = JSON.parse(rawMessage.value);
+              rawMessages.push(parsedMessage);
+            }
+          } finally {
+            msgStmt.finalize();
+          }
+        } catch (e) {
+          logger.warn(`[Cursor Logger] Failed to parse message ${messageHeader.bubbleId}: ${e}`);
+          continue;
+        }
+      }
+
+      // Use the new mapper to process all messages with validation
+      const processedMessages = processCursorMessages(rawMessages, conversationUUID);
+
+      logger.info(`[Cursor Logger] Successfully processed ${rawMessages.length} raw messages into ${processedMessages.length} AI SDK messages`);
+
+      return processedMessages;
+    } finally {
+      db.close();
     }
-    
-    db.close();
-    
-    // Use the new mapper to process all messages with validation
-    const processedMessages = processCursorMessages(rawMessages, conversationUUID);
-    
-    logger.info(`[Cursor Logger] Successfully processed ${rawMessages.length} raw messages into ${processedMessages.length} AI SDK messages`);
-    
-    return processedMessages;
     
   } catch (error) {
     logger.error(`[Cursor Logger] Error extracting conversation messages: ${error}`);
