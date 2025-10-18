@@ -1,10 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Oscar",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Share your ChatGPT conversations with Oscar. Type /share and press Enter to create a shareable link.",
   "permissions": [
-    "activeTab",
     "storage"
   ],
   "content_scripts": [

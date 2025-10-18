@@ -56,7 +56,8 @@ function renderChatList() {
   chatList.querySelectorAll('.chat-item').forEach(item => {
     item.addEventListener('click', () => {
       const chatId = item.dataset.chatId;
-      openChatModal(chatId);
+      // Open in new tab at getoscar.ai
+      window.open(`https://getoscar.ai/chat/${chatId}`, '_blank');
     });
   });
 }
@@ -245,24 +246,27 @@ function showToast(message, type = 'success') {
     position: fixed;
     top: 20px;
     right: 20px;
-    background: ${type === 'error' ? '#fc8181' : '#10a37f'};
+    background: ${type === 'error' ? '#e57878' : '#628066'};
     color: white;
     padding: 12px 16px;
     border-radius: 6px;
     font-size: 14px;
+    font-family: 'Martian Mono', monospace;
+    letter-spacing: -0.02em;
     z-index: 10000;
     opacity: 0;
     transform: translateY(-10px);
     transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(98, 128, 102, 0.3);
   `;
-  
+
   document.body.appendChild(toast);
-  
+
   setTimeout(() => {
     toast.style.opacity = '1';
     toast.style.transform = 'translateY(0)';
   }, 100);
-  
+
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transform = 'translateY(-10px)';
@@ -290,11 +294,7 @@ function setupEventListeners() {
   document.getElementById('copyChat').addEventListener('click', copyCurrentChat);
   document.getElementById('exportChat').addEventListener('click', exportCurrentChat);
   document.getElementById('deleteChat').addEventListener('click', deleteCurrentChat);
-  
-  // Footer buttons
-  document.getElementById('exportAll').addEventListener('click', exportAllChats);
-  document.getElementById('clearAll').addEventListener('click', clearAllChats);
-  
+
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && currentChatId) {

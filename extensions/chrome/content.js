@@ -471,12 +471,12 @@ function extractFormattedContent(element) {
 // Generate a title for the chat
 function generateChatTitle(messages) {
   if (messages.length === 0) return 'Empty Chat';
-  
+
   const firstUserMessage = messages.find(m => m.role === 'user');
   if (!firstUserMessage) return 'Chat Capture';
-  
-  const title = firstUserMessage.content.substring(0, 50).trim();
-  return title + (firstUserMessage.content.length > 50 ? '...' : '');
+
+  const title = firstUserMessage.content.substring(0, 100).trim();
+  return title + (firstUserMessage.content.length > 100 ? '...' : '');
 }
 
 // Store captured chat
