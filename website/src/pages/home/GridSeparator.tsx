@@ -5,20 +5,30 @@ interface GridSeparatorProps {
 
 export function GridSeparator({ id = "grid-separator" }: GridSeparatorProps) {
   return (
-    <div className="relative">
-      <section className="relative h-4 w-full border-b border-sage-green-200 mx-3 md:mx-8 lg:mx-12">
-        {/* Bottom grid circles aligned with boundaries */}
+    <div className="relative border-y border-sage-green-200">
+      <section className="relative h-4 mx-3 md:mx-8 lg:mx-12">
+        {/* Top grid circles */}
         <div
           className="absolute z-10 size-2 rounded-full border border-sage-green-200 bg-cream-50"
-          style={{ bottom: '-4.5px', left: '-4.5px' }}
+          style={{ top: '-4.5px', left: '-3.5px' }}
         ></div>
         <div
           className="absolute z-10 size-2 rounded-full border border-sage-green-200 bg-cream-50"
-          style={{ bottom: '-4.5px', right: '-4.5px' }}
+          style={{ top: '-4.5px', right: '-3.5px' }}
         ></div>
 
-        {/* Diagonal lines background pattern */}
-        <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full select-none text-sage-green-400 opacity-60">
+        {/* Bottom grid circles */}
+        <div
+          className="absolute z-10 size-2 rounded-full border border-sage-green-200 bg-cream-50"
+          style={{ bottom: '-4.5px', left: '-3.5px' }}
+        ></div>
+        <div
+          className="absolute z-10 size-2 rounded-full border border-sage-green-200 bg-cream-50"
+          style={{ bottom: '-4.5px', right: '-3.5px' }}
+        ></div>
+
+        {/* Diagonal lines background pattern - extends to page edges */}
+        <svg className="pointer-events-none absolute inset-0 z-0 h-full select-none text-sage-green-400 opacity-60" style={{ left: '-3rem', width: 'calc(100% + 6rem)' }}>
           <defs>
             <pattern
               id={`diagonal-lines-${id}`}

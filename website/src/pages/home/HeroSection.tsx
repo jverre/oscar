@@ -6,17 +6,17 @@ export function HeroSection() {
   return (
     <div className="relative bg-gradient-to-t from-sage-green-100/5 border-b border-sage-green-200">
       <PageContent>
-        <section className="relative isolate px-4 pt-20 pb-[12rem] sm:px-6 sm:pt-28 md:pb-[10.2rem]">
+        <section className="relative px-4 pt-20 pb-[12rem] sm:px-6 sm:pt-28 md:pb-[10.2rem]">
         {/* Grid circles at bottom border aligned with margin boundaries */}
-        <div 
+        <div
           className="absolute z-10 size-2 rounded-full border border-sage-green-200 bg-cream-50"
           style={{ bottom: '-4.5px', left: '-4.5px' }}
         ></div>
-        <div 
+        <div
           className="absolute z-10 size-2 rounded-full border border-sage-green-200 bg-cream-50"
           style={{ bottom: '-4.5px', right: '-4.5px' }}
         ></div>
-        
+
         <section className="mx-auto w-full max-w-sm md:max-w-[1100px] flex flex-col items-center gap-8" style={{ opacity: 1, transform: 'none' }}>
           <div className="flex h-full flex-col items-center justify-center gap-2">
             <h1 className="font-mono text-pretty scroll-mt-24 h0 text-sage-green-800 font-normal text-center text-balance">

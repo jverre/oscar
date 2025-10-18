@@ -6,8 +6,7 @@ export function DownloadDropdown() {
   const [isOpen, setIsOpen] = useState(false)
 
   const handleChromeExtension = () => {
-    // Add Chrome Web Store URL when available
-    console.log('Chrome Extension clicked')
+    window.open('https://chromewebstore.google.com/detail/oscar/dknemaegdpmofcfneojldmmoipjoeloo', '_blank')
     setIsOpen(false)
   }
 
@@ -42,17 +41,17 @@ export function DownloadDropdown() {
             <div className="py-1">
               <button
                 onClick={handleChromeExtension}
-                className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-sage-green-50 transition-colors duration-75"
+                className="w-full px-3 py-2 text-left text-sm text-foreground bg-cream-50 hover:bg-sage-green-50 transition-colors duration-75"
               >
                 <div>
                   <div className="font-medium">Chrome Extension</div>
                   <div className="text-xs text-foreground/60">For web browsers</div>
                 </div>
               </button>
-              
+
               <button
                 onClick={handleCursorMCP}
-                className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-sage-green-50 transition-colors duration-75"
+                className="w-full px-3 py-2 text-left text-sm text-foreground bg-cream-50 hover:bg-sage-green-50 transition-colors duration-75"
               >
                 <div>
                   <div className="font-medium">Cursor MCP Server</div>
